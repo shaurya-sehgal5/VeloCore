@@ -12,30 +12,54 @@ function App() {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  // 🌟 NEW SECURITY VERIFICATION PATTERN: Check cookie status on page load
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const authStatus = queryParams.get('auth');
-    const username = queryParams.get('username');
-    const id = queryParams.get('userId');
+    const verifySecureSession = async () => {
+      try {
+        // MANDATORY FOR SECURE COOKIES: { credentials: 'include' } 
+        // This forces the browser to attach the HttpOnly session cookie to the network call
+        const response = await fetch(`${API_BASE_URL}/api/auth/session`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          style: 'cors',
+          credentials: 'include' 
+        });
 
-    if (authStatus === 'success' && username && id) {
-      setGithubUser(username);
-      setUserId(id);
-      setCurrentView('dashboard');
-      window.history.replaceState({}, document.title, window.location.pathname);
-      fetchGitHubRepositories(id);
-    }
+        const data = await response.json();
+
+        if (response.ok && data.authenticated) {
+          setGithubUser(data.username);
+          setUserId(data.userId);
+          setCurrentView('dashboard');
+          
+          // Clear any authorization parameters from the URL bar cleanly
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          // Fetch the verified repositories list using the authenticated token channel
+          fetchGitHubRepositories();
+        }
+      } catch (err) {
+        console.log('🔄 No active secure session identified. Awaiting explicit user login.');
+      }
+    };
+
+    verifySecureSession();
   }, []);
 
-  const fetchGitHubRepositories = async (targetUserId) => {
+  const fetchGitHubRepositories = async () => {
     setLoadingRepos(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/github/repos/${targetUserId}`);
+      // Notice we no longer pass the userId parameter in the URL path. 
+      // The backend reads it directly out of the secure cookie!
+      const response = await fetch(`${API_BASE_URL}/api/auth/github/repos/me`, {
+        credentials: 'include' // Enforces cookie passage
+      });
+      
       if (!response.ok) throw new Error('Could not access repository endpoints.');
       const data = await response.json();
       setRepos(data);
     } catch (err) {
-      setError('⚠️ Failed to load your GitHub repositories.');
+      setError('⚠️ Failed to securely sync your GitHub repositories.');
     } finally {
       setLoadingRepos(false);
     }
@@ -51,8 +75,23 @@ function App() {
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
   };
 
-  const handleDeployRepository = (repoName, cloneUrl) => {
-    alert(`🚀 Core Trigger Initialized:\nPreparing build sequence for repository: ${repoName}\nTarget URL: ${cloneUrl}`);
+  const handleDeployRepository = async (repoName, cloneUrl) => {
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/project/deploy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Automatically passes our secure identity cookie
+        body: JSON.stringify({ repoName, cloneUrl }), // Zero user IDs exposed in the payload string!
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to initialize build.');
+
+      alert(`🚀 Cloud Build Executed Successfully!\nTracking Cluster ID: ${data.deploymentId}`);
+    } catch (err) {
+      setError(`❌ Deployment Failed: ${err.message}`);
+    }
   };
 
   return (
@@ -73,6 +112,7 @@ function App() {
           loadingRepos={loadingRepos}
           onDeploy={handleDeployRepository}
           onDisconnect={() => {
+            // Future step: hit a backend endpoint to clear the cookie, for now reset local layout view state
             setGithubUser(null);
             setCurrentView('login');
           }}
