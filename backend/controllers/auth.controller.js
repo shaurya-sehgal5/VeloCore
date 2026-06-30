@@ -1,4 +1,4 @@
-const db = require('../cofig/db');
+const db = require('../config/db');
 const { encrypt } = require('../utils/crypto');
 const jwt = require('jsonwebtoken');
 

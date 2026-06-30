@@ -1,5 +1,5 @@
 const buildService = require('../services/build.service');
-const db = require('../cofig/db');
+const db = require('../config/db');
 const { decrypt } = require('../utils/crypto'); // <-- Add this import
 
 exports.triggerDeployment = async (req, res) => {
