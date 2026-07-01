@@ -134,3 +134,16 @@ exports.getGitHubRepositories = async (req, res) => {
     return res.status(500).json({ error: 'Failed to securely sync your GitHub repositories.' });
   }
 };
+exports.logout = (req, res) => {
+
+    res.clearCookie("veloplatform_session", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax"
+    });
+
+    return res.status(200).json({
+        message: "Logged out successfully"
+    });
+
+};

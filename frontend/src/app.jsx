@@ -75,25 +75,42 @@ function App() {
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
   };
 
-  const handleDeployRepository = async (repoName, cloneUrl) => {
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/project/deploy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Automatically passes our secure identity cookie
-        body: JSON.stringify({ repoName, cloneUrl }), // Zero user IDs exposed in the payload string!
-      });
+ const handleDeployRepository = async (repoName, cloneUrl) => {
+  setError(null);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to initialize build.');
+  try {
 
-      alert(`🚀 Cloud Build Executed Successfully!\nTracking Cluster ID: ${data.deploymentId}`);
-    } catch (err) {
-      setError(`❌ Deployment Failed: ${err.message}`);
+    const response = await fetch(`${API_BASE_URL}/api/project/deploy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        repoName,
+        cloneUrl
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to initialize build.');
     }
-  };
 
+    console.log("🚀 Deployment Response:", data);
+
+    // IMPORTANT
+    return data;
+
+  } catch (err) {
+
+    setError(`❌ Deployment Failed: ${err.message}`);
+
+    return null;
+
+  }
+};
   return (
     <div style={{ fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', padding: '0 20px' }}>
       {error && (
