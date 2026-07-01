@@ -112,9 +112,26 @@ function App() {
   }
 };
   return (
-    <div style={{ fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', padding: '0 20px' }}>
+    <div style={{ width: '100%', minHeight: '100vh' }}>
       {error && (
-        <div style={{ padding: '12px', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '6px', marginTop: '20px', fontSize: '14px', textAlign: 'center' }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 50,
+            maxWidth: '90%',
+            width: 'max-content',
+            padding: '12px 20px',
+            backgroundColor: 'rgba(254, 226, 226, 0.97)',
+            color: '#dc2626',
+            borderRadius: '8px',
+            fontSize: '14px',
+            textAlign: 'center',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          }}
+        >
           {error}
         </div>
       )}

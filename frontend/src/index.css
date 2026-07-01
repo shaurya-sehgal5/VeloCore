@@ -50,16 +50,34 @@
   }
 }
 
+/* box-sizing reset so padding/borders never blow out 100% widths */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   margin: 0;
 }
 
+/*
+  FIX: #root previously had a hardcoded `width: 1126px`, left over from the
+  Vite starter template. That's what was boxing your whole app into a fixed
+  1126px column with visible border-inline lines on wider screens, instead
+  of letting it fill the viewport. Now it's a true full-bleed flex shell.
+*/
 #root {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  margin: 0;
+  text-align: initial;
+  border-inline: none;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
