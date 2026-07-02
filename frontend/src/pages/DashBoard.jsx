@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import SystemAnalytics from '../components/SystemAnalytics';
 
 const TABS = [
   {
@@ -18,6 +19,17 @@ const TABS = [
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="4 17 10 11 4 5" />
         <line x1="12" y1="19" x2="20" y2="19" />
+      </svg>
+    ),
+  },
+  {
+    key: 'analytics',
+    label: 'Analytics',
+    icon: (color) => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
       </svg>
     ),
   },
@@ -46,29 +58,25 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [buildLogs]);
 
-  // 📡 WEBSOCKET LIFECYCLE MANAGEMENT
+  // WEBSOCKET LIFECYCLE MANAGEMENT
   useEffect(() => {
     if (!activeDeploymentId) return;
 
-    console.log(`📡 [Socket Init]: Connecting to backend for Room: ${activeDeploymentId}`);
+    console.log(`[Socket Init]: Connecting to backend for Room: ${activeDeploymentId}`);
 
-    // Force connection to your backend port
-    const socket = io('http://localhost:5000', {
+    const socket = io('http://localhost:8080', {
       withCredentials: true,
       transports: ['websocket', 'polling']
     });
 
     socket.on('connect', () => {
-      console.log('✅ [Socket Connected]: Requesting to join room:', activeDeploymentId);
-      // Join the unique deployment room channel
+      console.log('[Socket Connected]: Requesting to join room:', activeDeploymentId);
       socket.emit('join-deployment-stream', activeDeploymentId);
     });
 
-    // 🔥 THE REAL-TIME LOG CATCHER
     socket.on('build-log-stream', (payload) => {
-      console.log('📥 [Socket Log Received]:', payload);
+      console.log('[Socket Log Received]:', payload);
 
-      // Extract text safely whether it's an object or a raw string
       const incomingText = typeof payload === 'object' && payload !== null ? payload.text : payload;
 
       if (incomingText) {
@@ -77,7 +85,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
     });
 
     socket.on('build-status-update', (data) => {
-      console.log('📊 [Socket Status Update]:', data.status);
+      console.log('[Socket Status Update]:', data.status);
       setBuildStatus(data.status);
       if (data.status === 'Success' || data.status === 'Failed') {
         socket.disconnect();
@@ -85,32 +93,31 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
     });
 
     return () => {
-      console.log('🔌 [Socket Cleanup]: Disconnecting socket channel.');
+      console.log('[Socket Cleanup]: Disconnecting socket channel.');
       socket.disconnect();
     };
   }, [activeDeploymentId]);
 
   const handleTriggerBuild = async (repoName, cloneUrl) => {
-    console.log(`🚀 [Build Triggered] for: ${repoName}`);
+    console.log(`[Build Triggered] for: ${repoName}`);
     setBuildLogs([]);
     setBuildStatus('Initializing...');
     setActiveTab('deployments');
 
     try {
       const responseData = await onDeploy(repoName, cloneUrl);
-      console.log('📥 [API Response Data]:', responseData);
+      console.log('[API Response Data]:', responseData);
 
       if (responseData && responseData.deploymentId) {
-        // This triggers the useEffect hook above to connect the socket
         setActiveDeploymentId(responseData.deploymentId);
         setBuildStatus('Building...');
       } else {
         setBuildStatus('Failed');
-        setBuildLogs(['❌ Error: Backend API did not return a valid deploymentId.']);
+        setBuildLogs(['Error: Backend API did not return a valid deploymentId.']);
       }
     } catch (err) {
       setBuildStatus('Failed');
-      setBuildLogs([`❌ Network Error: ${err.message}`]);
+      setBuildLogs([`Network Error: ${err.message}`]);
     }
   };
 
@@ -448,6 +455,9 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
           </div>
         </div>
       )}
+
+      {/* ---------- ANALYTICS TAB ---------- */}
+      {activeTab === 'analytics' && <SystemAnalytics githubUser={githubUser} repos={repos} />}
 
       {/* ---------- SETTINGS TAB ---------- */}
       {activeTab === 'settings' && (

@@ -1,26 +1,28 @@
 #!/bin/sh
+
+# Exit immediately if any compilation command fails
+set -e
+
 echo "🐳 [Container Sandbox]: Initialization sequence activated inside isolated Docker core..."
 
-# Fallback to current directory if not specified
-cd /app
-
-# 1. Framework & Dependency Node Mapping Matrix
-if [ -f "package.json" ]; then
-    echo "📦 [Container]: JavaScript/Node.js architecture blueprint identified."
-    
-    if [ -f "yarn.lock" ]; then
-        echo "🏃‍♂️ [Container]: Executing Yarn compilation..."
-        yarn install && yarn build
-    elif [ -f "pnpm-lock.yaml" ]; then
-        echo "🏃‍♂️ [Container]: Executing PNPM compilation..."
-        npx pnpm install && npx pnpm build
-    else
-        echo "🏃‍♂️ [Container]: Executing standard NPM compilation..."
-        npm install && npm run build
-    fi
-else
-    echo "❌ [Container Fault]: Unrecognized project stack blueprint matrix."
-    exit 1
+if [ ! -f package.json ]; then
+  echo "❌ Error: package.json missing in repository root."
+  exit 1
 fi
 
-echo "✅ [Container Sandbox]: Target asset compilation finalized cleanly."
+echo "📦 [Container]: Installing dependencies via NPM..."
+npm install
+
+echo "🏃‍♂️ [Container]: Compiling static production bundle..."
+
+# Check if it's a standard Vite project
+if grep -q '"vite"' package.json || [ -f vite.config.js ] || [ -f vite.config.ts ]; then
+  echo "⚡ [Vite Detected]: Injecting relative base path optimization (--base=./)..."
+  npm run build -- --base=./ || npx vite build --base=./
+else
+  # Generic fallback for other frameworks (React-scripts, Vue, etc.)
+  echo "🛠️ [Standard Node Detected]: Compiling default production target..."
+  npm run build
+fi
+
+echo "✅ [Container]: Asset bundle successfully compiled."

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import LogoLoop from '../components/LogoLoop/LogoLoop';
 
-// ---------- core stack logos (kept to the 10 that matter most) ----------
+
 const STACK = [
   { name: 'GitHub', slug: 'github' },
   { name: 'GitHub Actions', slug: 'githubactions' },

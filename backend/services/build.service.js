@@ -1,140 +1,147 @@
-const { spawn } = require('child_process');
+const { exec, spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs-extra');
+const db = require('../config/db');
 
-class BuildService {
-  /**
-   * Securely clones the targeted repository, wiping any hanging folders out first
-   */
-  async cloneRepository(cloneUrl, githubToken, deploymentId) {
-    const workspaceDir = path.join(__dirname, '../outputs', deploymentId);
+/**
+ * 📁 CLONE REPOSITORY FROM GITHUB DYNAMICALLY
+ * Provisions a secure temporary workspace and pulls code using the session token context.
+ */
+exports.cloneRepository = async (cloneUrl, githubToken, deploymentId) => {
+  try {
+    // Establish a unique local workspace path for the compilation isolation block
+    const workspaceDir = path.join(process.cwd(), 'workspaces', deploymentId);
+    await fs.ensureDir(workspaceDir);
+
+    console.log(`📦 [Build Service]: Provisioning workspace directory: ${workspaceDir}`);
+
+    // Inject the authenticated session token directly into the git runtime command anchor
+    const authenticatedUrl = cloneUrl.replace('https://', `https://x-access-token:${githubToken}@`);
     
-    // Safety wipe: prevents Git Exit Code 128 crashes if a directory already exists
-    if (fs.existsSync(workspaceDir)) {
-      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    console.log(`📡 [Build Service]: Initiating secure source code clone wrapper for ID: ${deploymentId}`);
+    
+    await new Promise((resolve, reject) => {
+      exec(`git clone ${authenticatedUrl} ${workspaceDir}`, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`❌ [Git Clone Process Fail]:`, stderr);
+          return reject(new Error(`Failed to clone git repository repository context: ${error.message}`));
+        }
+        resolve();
+      });
+    });
+
+    return workspaceDir;
+  } catch (error) {
+    // Instantly reflect tracking failure execution path straight down to the datastore
+    await db.query(
+      "UPDATE deployments SET status = 'FAILED', updated_at = NOW() WHERE id = $1",
+      [deploymentId]
+    );
+    throw error;
+  }
+};
+
+/**
+ * 🚀 COMPILE PROJECT & MANAGE LOGS ASYNCHRONOUSLY
+ * Executes the project build commands and updates the operational tracking states smoothly.
+ */
+exports.compileProject = async (workspaceDir, deploymentId, envVars = {}) => {
+  console.log(`🛠️ [Build Service]: Launching asynchronous compiler pipelines inside: ${workspaceDir}`);
+
+  // Update table status pipeline tracker straight into the database layer
+  await db.query(
+    "UPDATE deployments SET status = 'BUILDING', updated_at = NOW() WHERE id = $1",
+    [deploymentId]
+  );
+
+  // Merge systemic runtime variable structures cleanly
+  const mergedEnv = {
+    ...process.env,
+    ...envVars,
+    DEPLOYMENT_ID: deploymentId,
+    NODE_ENV: 'production'
+  };
+
+  // Determine standard execution targets based on dependency files available
+  let command = 'npm';
+  let args = ['install'];
+
+  if (await fs.pathExists(path.join(workspaceDir, 'yarn.lock'))) {
+    command = 'yarn';
+    args = [];
+  }
+
+  // Spin up child execution processing layer block 
+  const worker = spawn(command, args, {
+    cwd: workspaceDir,
+    env: mergedEnv,
+    shell: true
+  });
+
+  worker.stdout.on('data', (data) => {
+    console.log(`[Build Log - ${deploymentId}]: ${data.toString().trim()}`);
+  });
+
+  worker.stderr.on('data', (data) => {
+    console.warn(`[Build Warning - ${deploymentId}]: ${data.toString().trim()}`);
+  });
+
+  worker.on('close', async (code) => {
+    if (code !== 0) {
+      console.error(`❌ [Compiler Pipeline Exception]: Build exited with anomaly failure code ${code}`);
+      await db.query(
+        "UPDATE deployments SET status = 'FAILED', updated_at = NOW() WHERE id = $1",
+        [deploymentId]
+      );
+      return;
     }
 
-    fs.mkdirSync(workspaceDir, { recursive: true });
+    console.log(`✅ [Build Service]: Core installations finalized. Checking secondary build phases...`);
+    
+    // Check if an explicit build production script phase hook needs to run
+    const packageJsonPath = path.join(workspaceDir, 'package.json');
+    let hasBuildScript = false;
 
-    if (!cloneUrl.startsWith('https://github.com/')) {
-      throw new Error('Security Violation: Invalid upstream provider target root.');
+    if (await fs.pathExists(packageJsonPath)) {
+      const pkg = await fs.readJson(packageJsonPath);
+      if (pkg.scripts && pkg.scripts.build) {
+        hasBuildScript = true;
+      }
     }
 
-    const authenticatedUrl = cloneUrl.replace('https://', `https://${githubToken}@`);
-    console.log(`🛡️ [Build Engine]: Initiating secured git source clone for: ${deploymentId}`);
-
-    return new Promise((resolve, reject) => {
-      const gitProcess = spawn('git', ['clone', '--depth', '1', authenticatedUrl, workspaceDir], {
-        timeout: 60000 
+    if (hasBuildScript) {
+      console.log(`⚡ [Build Service]: Executing second production compile script sequence...`);
+      const buildWorker = spawn(command, command === 'npm' ? ['run', 'build'] : ['build'], {
+        cwd: workspaceDir,
+        env: mergedEnv,
+        shell: true
       });
 
-      gitProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log(`✅ [Build Engine]: Repository files cached locally.`);
-          resolve(workspaceDir);
+      buildWorker.on('close', async (buildCode) => {
+        if (buildCode !== 0) {
+          await db.query("UPDATE deployments SET status = 'FAILED', updated_at = NOW() WHERE id = $1", [deploymentId]);
         } else {
-          if (fs.existsSync(workspaceDir)) fs.rmSync(workspaceDir, { recursive: true, force: true });
-          reject(new Error(`Git clone routine failed with exit code: ${code}`));
+          await markDeploymentReady(deploymentId);
         }
       });
+    } else {
+      // If no build script exists, flag the architecture operational pipeline ready immediately
+      await markDeploymentReady(deploymentId);
+    }
+  });
+};
 
-      gitProcess.on('error', (err) => {
-        if (fs.existsSync(workspaceDir)) fs.rmSync(workspaceDir, { recursive: true, force: true });
-        reject(err);
-      });
-    });
-  }
-
-  /**
-   * 🐳 BULLETPROOF ISOLATED RUNNER:
-   * Copies repository code directly inside the running container to bypass all Windows path bottlenecks.
-   */
-  async compileProject(workspaceDir, deploymentId) {
-    const { getIO } = require('../config/socket');
-
-    return new Promise((resolve, reject) => {
-      console.log(`🐳 [Orchestrator]: Spawning isolated container lifecycle for: ${deploymentId}`);
-      const io = getIO();
-      const containerName = `builder-${deploymentId}`;
-
-      // Step 1: Provision the container block securely with explicit memory caps
-      const createProcess = spawn('docker', [
-        'create',
-        '--name', containerName,
-        '--memory=3g',
-        'velocore-builder:latest'
-      ]);
-
-      createProcess.on('close', (createCode) => {
-        if (createCode !== 0) return reject(new Error('Failed to provision isolated sandbox container.'));
-
-        console.log(`📦 [Orchestrator]: Container core allocated. Injecting repository blueprints...`);
-        const standardizedPath = workspaceDir.replace(/\\/g, '/');
-
-        // Step 2: Inject local workspace contents directly into the internal container layer
-        const cpProcess = spawn('docker', ['cp', `${standardizedPath}/.`, `${containerName}:/app`]);
-
-        cpProcess.on('close', (cpCode) => {
-          if (cpCode !== 0) {
-            spawn('docker', ['rm', '-f', containerName]);
-            return reject(new Error('Failed to inject source assets into sandbox filesystem.'));
-          }
-
-          console.log(`🏃‍♂️ [Orchestrator]: Booting up isolated compiler sandbox thread...`);
-
-          // Step 3: Start the container and intercept stdout/stderr to stream them live over WebSockets
-          const startProcess = spawn('docker', ['start', '-a', containerName], { timeout: 300000 });
-
-          const broadcastLogLine = (data, logType) => {
-            const rawString = data.toString().trim();
-            if (!rawString) return;
-
-            const lines = rawString.split('\n');
-            lines.forEach(line => {
-              const formattedLine = line.trim();
-              console.log(`🐳 [Docker Container Log]: ${formattedLine}`);
-console.log("========== EMITTING LOG ==========");
-console.log(deploymentId);
-console.log(formattedLine);
-console.log("==================================");
-              // Emit line-by-line real-time data to our WebSocket dashboard room channel
-              io.to(deploymentId).emit('build-log-stream', {
-                text: formattedLine,
-                timestamp: new Date().toISOString(),
-                type: logType
-              });
-            });
-          };
-
-          startProcess.stdout.on('data', (data) => broadcastLogLine(data, 'info'));
-          startProcess.stderr.on('data', (data) => broadcastLogLine(data, 'err'));
-
-          startProcess.on('close', (startCode) => {
-            if (startCode === 0) {
-              console.log(`✅ [Orchestrator]: Sandbox build completed cleanly. Syncing static assets back down to host...`);
-              
-              const expectedDistPath = path.join(workspaceDir, 'dist');
-              if (!fs.existsSync(expectedDistPath)) fs.mkdirSync(expectedDistPath, { recursive: true });
-
-              // Step 4: Extract finalized production build distribution chunks back to the Windows drive safely
-              const extractProcess = spawn('docker', ['cp', `${containerName}:/app/dist/.`, expectedDistPath]);
-
-              extractProcess.on('close', () => {
-                // Step 5: Wipe the temporary container container out completely
-                spawn('docker', ['rm', '-f', containerName]);
-                io.to(deploymentId).emit('build-status-update', { status: 'Success' });
-                resolve(expectedDistPath);
-              });
-            } else {
-              spawn('docker', ['rm', '-f', containerName]);
-              io.to(deploymentId).emit('build-status-update', { status: 'Failed', error: 'Compilation script failed inside container.' });
-              reject(new Error(`Docker sandbox execution crashed with exit code: ${startCode}`));
-            }
-          });
-        });
-      });
-    });
-  }
+/**
+ * 🔒 HELPER: FLIP STATUS STATE TO READY ON SUCCESS
+ */
+async function markDeploymentReady(deploymentId) {
+  console.log(`🚀 [Build Service Sync]: Compilation success! Flipping deployment ID ${deploymentId} to READY status.`);
+  await db.query(
+    `UPDATE deployments 
+     SET status = 'READY', 
+         url = $1, 
+         updated_at = NOW() 
+     WHERE id = $2`,
+    [`http://localhost:8000/${deploymentId}`, deploymentId]
+  );
 }
-
-module.exports = new BuildService();
