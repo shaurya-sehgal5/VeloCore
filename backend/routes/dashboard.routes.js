@@ -21,7 +21,7 @@ router.get('/analytics-list', secureShield, async (req, res) => {
     );
 
     console.log("Rows found:", result.rows.length);
-    console.log(result.rows);
+  
 
     res.json(result.rows);
   } catch (err) {

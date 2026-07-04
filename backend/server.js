@@ -9,13 +9,16 @@ const authRoutes = require('./routes/auth.routes');
 const { initSocket } = require('./config/socket');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
-const { startMonitoringService } = require('./services/monitor.service');
 
 const app = express();
 const server = http.createServer(app);
 
-// Initialize WebSockets 
-initSocket(server);
+// Initialize WebSockets and catch the returned 'io' instance
+const io = initSocket(server);
+
+// 💡 CRITICAL ATTACHMENT: Expose io instance to the global Express app instance 
+// This must happen BEFORE route mounting so your controllers can extract it!
+app.set('io', io);
 
 // --- 1. GLOBAL MIDDLEWARES ---
 app.use(express.json());
@@ -61,5 +64,4 @@ app.use((req, res) => {
 const PORT = 8080;
 server.listen(PORT, () => {
   console.log(`🚀 VeloCore Control Plane running smoothly on unified port ${PORT}`);
-  startMonitoringService();
 });

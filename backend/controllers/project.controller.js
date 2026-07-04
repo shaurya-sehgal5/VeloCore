@@ -2,6 +2,7 @@ const db = require('../config/db');
 const buildService = require('../services/build.service'); 
 const { v4: uuidv4 } = require('uuid'); 
 const axios = require('axios');
+const path = require('path');
 
 exports.getUserRepositories = async (req, res) => {
   try {
@@ -27,6 +28,7 @@ exports.deployProject = async (req, res) => {
   try {
     const { repoName, cloneUrl, envVars, projectId } = req.body;
     const userId = req.user?.userId; 
+    const githubToken = req.user?.githubToken;
 
     if (!repoName || !cloneUrl) {
       return res.status(400).json({ error: 'Bad Request: repoName and cloneUrl are required.' });
@@ -34,15 +36,24 @@ exports.deployProject = async (req, res) => {
 
     const deploymentId = uuidv4(); 
     const deploymentUrl = `http://localhost:9000/${deploymentId}`;
+    
+    // Compute the absolute filesystem path for the individual container workspace
+    const workspaceDir = path.join(__dirname, '..', 'workspaces', deploymentId);
+
     console.log(`🆕 [Controller]: Creating unified deployment entry for ID: ${deploymentId}`);
 
-    // 🔥 FIXED: Writing ALL columns explicitly to prevent NULL field data states
+    // Writing ALL columns explicitly to prevent NULL field data states
     await db.query(
       `INSERT INTO deployments (id, project_id, user_id, repo_name, status, url, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, 'INITIALIZING', $5, NOW(), NOW())`,
       [deploymentId, projectId || null, userId, repoName, deploymentUrl]
     );
 
+    // Grab the global Socket.io 'io' instance attached to the Express app context
+    // Grab the global Socket.io 'io' instance attached to the Express app context
+    const io = req.app.get('io');
+
+    // Respond to the frontend immediately so it can transition pages and join the socket room
     res.status(202).json({ 
       success: true, 
       message: "Deployment pipeline initialized.", 
@@ -50,8 +61,26 @@ exports.deployProject = async (req, res) => {
       url: deploymentUrl
     });
 
-    const workspaceDir = await buildService.cloneRepository(cloneUrl, req.user.githubToken, deploymentId);
-    await buildService.compileProject(workspaceDir, deploymentId, envVars);
+    // Fire off cloning and background compilation loops asynchronously
+    (async () => {
+      // 💡 Give the frontend a 1.5-second window to mount and join the socket room channel safely
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      if (io) {
+        io.to(deploymentId).emit('live_logs', '⏳ Connecting to deployment runtime agent...');
+      }
+
+      // 1. Download repository to storage workspace
+      await buildService.cloneRepository(cloneUrl, githubToken, workspaceDir);
+      
+      // 2. Pass 'io' as the first parameter to stream live output chunks
+      await buildService.compileProject(io, workspaceDir, deploymentId, envVars);
+    })().catch(err => {
+      console.error(`❌ [Background Pipeline Unhandled Exception]:`, err);
+      if (io) {
+        io.to(deploymentId).emit('live_logs', `❌ Critical Engine Error: ${err.message}`);
+      }
+    });
 
   } catch (error) {
     console.error("❌ [Deploy Controller Error]:", error.message);

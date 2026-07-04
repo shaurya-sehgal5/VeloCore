@@ -5,7 +5,8 @@ const fs = require("fs");
 const app = express();
 const PORT = 8000;
 
-const BASE_OUTPUT_DIR = path.join(__dirname, "outputs");
+// 🎯 FIX 1: Point this directly to your core workspaces folder where files actually live
+const BASE_WORKSPACE_DIR = path.join(__dirname, "workspaces");
 
 // =========================================================================
 // 🔄 ROUTE 1: PRIMARY APPLICATION INTERCEPTOR (RegEx Driven)
@@ -36,11 +37,12 @@ app.use(/^\/visit(\/.*)?$/, (req, res) => {
         return res.status(404).send("Deployment ID missing or invalid.");
     }
 
-    let projectPath = path.join(BASE_OUTPUT_DIR, deploymentId);
+    // 🎯 FIX 2: Point directly to the workspace folder and Vite's natural dist folder
+    let projectPath = path.join(BASE_WORKSPACE_DIR, deploymentId);
     let distPath = path.join(projectPath, "dist");
 
     if (!fs.existsSync(projectPath)) {
-        return res.status(404).send("Deployment folder not found.");
+        return res.status(404).send("Deployment folder not found inside workspaces.");
     }
 
     let requestedFile = req.originalUrl.split('?')[0].replace(`/visit/${deploymentId}`, '').replace('/visit', '');
@@ -60,12 +62,11 @@ app.use(/^\/visit(\/.*)?$/, (req, res) => {
         return res.sendFile(indexFile);
     }
 
-    res.status(404).send("Application resource not found.");
+    res.status(404).send("Application resource not found inside workspace dist.");
 });
 
 // =========================================================================
 // 🌍 ROUTE 2: DEEP GLOBAL FALLBACK MIDDLEWARE
-// Catches custom subdirectory patterns like /images/building4/img-5.jpeg
 // =========================================================================
 app.use((req, res, next) => {
     if (req.path === "/" || req.path === "") return next();
@@ -87,15 +88,10 @@ app.use((req, res, next) => {
             return res.status(404).send("Context deployment not found.");
         }
 
-        // Clean query parameters out of the incoming asset route path
         const cleanPath = req.path.split('?')[0];
         
-        // 🎯 FIX: Combine the clean requested path directly onto the deployment's built dist root folder
-        // For example: dist + /images/building4/img-5.jpeg
-        const assetFilePath = path.join(BASE_OUTPUT_DIR, deploymentId, "dist", cleanPath);
-
-        console.log(`📸 [Asset Routing Logs]: App [${deploymentId}] requesting asset -> ${cleanPath}`);
-        console.log(`🔍 [Checking Location]: ${assetFilePath}`);
+        // 🎯 FIX 3: Route assets straight from the workspace dist directory
+        const assetFilePath = path.join(BASE_WORKSPACE_DIR, deploymentId, "dist", cleanPath);
 
         if (fs.existsSync(assetFilePath) && fs.statSync(assetFilePath).isFile()) {
             console.log("✅ Asset Found! Serving file...");
@@ -103,12 +99,12 @@ app.use((req, res, next) => {
         }
 
         // Secondary nested folder safety fallback
-        const fallbackPath = path.join(BASE_OUTPUT_DIR, deploymentId, "dist", "assets", cleanPath);
+        const fallbackPath = path.join(BASE_WORKSPACE_DIR, deploymentId, "dist", "assets", cleanPath);
         if (fs.existsSync(fallbackPath) && fs.statSync(fallbackPath).isFile()) {
             return res.sendFile(fallbackPath);
         }
 
-        console.log("❌ File missing at output targets.");
+        console.log(`❌ File missing at workspace targets for deployment: ${deploymentId}`);
         res.status(404).send("Resource not found.");
     } catch (err) {
         console.error("Failed to parse fallback asset redirect:", err.message);

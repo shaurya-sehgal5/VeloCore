@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-function TerminalLogs({ logs, status }) {
+function TerminalLogs({ logs = [], status }) {
   const terminalEndRef = useRef(null);
 
   // Automatically scroll the terminal view down as new log packages stream in
@@ -19,8 +19,9 @@ function TerminalLogs({ logs, status }) {
 
   return (
     <div style={{ backgroundColor: '#0f172a', borderRadius: '12px', padding: '20px', fontFamily: 'monospace', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', marginTop: '24px' }}>
+      
       {/* Terminal Header Bar */}
-      <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '6px' }}>
           <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
           <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#eab308' }} />
@@ -38,12 +39,20 @@ function TerminalLogs({ logs, status }) {
         {logs.length === 0 ? (
           <p style={{ color: '#64748b', fontStyle: 'italic' }}>🔄 Waiting for build worker engine to claim queue allocation ticket...</p>
         ) : (
-          logs.map((log, index) => (
-            <div key={index} style={{ color: log.type === 'err' ? '#f87171' : '#f1f5f9', wordBreak: 'break-all' }}>
-              <span style={{ color: '#64748b', marginRight: '8px', userSelect: 'none' }}>[{new Date(log.timestamp).toLocaleTimeString()}]</span>
-              {log.text}
-            </div>
-          ))
+          logs.map((log, index) => {
+            // Safe Date parser conversion to prevent breaking crashes on connection edge cases
+            const logTime = log.timestamp ? new Date(log.timestamp) : new Date();
+            const timeString = isNaN(logTime.getTime()) ? new Date().toLocaleTimeString() : logTime.toLocaleTimeString();
+
+            return (
+              <div key={index} style={{ color: log.type === 'err' ? '#f87171' : '#f1f5f9', wordBreak: 'break-all' }}>
+                <span style={{ color: '#64748b', marginRight: '8px', userSelect: 'none' }}>
+                  [{timeString}]
+                </span>
+                {log.text}
+              </div>
+            );
+          })
         )}
         <div ref={terminalEndRef} />
       </div>

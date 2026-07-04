@@ -1,55 +1,47 @@
-const simpleGit = require('simple-git');
-const fs = require('fs-extra'); 
-const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs-extra');
+const { compileProject } = require('./build.service'); 
 
 /**
- * Optimized Service to orchestrate One-Click Git Pipelines 
- * and Local High-Speed Dependency Injection mirrors.
+ * 🛠️ PROCESS ONE-CLICK DEPLOYMENT WORKSPACE
+ * Sets up the workspace directory structure and triggers the build.
  */
-async function processOneClickDeployment(projectPath, deploymentId) {
-  const git = simpleGit(projectPath);
-  const stagingDeployPath = path.join(projectPath, 'backend', 'outputs', `Deploy-${deploymentId}`);
-  
-  // 1. Optimized Git Staging Pipeline
+exports.processOneClickDeployment = async (deploymentId, projectSourceDir, envVars = {}) => {
+  // Define temporary workspace location inside your project backend root
+  const workspaceDir = path.join(__dirname, 'workspaces', deploymentId);
+  const targetNodeModules = path.join(workspaceDir, 'node_modules');
+
   try {
-    const status = await git.status();
-    if (status.files.length > 0) {
-      await git.add('.');
-      await git.commit(`🔧 VeloCore Pipeline Engine Auto-Sync [Run ID: ${deploymentId}]`);
-      await git.push('origin', 'main'); 
-    }
-  } catch (gitErr) {
-    console.warn("⚠️ Git automation skipped or no upstream branch configured:", gitErr.message);
-  }
-
-  // 2. High-Speed Local NPM Caching Injection Mirror
-  const sourcePkgJson = path.join(projectPath, 'package.json');
-  const targetNodeModules = path.join(stagingDeployPath, 'node_modules');
-  
-  if (await fs.pathExists(sourcePkgJson)) {
-    await fs.ensureDir(targetNodeModules);
+    console.log(`📦 [Deployment Handler]: Initializing workspace environment for ID: ${deploymentId}`);
     
-    // Dynamically retrieve user environment system NPM cache configurations
-    const globalNpmPath = execSync('npm root -g').toString().trim();
-    const pkgData = await fs.readJson(sourcePkgJson);
-    const dependencies = Object.keys(pkgData.dependencies || {});
+    // Ensure clean workspace directory
+    await fs.ensureDir(workspaceDir);
+    
+    // Copy template/cloned source code into the fresh workspace
+    await fs.copy(projectSourceDir, workspaceDir, {
+      filter: (src) => !src.includes('node_modules') && !src.includes('.git')
+    });
 
-    // Hardlink or copy modules instantly from local host environment instead of downloading again
-    for (const pkg of dependencies) {
-      const cacheSource = path.join(globalNpmPath, pkg);
-      if (await fs.pathExists(cacheSource)) {
-        await fs.copy(cacheSource, path.join(targetNodeModules, pkg), { overwrite: false });
-      }
+    const packageJsonPath = path.join(workspaceDir, 'package.json');
+    if (!(await fs.pathExists(packageJsonPath))) {
+      throw new Error("No package.json found in the project source metadata structure.");
     }
-  }
-  
-  // Return internal preview tracking pointers
-  return {
-    success: true,
-    deploymentId,
-    previewUrl: `http://localhost:8000/site/Deploy-${deploymentId}/index.html`,
-    timestamp: new Date().toISOString()
-  };
-}
 
-module.exports = { processOneClickDeployment };
+    // Ensure the target node_modules container directory exists cleanly
+    await fs.ensureDir(targetNodeModules);
+
+    console.log(`🚀 [Deployment Handler]: Workspace staged successfully. Handoff to compiler layer...`);
+    
+    // Pass execution off directly to our build compiler pipeline
+    // This runs completely asynchronously in the background
+    compileProject(workspaceDir, deploymentId, envVars).catch(err => {
+      console.error(`❌ [Background Compilation Unhandled Exception]:`, err);
+    });
+
+    return { success: true, workspaceDir, deploymentId };
+
+  } catch (error) {
+    console.error(`❌ [Deployment Handler Failure]: Critical crash staging workspace:`, error);
+    throw error;
+  }
+};

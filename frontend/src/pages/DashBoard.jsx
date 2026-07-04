@@ -59,6 +59,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
   }, [buildLogs]);
 
   // WEBSOCKET LIFECYCLE MANAGEMENT
+  // WEBSOCKET LIFECYCLE MANAGEMENT
   useEffect(() => {
     if (!activeDeploymentId) return;
 
@@ -74,7 +75,8 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
       socket.emit('join-deployment-stream', activeDeploymentId);
     });
 
-    socket.on('build-log-stream', (payload) => {
+    // 💡 FIX 1: Change 'build-log-stream' to match backend 'live_logs'
+    socket.on('live_logs', (payload) => {
       console.log('[Socket Log Received]:', payload);
 
       const incomingText = typeof payload === 'object' && payload !== null ? payload.text : payload;
@@ -84,10 +86,19 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
       }
     });
 
-    socket.on('build-status-update', (data) => {
+    // 💡 FIX 2: Change 'build-status-update' to match backend 'status_update'
+    socket.on('status_update', (data) => {
       console.log('[Socket Status Update]:', data.status);
-      setBuildStatus(data.status);
-      if (data.status === 'Success' || data.status === 'Failed') {
+      
+      // Map the backend statuses to your UI states cleanly
+      let displayStatus = data.status;
+      if (data.status === 'BUILDING') displayStatus = 'Building...';
+      if (data.status === 'READY') displayStatus = 'Success';
+      if (data.status === 'FAILED') displayStatus = 'Failed';
+      
+      setBuildStatus(displayStatus);
+      
+      if (data.status === 'READY' || data.status === 'FAILED') {
         socket.disconnect();
       }
     });
