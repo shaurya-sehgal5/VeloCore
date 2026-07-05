@@ -3,12 +3,14 @@ const http = require('http');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const { register } = require('./services/metrics.service');
-const { processOneClickDeployment } = require('./services/deploy.service');
 const projectRoutes = require('./routes/project.routes');
 const authRoutes = require('./routes/auth.routes'); 
 const { initSocket } = require('./config/socket');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+
+// 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
+const { processOneClickDeployment } = require('./services/deploy.service');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,15 +18,14 @@ const server = http.createServer(app);
 // Initialize WebSockets and catch the returned 'io' instance
 const io = initSocket(server);
 
-// 💡 CRITICAL ATTACHMENT: Expose io instance to the global Express app instance 
-// This must happen BEFORE route mounting so your controllers can extract it!
+// Expose io instance to the global Express app instance before mounting routes
 app.set('io', io);
 
 // --- 1. GLOBAL MIDDLEWARES ---
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080"],
   credentials: true
 }));
 
@@ -40,11 +41,49 @@ app.get('/metrics', async (req, res) => {
 
 // --- 3. PRODUCTION AUTOMATION PIPELINES ---
 app.post('/api/deploy/one-click', async (req, res) => {
+  const ioInstance = req.app.get('io');
+  const { deploymentId, gitLocalPath, envText, targetType } = req.body;
+
+  const targetDeploymentId = deploymentId || `dep-${Date.now()}`;
+  const targetPath = gitLocalPath || process.cwd();
+  const appCategory = targetType || 'backend';
+
+  // Broadcast pipeline initialization to the terminal logs panel instantly
+  if (ioInstance) {
+    ioInstance.to(targetDeploymentId).emit('live_logs', `🔄 [Pipeline Initiated]: Isolating context layer for execution inside container...`);
+  }
+
+  // ⚡ STEP 1: Parse the raw multi-line .env text cleanly into an object map
+  const parsedEnvVars = {};
+  if (envText) {
+    const lines = envText.split('\n');
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        const value = valueParts.join('=').replace(/^['"]|['"]$/g, '');
+        parsedEnvVars[key.trim()] = value.trim();
+      }
+    });
+  }
+
   try {
-    const result = await processOneClickDeployment(process.cwd(), Date.now());
-    res.status(200).json(result);
+    console.log(`🐳 [Server Core]: Directing build task strictly to isolated Docker Engine...`);
+    
+    // ⚡ STEP 2: Force explicit execution through the clean Docker sandbox deployment pipeline
+    const result = await processOneClickDeployment(targetPath, targetDeploymentId, parsedEnvVars, appCategory);
+    
+    return res.status(200).json(result);
+
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error(`❌ Build pipeline validation crashed:`, error.message);
+    
+    // Fallback to emit failure logs cleanly to screen component
+    if (ioInstance) {
+      ioInstance.to(targetDeploymentId).emit('live_logs', `⚠️ [Production Build Error - ${targetDeploymentId}]: ${error.message}`);
+    }
+    
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -54,7 +93,7 @@ app.use('/api/project', projectRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// --- 5. ⚠️ CATCH-ALL 404 HANDLER (Must be at the absolute bottom) ---
+// --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {
   console.log(`⚠️ [Server 404 Alert]: Unmapped request path: ${req.method} ${req.url}`);
   res.status(404).json({ error: `The endpoint path ${req.url} does not exist.` });

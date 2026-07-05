@@ -6,11 +6,7 @@ const secureShield = require('../middleware/auth.middleware');
 // 🔥 NEW: Dynamic authenticated analytics list lookup (No hardcoded IDs needed)
 router.get('/analytics-list', secureShield, async (req, res) => {
   try {
-    console.log("JWT payload:", req.user);
-
     const userId = req.user.userId;
-    console.log("Looking up deployments for user:", userId);
-
     const result = await db.query(
       `SELECT d.*, COALESCE(p.name, d.repo_name) as project_name
        FROM deployments d
@@ -20,7 +16,7 @@ router.get('/analytics-list', secureShield, async (req, res) => {
       [userId]
     );
 
-    console.log("Rows found:", result.rows.length);
+  
   
 
     res.json(result.rows);
@@ -68,7 +64,7 @@ router.post('/deploy', async (req, res) => {
     const newDeploy = await db.query(
       `INSERT INTO deployments (id, project_id, user_id, repo_name, status, url, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
-      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', url || `http://localhost:9000/${deploymentId}`]
+      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', url || `http://localhost:8000/visit/${deploymentId}`]
     );
 
     res.json({ message: "Build initiated successfully", deployment: newDeploy.rows[0] });

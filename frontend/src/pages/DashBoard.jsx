@@ -1,11 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import SystemAnalytics from '../components/SystemAnalytics';
 
+const AUTH_BASE = 'http://localhost:8080/api/auth';
+const DASH_BASE = 'http://localhost:8080/api/dashboard';
+const ONE_CLICK_URL = 'http://localhost:8080/api/deploy/one-click';
+const FREE_TIER_LIMIT = 2;
+
 const TABS = [
   {
-    key: 'projects',
-    label: 'Projects',
+    key: 'deployed',
+    label: 'Deployed',
+    icon: (color) => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 12l3 3 5-6" />
+      </svg>
+    ),
+  },
+  {
+    key: 'repos',
+    label: 'Repos',
     icon: (color) => (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
@@ -13,8 +28,8 @@ const TABS = [
     ),
   },
   {
-    key: 'deployments',
-    label: 'Deployments',
+    key: 'logs',
+    label: 'Live Logs',
     icon: (color) => (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="4 17 10 11 4 5" />
@@ -45,21 +60,208 @@ const TABS = [
   },
 ];
 
+const STATUS_COLORS = {
+  READY: { fg: '#3ecf8e', bg: 'rgba(62, 207, 142, 0.12)', border: 'rgba(62, 207, 142, 0.4)' },
+  Success: { fg: '#3ecf8e', bg: 'rgba(62, 207, 142, 0.12)', border: 'rgba(62, 207, 142, 0.4)' },
+  FAILED: { fg: '#f87171', bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.4)' },
+  Failed: { fg: '#f87171', bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.4)' },
+  BUILDING: { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
+  'Building...': { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
+  'Initializing...': { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
+  Idle: { fg: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', border: 'rgba(107, 114, 128, 0.3)' },
+};
+
+const getStatusStyle = (status) => STATUS_COLORS[status] || STATUS_COLORS.Idle;
+
+const cardShellStyle = {
+  backgroundColor: 'rgba(255,255,255,0.025)',
+  backdropFilter: 'blur(12px)',
+  padding: '20px',
+  borderRadius: '14px',
+  border: '1px solid rgba(255,255,255,0.08)',
+  minWidth: 0,
+};
+
+const sectionLabelStyle = {
+  margin: '0 0 16px 0',
+  fontSize: '13px',
+  fontFamily: "'JetBrains Mono', monospace",
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+  color: '#a1a1aa',
+  fontWeight: 500,
+};
+
+const modalOverlayStyle = {
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(0,0,0,0.7)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 100,
+  padding: '20px',
+};
+
+const modalBoxStyle = {
+  backgroundColor: '#0c0d0e',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '14px',
+  padding: '24px',
+  maxWidth: '440px',
+  width: '100%',
+};
+
+const modalTitleStyle = {
+  margin: '0 0 10px 0',
+  fontSize: '15px',
+  color: '#fafafa',
+  fontWeight: 600,
+};
+
+const modalSubtitleStyle = {
+  fontSize: '13px',
+  color: '#a1a1aa',
+  lineHeight: 1.6,
+  margin: '0 0 18px 0',
+};
+
+const segmentedControlStyle = {
+  display: 'flex',
+  gap: '6px',
+  padding: '4px',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '9px',
+  marginBottom: '14px',
+};
+
+const segmentButtonStyle = (isActive) => ({
+  flex: 1,
+  padding: '8px 12px',
+  borderRadius: '6px',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12px',
+  fontWeight: 600,
+  letterSpacing: '0.02em',
+  color: isActive ? '#08090a' : '#a1a1aa',
+  background: isActive ? '#3ecf8e' : 'transparent',
+  transition: 'all 0.2s ease',
+});
+
+const envTextareaStyle = {
+  width: '100%',
+  minHeight: '160px',
+  backgroundColor: '#050505',
+  color: '#d4d4d8',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '8px',
+  padding: '12px',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12.5px',
+  lineHeight: 1.6,
+  resize: 'vertical',
+  boxSizing: 'border-box',
+};
+
+const modalCancelButtonStyle = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12.5px',
+  color: '#a1a1aa',
+  backgroundColor: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  padding: '9px 16px',
+  borderRadius: '7px',
+  cursor: 'pointer',
+};
+
+const modalPrimaryButtonStyle = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12.5px',
+  fontWeight: 600,
+  color: '#08090a',
+  backgroundColor: '#3ecf8e',
+  border: 'none',
+  padding: '9px 16px',
+  borderRadius: '7px',
+  cursor: 'pointer',
+};
+
 function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) {
+  const [activeTab, setActiveTab] = useState('deployed');
+  const [userId, setUserId] = useState(null);
+
+  // ---------- SESSION (fetch userId once) ----------
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${AUTH_BASE}/session`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setUserId(data.userId);
+        }
+      } catch (err) {
+        console.error('[Session Fetch Error]:', err.message);
+      }
+    })();
+  }, []);
+
+  // ---------- DEPLOYED PROJECTS STATE ----------
+  const [deployments, setDeployments] = useState([]);
+  const [loadingDeployments, setLoadingDeployments] = useState(true);
+  const [deploymentsError, setDeploymentsError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const fetchDeployments = useCallback(async () => {
+    try {
+      const res = await fetch(`${DASH_BASE}/analytics-list`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      const data = await res.json();
+      setDeployments(data);
+      setDeploymentsError(null);
+    } catch (err) {
+      console.error('[Deployments Fetch Error]:', err.message);
+      setDeploymentsError('Failed to load deployed projects.');
+    } finally {
+      setLoadingDeployments(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDeployments();
+    const interval = setInterval(fetchDeployments, 5000); // consistent 5s polling
+    return () => clearInterval(interval);
+  }, [fetchDeployments]);
+
+  const handleDeleteDeployment = async (deploymentId) => {
+    setDeletingId(deploymentId);
+    try {
+      const res = await fetch(`${DASH_BASE}/deployment/${deploymentId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      setDeployments((prev) => prev.filter((d) => d.id !== deploymentId));
+    } catch (err) {
+      console.error('[Delete Deployment Error]:', err.message);
+      alert('Failed to delete this application. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // ---------- LIVE LOGS STATE ----------
   const [activeDeploymentId, setActiveDeploymentId] = useState(null);
   const [buildLogs, setBuildLogs] = useState([]);
   const [buildStatus, setBuildStatus] = useState('Idle');
-  const [activeTab, setActiveTab] = useState('projects');
-
   const terminalEndRef = useRef(null);
 
-  // Auto-scroll logic
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [buildLogs]);
 
-  // WEBSOCKET LIFECYCLE MANAGEMENT
-  // WEBSOCKET LIFECYCLE MANAGEMENT
   useEffect(() => {
     if (!activeDeploymentId) return;
 
@@ -67,7 +269,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
 
     const socket = io('http://localhost:8080', {
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
     });
 
     socket.on('connect', () => {
@@ -75,31 +277,24 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
       socket.emit('join-deployment-stream', activeDeploymentId);
     });
 
-    // 💡 FIX 1: Change 'build-log-stream' to match backend 'live_logs'
     socket.on('live_logs', (payload) => {
-      console.log('[Socket Log Received]:', payload);
-
       const incomingText = typeof payload === 'object' && payload !== null ? payload.text : payload;
-
       if (incomingText) {
         setBuildLogs((prev) => [...prev, incomingText]);
       }
     });
 
-    // 💡 FIX 2: Change 'build-status-update' to match backend 'status_update'
     socket.on('status_update', (data) => {
-      console.log('[Socket Status Update]:', data.status);
-      
-      // Map the backend statuses to your UI states cleanly
       let displayStatus = data.status;
       if (data.status === 'BUILDING') displayStatus = 'Building...';
       if (data.status === 'READY') displayStatus = 'Success';
       if (data.status === 'FAILED') displayStatus = 'Failed';
-      
+
       setBuildStatus(displayStatus);
-      
+
       if (data.status === 'READY' || data.status === 'FAILED') {
         socket.disconnect();
+        fetchDeployments(); // refresh deployed list once a build finishes
       }
     });
 
@@ -107,21 +302,37 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
       console.log('[Socket Cleanup]: Disconnecting socket channel.');
       socket.disconnect();
     };
-  }, [activeDeploymentId]);
+  }, [activeDeploymentId, fetchDeployments]);
 
-  const handleTriggerBuild = async (repoName, cloneUrl) => {
+  const handleTriggerBuild = async (repoName, cloneUrl, envText, targetType) => {
     console.log(`[Build Triggered] for: ${repoName}`);
     setBuildLogs([]);
     setBuildStatus('Initializing...');
-    setActiveTab('deployments');
+    setActiveTab('logs');
 
     try {
       const responseData = await onDeploy(repoName, cloneUrl);
-      console.log('[API Response Data]:', responseData);
-
       if (responseData && responseData.deploymentId) {
         setActiveDeploymentId(responseData.deploymentId);
         setBuildStatus('Building...');
+
+        // Push env-config to the backend now that we have a real deploymentId
+        if (envText && envText.trim().length > 0) {
+          try {
+            await fetch(ONE_CLICK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                deploymentId: responseData.deploymentId,
+                gitLocalPath: cloneUrl,
+                envText,
+                targetType,
+              }),
+            });
+          } catch (envErr) {
+            console.error('[Env Config Push Error]:', envErr.message);
+          }
+        }
       } else {
         setBuildStatus('Failed');
         setBuildLogs(['Error: Backend API did not return a valid deploymentId.']);
@@ -133,15 +344,62 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
   };
 
   const isBusy = buildStatus === 'Building...' || buildStatus === 'Initializing...';
+  const statusStyle = getStatusStyle(buildStatus);
 
-  const statusColors = {
-    Success: { fg: '#3ecf8e', bg: 'rgba(62, 207, 142, 0.12)', border: 'rgba(62, 207, 142, 0.4)' },
-    Failed: { fg: '#f87171', bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.4)' },
-    'Building...': { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
-    'Initializing...': { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
-    Idle: { fg: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', border: 'rgba(107, 114, 128, 0.3)' },
+  // ---------- DEPLOY MODAL (env config + free-tier limit) ----------
+  const [showEnvModal, setShowEnvModal] = useState(false);
+  const [showLimitPopup, setShowLimitPopup] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState(null);
+  const [envText, setEnvText] = useState('');
+  const [targetType, setTargetType] = useState('backend');
+  const [deployingWithEnv, setDeployingWithEnv] = useState(false);
+
+  const activeDeploymentsCount = deployments.filter((d) => d.status === 'READY').length;
+
+  const handleDeployClick = (repo) => {
+    if (activeDeploymentsCount >= FREE_TIER_LIMIT) {
+      setShowLimitPopup(true);
+      return;
+    }
+    setSelectedRepo(repo);
+    setEnvText('');
+    setTargetType('backend');
+    setShowEnvModal(true);
   };
-  const statusStyle = statusColors[buildStatus] || statusColors.Idle;
+
+  const handleConfirmDeploy = async () => {
+    if (!selectedRepo) return;
+    setDeployingWithEnv(true);
+    try {
+      await handleTriggerBuild(selectedRepo.name, selectedRepo.clone_url, envText, targetType);
+    } finally {
+      setDeployingWithEnv(false);
+      setShowEnvModal(false);
+      setSelectedRepo(null);
+    }
+  };
+
+  // ---------- SETTINGS / DELETE ACCOUNT STATE ----------
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!userId) return;
+    setDeletingAccount(true);
+    try {
+      const res = await fetch(`${DASH_BASE}/purge-account/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      onDisconnect(); // signs user out and returns to landing
+    } catch (err) {
+      console.error('[Delete Account Error]:', err.message);
+      alert('Failed to delete your account. Please try again.');
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <div
@@ -233,11 +491,12 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '12px',
           width: 'fit-content',
+          flexWrap: 'wrap',
         }}
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
-          const showBusyDot = tab.key === 'deployments' && isBusy;
+          const showBusyDot = tab.key === 'logs' && isBusy;
           return (
             <button
               key={tab.key}
@@ -277,29 +536,128 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
         })}
       </div>
 
-      {/* ---------- PROJECTS TAB ---------- */}
-      {activeTab === 'projects' && (
-        <div
-          style={{
-            backgroundColor: 'rgba(255,255,255,0.025)',
-            backdropFilter: 'blur(12px)',
-            padding: '20px',
-            borderRadius: '14px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            minWidth: 0,
-          }}
-        >
-          <h3
-            style={{
-              margin: '0 0 16px 0',
-              fontSize: '13px',
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              color: '#a1a1aa',
-              fontWeight: 500,
-            }}
-          >
+      {/* ---------- 1. DEPLOYED PROJECTS TAB ---------- */}
+      {activeTab === 'deployed' && (
+        <div style={cardShellStyle}>
+          <h3 style={sectionLabelStyle}>
+            Deployed Projects <span style={{ color: '#3ecf8e' }}>({deployments.length})</span>
+          </h3>
+
+          {loadingDeployments ? (
+            <p style={{ color: '#52525b', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>
+              $ fetching deployment records from database...
+            </p>
+          ) : deploymentsError ? (
+            <p style={{ color: '#f87171', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>
+              $ {deploymentsError}
+            </p>
+          ) : deployments.length === 0 ? (
+            <p style={{ color: '#52525b', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>
+              $ no deployments yet — deploy a repo from the Repos tab.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px' }}>
+              {deployments.map((dep) => {
+                const style = getStatusStyle(dep.status);
+                return (
+                  <div
+                    key={dep.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      padding: '14px',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      minWidth: 0,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: '#fafafa',
+                          fontSize: '14px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {dep.project_name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontWeight: 600,
+                          letterSpacing: '0.03em',
+                          textTransform: 'uppercase',
+                          backgroundColor: style.bg,
+                          color: style.fg,
+                          border: `1px solid ${style.border}`,
+                          padding: '3px 9px',
+                          borderRadius: '9999px',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {dep.status}
+                      </span>
+                    </div>
+
+                    {dep.id && (
+                      <a
+                        href={`http://localhost:8000/visit/${dep.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: '12px',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: '#3ecf8e',
+                          textDecoration: 'none',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ↗ localhost:8000/visit/{dep.id}
+                      </a>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: '#52525b', fontFamily: "'JetBrains Mono', monospace" }}>
+                        {dep.created_at ? new Date(dep.created_at).toLocaleString() : ''}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteDeployment(dep.id)}
+                        disabled={deletingId === dep.id}
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '11.5px',
+                          color: '#f87171',
+                          backgroundColor: 'rgba(248,113,113,0.08)',
+                          border: '1px solid rgba(248,113,113,0.3)',
+                          padding: '6px 12px',
+                          borderRadius: '7px',
+                          cursor: deletingId === dep.id ? 'not-allowed' : 'pointer',
+                          opacity: deletingId === dep.id ? 0.5 : 1,
+                        }}
+                      >
+                        {deletingId === dep.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---------- 2. REPOS TAB ---------- */}
+      {activeTab === 'repos' && (
+        <div style={cardShellStyle}>
+          <h3 style={sectionLabelStyle}>
             Repositories <span style={{ color: '#3ecf8e' }}>({repos?.length || 0})</span>
           </h3>
 
@@ -352,7 +710,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
                     </span>
                   </div>
                   <button
-                    onClick={() => handleTriggerBuild(repo.name, repo.clone_url)}
+                    onClick={() => handleDeployClick(repo)}
                     disabled={isBusy}
                     style={{
                       backgroundColor: isBusy ? 'rgba(62,207,142,0.15)' : '#3ecf8e',
@@ -377,34 +735,17 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
         </div>
       )}
 
-      {/* ---------- DEPLOYMENTS TAB ---------- */}
-      {activeTab === 'deployments' && (
+      {/* ---------- 3. LIVE LOGS TAB ---------- */}
+      {activeTab === 'logs' && (
         <div
           style={{
-            backgroundColor: 'rgba(255,255,255,0.025)',
-            backdropFilter: 'blur(12px)',
-            padding: '20px',
-            borderRadius: '14px',
-            border: '1px solid rgba(255,255,255,0.08)',
+            ...cardShellStyle,
             display: 'flex',
             flexDirection: 'column',
-            minWidth: 0,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: '13px',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: '#a1a1aa',
-                fontWeight: 500,
-              }}
-            >
-              Build Logs
-            </h3>
+            <h3 style={{ ...sectionLabelStyle, margin: 0 }}>Build Logs</h3>
             <span
               style={{
                 fontSize: '11.5px',
@@ -423,7 +764,6 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
             </span>
           </div>
 
-          {/* THE DARK TERMINAL CONTAINER */}
           <div
             style={{
               backgroundColor: '#050505',
@@ -467,34 +807,14 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
         </div>
       )}
 
-      {/* ---------- ANALYTICS TAB ---------- */}
+      {/* ---------- 4. ANALYTICS TAB ---------- */}
       {activeTab === 'analytics' && <SystemAnalytics githubUser={githubUser} repos={repos} />}
 
-      {/* ---------- SETTINGS TAB ---------- */}
+      {/* ---------- 5. SETTINGS TAB ---------- */}
       {activeTab === 'settings' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px' }} className="vc-grid">
-          <div
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.025)',
-              backdropFilter: 'blur(12px)',
-              padding: '20px',
-              borderRadius: '14px',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <h3
-              style={{
-                margin: '0 0 16px 0',
-                fontSize: '13px',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: '#a1a1aa',
-                fontWeight: 500,
-              }}
-            >
-              Account
-            </h3>
+          <div style={cardShellStyle}>
+            <h3 style={sectionLabelStyle}>Account</h3>
             <div
               style={{
                 display: 'flex',
@@ -547,41 +867,193 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
             </p>
           </div>
 
-          <div
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.025)',
-              backdropFilter: 'blur(12px)',
-              padding: '20px',
-              borderRadius: '14px',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <h3
-              style={{
-                margin: '0 0 16px 0',
-                fontSize: '13px',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: '#a1a1aa',
-                fontWeight: 500,
-              }}
-            >
-              About
-            </h3>
+          <div style={cardShellStyle}>
+            <h3 style={sectionLabelStyle}>About</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#a1a1aa' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#52525b' }}>Platform</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>VeloCore</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#52525b' }}>Deployed projects</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>{deployments.length}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#52525b' }}>Active repositories</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>{repos?.length || 0}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#52525b' }}>Last build status</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: statusStyle.fg }}>{buildStatus}</span>
-              </div>
+            </div>
+          </div>
+
+          {/* DANGER ZONE */}
+          <div
+            style={{
+              ...cardShellStyle,
+              gridColumn: '1 / -1',
+              border: '1px solid rgba(248,113,113,0.25)',
+              backgroundColor: 'rgba(248,113,113,0.03)',
+            }}
+          >
+            <h3 style={{ ...sectionLabelStyle, color: '#f87171' }}>Danger Zone</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <p style={{ fontSize: '12.5px', color: '#a1a1aa', lineHeight: 1.6, margin: 0, maxWidth: '480px' }}>
+                Permanently delete your VeloCore account, including all deployment records and stored GitHub credentials. This cannot be undone.
+              </p>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  color: '#f87171',
+                  backgroundColor: 'rgba(248,113,113,0.1)',
+                  border: '1px solid rgba(248,113,113,0.4)',
+                  padding: '9px 16px',
+                  borderRadius: '7px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEPLOY ENV-CONFIG MODAL */}
+      {showEnvModal && selectedRepo && (
+        <div style={modalOverlayStyle}>
+          <div style={modalBoxStyle}>
+            <h3 style={modalTitleStyle}>Configure Environment</h3>
+            <p style={modalSubtitleStyle}>
+              Deploying <span style={{ color: '#3ecf8e', fontFamily: "'JetBrains Mono', monospace" }}>{selectedRepo.name}</span>.
+              Paste any environment variables this app needs (optional).
+            </p>
+
+            <div style={segmentedControlStyle}>
+              <button onClick={() => setTargetType('backend')} style={segmentButtonStyle(targetType === 'backend')}>
+                Backend (.env)
+              </button>
+              <button onClick={() => setTargetType('frontend')} style={segmentButtonStyle(targetType === 'frontend')}>
+                Frontend (.env)
+              </button>
+            </div>
+
+            <textarea
+              rows={7}
+              placeholder={'KEY=VALUE\nANOTHER_KEY=SECRET'}
+              value={envText}
+              onChange={(e) => setEnvText(e.target.value)}
+              style={envTextareaStyle}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
+              <button
+                onClick={() => {
+                  setShowEnvModal(false);
+                  setSelectedRepo(null);
+                }}
+                disabled={deployingWithEnv}
+                style={{ ...modalCancelButtonStyle, cursor: deployingWithEnv ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeploy}
+                disabled={deployingWithEnv}
+                style={{ ...modalPrimaryButtonStyle, cursor: deployingWithEnv ? 'not-allowed' : 'pointer', opacity: deployingWithEnv ? 0.6 : 1 }}
+              >
+                {deployingWithEnv ? 'Deploying...' : 'Deploy App with Logs'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FREE-TIER LIMIT REACHED POPUP */}
+      {showLimitPopup && (
+        <div style={modalOverlayStyle}>
+          <div style={{ ...modalBoxStyle, maxWidth: '380px', border: '1px solid rgba(250,204,21,0.35)' }}>
+            <h3 style={{ ...modalTitleStyle, color: '#facc15' }}>Free-tier limit reached</h3>
+            <p style={modalSubtitleStyle}>
+              You already have {activeDeploymentsCount} live deployments, and the free tier allows {FREE_TIER_LIMIT}.
+              Delete an existing deployment from the Deployed tab before creating a new one.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowLimitPopup(false)} style={modalPrimaryButtonStyle}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE ACCOUNT CONFIRM MODAL */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#0c0d0e',
+              border: '1px solid rgba(248,113,113,0.3)',
+              borderRadius: '14px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+            }}
+          >
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#fafafa', fontWeight: 600 }}>
+              Delete your account?
+            </h3>
+            <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, margin: '0 0 20px 0' }}>
+              This will permanently remove your account, deployment history, and GitHub token from VeloCore. This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletingAccount}
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12.5px',
+                  color: '#a1a1aa',
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '9px 16px',
+                  borderRadius: '7px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount || !userId}
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  color: '#08090a',
+                  backgroundColor: '#f87171',
+                  border: 'none',
+                  padding: '9px 16px',
+                  borderRadius: '7px',
+                  cursor: deletingAccount ? 'not-allowed' : 'pointer',
+                  opacity: deletingAccount ? 0.6 : 1,
+                }}
+              >
+                {deletingAccount ? 'Deleting...' : 'Yes, delete permanently'}
+              </button>
             </div>
           </div>
         </div>

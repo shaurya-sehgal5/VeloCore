@@ -1,47 +1,61 @@
+const { exec } = require('child_process');
 const path = require('path');
-const fs = require('fs-extra');
-const { compileProject } = require('./build.service'); 
+const fs = require('fs');
+const { scanRepository } = require('./scanner.service');
 
-/**
- * 🛠️ PROCESS ONE-CLICK DEPLOYMENT WORKSPACE
- * Sets up the workspace directory structure and triggers the build.
- */
-exports.processOneClickDeployment = async (deploymentId, projectSourceDir, envVars = {}) => {
-  // Define temporary workspace location inside your project backend root
-  const workspaceDir = path.join(__dirname, 'workspaces', deploymentId);
-  const targetNodeModules = path.join(workspaceDir, 'node_modules');
+async function processOneClickDeployment(gitRepoLocalPath, deploymentId, envVariables = {}, targetType = 'backend') {
+  console.log(`📡 [Build Service]: Context safe deployment initialized.`);
 
-  try {
-    console.log(`📦 [Deployment Handler]: Initializing workspace environment for ID: ${deploymentId}`);
-    
-    // Ensure clean workspace directory
-    await fs.ensureDir(workspaceDir);
-    
-    // Copy template/cloned source code into the fresh workspace
-    await fs.copy(projectSourceDir, workspaceDir, {
-      filter: (src) => !src.includes('node_modules') && !src.includes('.git')
-    });
-
-    const packageJsonPath = path.join(workspaceDir, 'package.json');
-    if (!(await fs.pathExists(packageJsonPath))) {
-      throw new Error("No package.json found in the project source metadata structure.");
-    }
-
-    // Ensure the target node_modules container directory exists cleanly
-    await fs.ensureDir(targetNodeModules);
-
-    console.log(`🚀 [Deployment Handler]: Workspace staged successfully. Handoff to compiler layer...`);
-    
-    // Pass execution off directly to our build compiler pipeline
-    // This runs completely asynchronously in the background
-    compileProject(workspaceDir, deploymentId, envVars).catch(err => {
-      console.error(`❌ [Background Compilation Unhandled Exception]:`, err);
-    });
-
-    return { success: true, workspaceDir, deploymentId };
-
-  } catch (error) {
-    console.error(`❌ [Deployment Handler Failure]: Critical crash staging workspace:`, error);
-    throw error;
+  const detectedApps = scanRepository(gitRepoLocalPath);
+  if (detectedApps.length === 0) {
+    throw new Error("No deployment structures containing a valid package.json identified.");
   }
-};
+
+  const preferredType = targetType === 'frontend' ? 'static-frontend' : 'node-backend';
+  const targetApp = detectedApps.find(app => app.appType === preferredType) || detectedApps[0];
+
+  // Force forward slashes to ensure paths are Docker-friendly
+  const buildContextPath = path.relative(gitRepoLocalPath, targetApp.absolutePath).replace(/\\/g, '/') || ".";
+  const imageName = `velocore-app-${deploymentId}`;
+  
+  const dockerfilePath = targetApp.appType === 'static-frontend'
+    ? path.resolve(__dirname, '../templates/Frontend.Dockerfile')
+    : path.resolve(__dirname, '../templates/Backend.Dockerfile');
+
+  let envFlagString = '';
+  Object.entries(envVariables).forEach(([key, val]) => {
+    envFlagString += ` -e ${key}="${val}"`;
+  });
+
+  const buildCommand = `docker build -t ${imageName} --build-arg BUILD_CONTEXT="${buildContextPath}" -f "${dockerfilePath}" "${gitRepoLocalPath}"`;
+
+  console.log(`🐳 [Build Service]: Running container compilation safely via Build Engine.`);
+
+  return new Promise((resolve, reject) => {
+    exec(buildCommand, { env: { ...process.env, DOCKER_BUILDKIT: "1" } }, (buildError, stdout, stderr) => {
+      if (buildError) {
+        console.error(`❌ Docker Layer Crash Stack:`, stderr || stdout);
+        return reject(new Error(`Docker compilation failure: ${stderr || buildError.message}`));
+      }
+
+      const hostPort = Math.floor(Math.random() * (10000 - 9000) + 9000);
+      const internalPort = targetApp.appType === 'static-frontend' ? '80' : '8080';
+
+      exec(`docker rm -f runtime-${deploymentId}`, () => {
+        const runCommand = `docker run -d --name runtime-${deploymentId} -p ${hostPort}:${internalPort}${envFlagString} ${imageName}`;
+        
+        exec(runCommand, (runError) => {
+          if (runError) return reject(new Error(`Runtime sandbox boot configuration drop: ${runError.message}`));
+          
+          resolve({
+            success: true,
+            url: `http://localhost:${hostPort}`,
+            deploymentId
+          });
+        });
+      });
+    });
+  });
+}
+
+module.exports = { processOneClickDeployment };

@@ -70,7 +70,7 @@ function App() {
       setError('Configuration error: VITE_GITHUB_CLIENT_ID is unmapped.');
       return;
     }
-    const redirectUri = 'http://localhost:6000/api/auth/github/callback';
+    const redirectUri = 'http://localhost:8080/api/auth/github/callback';
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
   };
 
