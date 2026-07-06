@@ -47,11 +47,11 @@ router.get('/deployments/:userId', async (req, res) => {
 
 // 2. 🚀 TRIGGER DEPLOYMENT WITH 2-APP FREE TIER CHECK
 router.post('/deploy', async (req, res) => {
-  const { deploymentId, projectId, userId, repoName, url } = req.body;
+  const { deploymentId, projectId, userId, repoName, deploy_url } = req.body;
   
   try {
     const activeCheck = await db.query(
-      "SELECT COUNT(*) FROM deployments WHERE user_id = $1 AND status = 'READY'",
+      "SELECT COUNT(*) FROM deployments WHERE user_id = $1 AND status = 'RUNNING'",
       [userId]
     );
     
@@ -62,9 +62,9 @@ router.post('/deploy', async (req, res) => {
     }
 
     const newDeploy = await db.query(
-      `INSERT INTO deployments (id, project_id, user_id, repo_name, status, url, created_at, updated_at) 
+      `INSERT INTO deployments (id, project_id, user_id, repo_name, status, deploy_url, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
-      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', url || `http://localhost:8000/visit/${deploymentId}`]
+      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', deploy_url || `http://localhost:8000/visit/${deploymentId}`]
     );
 
     res.json({ message: "Build initiated successfully", deployment: newDeploy.rows[0] });

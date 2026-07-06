@@ -1,121 +1,120 @@
 const express = require("express");
-const path = require("path");
-const fs = require("fs");
+const httpProxy = require("http-proxy");
+const db = require("./config/db");
 
 const app = express();
+const proxy = httpProxy.createProxyServer({
+    ws: true,
+    changeOrigin: true
+});
+
 const PORT = 8000;
 
-// 🎯 FIX 1: Point this directly to your core workspaces folder where files actually live
-const BASE_WORKSPACE_DIR = path.join(__dirname, "workspaces");
+// Cache deployment -> port for asset requests
+const deploymentCache = new Map();
 
-// =========================================================================
-// 🔄 ROUTE 1: PRIMARY APPLICATION INTERCEPTOR (RegEx Driven)
-// =========================================================================
-app.use(/^\/visit(\/.*)?$/, (req, res) => {
-    let deploymentId = null;
-    
-    const pathParts = req.originalUrl.split('?')[0].split('/');
-    if (pathParts[2] && pathParts[2] !== 'assets') {
-        deploymentId = pathParts[2];
-    } else {
-        const referer = req.headers.referer;
-        if (referer) {
-            try {
-                const refererParts = new URL(referer).pathname.split('/');
-                if (refererParts[2]) deploymentId = refererParts[2];
-            } catch (e) {
-                console.error("Error parsing referer URL:", e.message);
-            }
-        }
+async function getHostPort(deploymentId) {
+
+    if (deploymentCache.has(deploymentId)) {
+        return deploymentCache.get(deploymentId);
     }
 
-    if (deploymentId && deploymentId.startsWith("deploy-")) {
-        deploymentId = deploymentId.replace(/^deploy-/, "");
+    const result = await db.query(
+        `
+        SELECT host_port
+        FROM deployments
+        WHERE id = $1
+        `,
+        [deploymentId]
+    );
+
+    if (result.rows.length === 0) {
+        return null;
     }
 
-    if (!deploymentId || deploymentId === 'assets') {
-        return res.status(404).send("Deployment ID missing or invalid.");
-    }
+    const port = result.rows[0].host_port;
 
-    // 🎯 FIX 2: Point directly to the workspace folder and Vite's natural dist folder
-    let projectPath = path.join(BASE_WORKSPACE_DIR, deploymentId);
-    let distPath = path.join(projectPath, "dist");
+    deploymentCache.set(deploymentId, port);
 
-    if (!fs.existsSync(projectPath)) {
-        return res.status(404).send("Deployment folder not found inside workspaces.");
-    }
+    return port;
+}
 
-    let requestedFile = req.originalUrl.split('?')[0].replace(`/visit/${deploymentId}`, '').replace('/visit', '');
-
-    if (requestedFile === "/" || requestedFile === "") {
-        requestedFile = "/index.html";
-    }
-
-    const filePath = path.join(distPath, requestedFile);
-
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        return res.sendFile(filePath);
-    }
-
-    const indexFile = path.join(distPath, "index.html");
-    if (fs.existsSync(indexFile)) {
-        return res.sendFile(indexFile);
-    }
-
-    res.status(404).send("Application resource not found inside workspace dist.");
-});
-
-// =========================================================================
-// 🌍 ROUTE 2: DEEP GLOBAL FALLBACK MIDDLEWARE
-// =========================================================================
-app.use((req, res, next) => {
-    if (req.path === "/" || req.path === "") return next();
-
-    const referer = req.headers.referer;
-    if (!referer) {
-        return res.status(404).send("Resource context missing.");
-    }
+// Handle ALL requests
+app.use(async (req, res) => {
 
     try {
-        const refererParts = new URL(referer).pathname.split('/');
-        let deploymentId = refererParts[2];
 
-        if (deploymentId && deploymentId.startsWith("deploy-")) {
-            deploymentId = deploymentId.replace(/^deploy-/, "");
+        let deploymentId = null;
+
+        // Direct request
+        const match = req.originalUrl.match(/^\/visit\/([^\/]+)/);
+
+        if (match) {
+
+            deploymentId = match[1];
+
+            req.url = req.originalUrl.replace(
+                `/visit/${deploymentId}`,
+                ""
+            );
+
+            if (req.url === "") {
+                req.url = "/";
+            }
+
+        } else {
+
+            // Asset request
+            const referer = req.headers.referer;
+
+            if (!referer) {
+                return res.status(404).send("Deployment context missing.");
+            }
+
+            const refMatch = referer.match(/\/visit\/([^\/]+)/);
+
+            if (!refMatch) {
+                return res.status(404).send("Deployment context missing.");
+            }
+
+            deploymentId = refMatch[1];
+
         }
 
-        if (!deploymentId) {
-            return res.status(404).send("Context deployment not found.");
+        const port = await getHostPort(deploymentId);
+
+        if (!port) {
+            return res.status(404).send("Deployment not found.");
         }
 
-        const cleanPath = req.path.split('?')[0];
-        
-        // 🎯 FIX 3: Route assets straight from the workspace dist directory
-        const assetFilePath = path.join(BASE_WORKSPACE_DIR, deploymentId, "dist", cleanPath);
+        proxy.web(req, res, {
+            target: `http://localhost:${port}`
+        });
 
-        if (fs.existsSync(assetFilePath) && fs.statSync(assetFilePath).isFile()) {
-            console.log("✅ Asset Found! Serving file...");
-            return res.sendFile(assetFilePath);
-        }
-
-        // Secondary nested folder safety fallback
-        const fallbackPath = path.join(BASE_WORKSPACE_DIR, deploymentId, "dist", "assets", cleanPath);
-        if (fs.existsSync(fallbackPath) && fs.statSync(fallbackPath).isFile()) {
-            return res.sendFile(fallbackPath);
-        }
-
-        console.log(`❌ File missing at workspace targets for deployment: ${deploymentId}`);
-        res.status(404).send("Resource not found.");
     } catch (err) {
-        console.error("Failed to parse fallback asset redirect:", err.message);
-        res.status(500).send("Internal asset routing error.");
+
+        console.error(err);
+
+        res.status(500).send("Proxy Error");
+
     }
+
 });
 
-app.get("/", (req, res) => {
-    res.send("🚀 VeloCore Reverse Proxy Running");
+proxy.on("error", (err, req, res) => {
+
+    console.error(err);
+
+    if (!res.headersSent) {
+        res.status(502).send("Container unavailable.");
+    }
+
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Proxy listening at http://localhost:${PORT}`);
+
+    console.log(
+        `🚀 Reverse Proxy running at http://localhost:${PORT}`
+    );
+
 });

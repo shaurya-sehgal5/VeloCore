@@ -2,15 +2,15 @@ const express = require('express');
 const http = require('http');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const { register } = require('./services/metrics.service');
+
 const projectRoutes = require('./routes/project.routes');
 const authRoutes = require('./routes/auth.routes'); 
 const { initSocket } = require('./config/socket');
 const dashboardRoutes = require('./routes/dashboard.routes');
-const analyticsRoutes = require('./routes/analytics.routes');
+
 
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
-const { processOneClickDeployment } = require('./services/deploy.service');
+const { processOneClickDeployment } = require('./services/deployment.orchestrator');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,14 +30,7 @@ app.use(cors({
 }));
 
 // --- 2. 📊 METRICS ROUTE ---
-app.get('/metrics', async (req, res) => {
-  try {
-    res.set('Content-Type', register.contentType);
-    res.end(await register.metrics());
-  } catch (err) {
-    res.status(500).send({ error: "Metrics generation failed: " + err.message });
-  }
-});
+
 
 // --- 3. PRODUCTION AUTOMATION PIPELINES ---
 app.post('/api/deploy/one-click', async (req, res) => {
@@ -91,7 +84,7 @@ app.post('/api/deploy/one-click', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/analytics', analyticsRoutes);
+
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {

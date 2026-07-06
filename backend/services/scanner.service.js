@@ -1,50 +1,149 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-function scanRepository(dirPath, foundApps = []) {
-  const items = fs.readdirSync(dirPath);
+function detectFramework(packageJson = {}) {
 
-  // First check if this specific folder is a functional project app root
-  if (items.includes('package.json')) {
-    try {
-      const packageContent = JSON.parse(fs.readFileSync(path.join(dirPath, 'package.json'), 'utf8'));
-      const dependencies = { ...packageContent.dependencies, ...packageContent.devDependencies };
+    const deps = {
+        ...(packageJson.dependencies || {}),
+        ...(packageJson.devDependencies || {})
+    };
 
-      // Make sure it's not JUST a structural root monorepo config file
-      // A valid frontend or backend will usually have functional dependencies or scripts
-      let appType = null;
-      if (dependencies['react'] || dependencies['vite'] || dependencies['next'] || dependencies['vue']) {
-        appType = 'static-frontend';
-      } else if (dependencies['express'] || dependencies['nodemon'] || packageContent.scripts?.start || items.includes('server.js')) {
-        appType = 'node-backend';
-      }
+    if (deps.react && deps.vite)
+        return {
+            framework: "vite-react",
+            type: "frontend"
+        };
 
-      // If we classified a specific sub-app framework type, save it!
-      if (appType) {
-        foundApps.push({
-          absolutePath: dirPath,
-          appType
-        });
-      }
-    } catch (e) {
-      console.error(`Malformed package.json at ${dirPath}`);
-    }
-  }
+    if (deps.next)
+        return {
+            framework: "nextjs",
+            type: "frontend"
+        };
 
-  // Now scan subdirectories recursively to check for hidden nested sub-apps (like /frontend and /backend)
-  for (const item of items) {
-    const fullPath = path.join(dirPath, item);
-    
-    if (item === 'node_modules' || item === '.git' || item === 'dist' || item === 'build') {
-      continue;
-    }
+    if (deps.vue)
+        return {
+            framework: "vue",
+            type: "frontend"
+        };
 
-    if (fs.statSync(fullPath).isDirectory()) {
-      scanRepository(fullPath, foundApps);
-    }
-  }
+    if (deps.express)
+        return {
+            framework: "express",
+            type: "backend"
+        };
 
-  return foundApps;
+    if (deps["@nestjs/core"])
+        return {
+            framework: "nestjs",
+            type: "backend"
+        };
+
+    return {
+        framework: "unknown",
+        type: "unknown"
+    };
+
 }
 
-module.exports = { scanRepository };
+function detectPackageManager(projectPath) {
+
+    if (fs.existsSync(path.join(projectPath, "pnpm-lock.yaml")))
+        return "pnpm";
+
+    if (fs.existsSync(path.join(projectPath, "yarn.lock")))
+        return "yarn";
+
+    return "npm";
+
+}
+
+function scanDirectory(rootPath, result) {
+
+    const entries = fs.readdirSync(rootPath);
+
+    if (entries.includes("package.json")) {
+
+        const packageJson = JSON.parse(
+            fs.readFileSync(
+                path.join(rootPath, "package.json"),
+                "utf8"
+            )
+        );
+
+        const detected = detectFramework(packageJson);
+
+        if (detected.type !== "unknown") {
+
+            result.projects.push({
+
+                name: packageJson.name,
+
+                path: rootPath,
+                
+                repositoryRoot: result.repository,
+
+                framework: detected.framework,
+
+                type: detected.type,
+
+                packageManager: detectPackageManager(rootPath),
+
+                scripts: packageJson.scripts || {}
+
+            });
+
+        }
+
+    }
+
+    for (const entry of entries) {
+
+        if (
+            [
+                "node_modules",
+                ".git",
+                "dist",
+                "build"
+            ].includes(entry)
+        )
+            continue;
+
+        const fullPath = path.join(rootPath, entry);
+
+        if (fs.statSync(fullPath).isDirectory()) {
+
+            scanDirectory(fullPath, result);
+
+        }
+
+    }
+
+}
+
+function scanRepository(repositoryPath) {
+
+    const result = {
+
+        repository: repositoryPath,
+
+        dockerfile: fs.existsSync(
+            path.join(repositoryPath, "Dockerfile")
+        ),
+
+        dockerCompose: fs.existsSync(
+            path.join(repositoryPath, "docker-compose.yml")
+        ),
+
+        projects: []
+
+    };
+
+    scanDirectory(repositoryPath, result);
+
+    return result;
+
+}
+
+module.exports = {
+    scanRepository
+};
