@@ -4,8 +4,31 @@ import SystemAnalytics from '../components/SystemAnalytics';
 
 const AUTH_BASE = 'http://localhost:8080/api/auth';
 const DASH_BASE = 'http://localhost:8080/api/dashboard';
-const ONE_CLICK_URL = 'http://localhost:8080/api/deploy/one-click';
+const ENV_BASE = 'http://localhost:8080/api/env';
+const REDEPLOY_BASE = 'http://localhost:8080/api/deploy/redeploy';
 const FREE_TIER_LIMIT = 2;
+
+const genId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const DEFAULT_ENV_ROWS = () => [
+  { id: genId(), key: 'VITE_API_URL', value: '' },
+  { id: genId(), key: 'VITE_SUPABASE_URL', value: '' },
+  { id: genId(), key: 'PORT', value: '8080' },
+  { id: genId(), key: 'DATABASE_URL', value: '' },
+  { id: genId(), key: 'JWT_SECRET', value: '' },
+];
+
+const objectToRows = (obj) => Object.entries(obj || {}).map(([key, value]) => ({ id: genId(), key, value: String(value) }));
+const rowsToObject = (rows) =>
+  rows.reduce((acc, r) => {
+    if (r.key.trim()) acc[r.key.trim()] = r.value;
+    return acc;
+  }, {});
+
+const updateRows = (setRows, id, field, value) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+const addRow = (setRows) => setRows((prev) => [...prev, { id: genId(), key: '', value: '' }]);
+const removeRowFrom = (setRows, id) => setRows((prev) => prev.filter((r) => r.id !== id));
 
 const TABS = [
   {
@@ -60,18 +83,19 @@ const TABS = [
   },
 ];
 
-const STATUS_COLORS = {
-  READY: { fg: '#3ecf8e', bg: 'rgba(62, 207, 142, 0.12)', border: 'rgba(62, 207, 142, 0.4)' },
-  Success: { fg: '#3ecf8e', bg: 'rgba(62, 207, 142, 0.12)', border: 'rgba(62, 207, 142, 0.4)' },
-  FAILED: { fg: '#f87171', bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.4)' },
-  Failed: { fg: '#f87171', bg: 'rgba(248, 113, 113, 0.12)', border: 'rgba(248, 113, 113, 0.4)' },
-  BUILDING: { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
-  'Building...': { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
-  'Initializing...': { fg: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.35)' },
-  Idle: { fg: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', border: 'rgba(107, 114, 128, 0.3)' },
+// Single source of truth for every deployment status this app can show.
+const STATUS_META = {
+  QUEUED: { fg: '#a1a1aa', bg: 'rgba(161,161,170,0.12)', border: 'rgba(161,161,170,0.3)', busy: true },
+  CLONING: { fg: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.35)', busy: true },
+  SCANNING: { fg: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.35)', busy: true },
+  BUILDING: { fg: '#facc15', bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.35)', busy: true },
+  DEPLOYING: { fg: '#facc15', bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.35)', busy: true },
+  RUNNING: { fg: '#3ecf8e', bg: 'rgba(62,207,142,0.12)', border: 'rgba(62,207,142,0.4)', busy: false },
+  FAILED: { fg: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.4)', busy: false, terminal: true },
+  STOPPED: { fg: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.3)', busy: false, terminal: true },
+  IDLE: { fg: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.3)', busy: false },
 };
-
-const getStatusStyle = (status) => STATUS_COLORS[status] || STATUS_COLORS.Idle;
+const getStatusStyle = (status) => STATUS_META[status] || STATUS_META.IDLE;
 
 const cardShellStyle = {
   backgroundColor: 'rgba(255,255,255,0.025)',
@@ -112,59 +136,8 @@ const modalBoxStyle = {
   width: '100%',
 };
 
-const modalTitleStyle = {
-  margin: '0 0 10px 0',
-  fontSize: '15px',
-  color: '#fafafa',
-  fontWeight: 600,
-};
-
-const modalSubtitleStyle = {
-  fontSize: '13px',
-  color: '#a1a1aa',
-  lineHeight: 1.6,
-  margin: '0 0 18px 0',
-};
-
-const segmentedControlStyle = {
-  display: 'flex',
-  gap: '6px',
-  padding: '4px',
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: '9px',
-  marginBottom: '14px',
-};
-
-const segmentButtonStyle = (isActive) => ({
-  flex: 1,
-  padding: '8px 12px',
-  borderRadius: '6px',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: "'JetBrains Mono', monospace",
-  fontSize: '12px',
-  fontWeight: 600,
-  letterSpacing: '0.02em',
-  color: isActive ? '#08090a' : '#a1a1aa',
-  background: isActive ? '#3ecf8e' : 'transparent',
-  transition: 'all 0.2s ease',
-});
-
-const envTextareaStyle = {
-  width: '100%',
-  minHeight: '160px',
-  backgroundColor: '#050505',
-  color: '#d4d4d8',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: '8px',
-  padding: '12px',
-  fontFamily: "'JetBrains Mono', monospace",
-  fontSize: '12.5px',
-  lineHeight: 1.6,
-  resize: 'vertical',
-  boxSizing: 'border-box',
-};
+const modalTitleStyle = { margin: '0 0 10px 0', fontSize: '15px', color: '#fafafa', fontWeight: 600 };
+const modalSubtitleStyle = { fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, margin: '0 0 18px 0' };
 
 const modalCancelButtonStyle = {
   fontFamily: "'JetBrains Mono', monospace",
@@ -189,26 +162,149 @@ const modalPrimaryButtonStyle = {
   cursor: 'pointer',
 };
 
+const fieldLabelStyle = {
+  display: 'block',
+  fontSize: '11px',
+  fontFamily: "'JetBrains Mono', monospace",
+  color: '#71717a',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  marginBottom: '6px',
+};
+
+const fieldInputStyle = {
+  width: '100%',
+  backgroundColor: '#050505',
+  color: '#e4e4e7',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '8px',
+  padding: '10px 12px',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '13px',
+  boxSizing: 'border-box',
+};
+
+const envInputStyle = (disabled) => ({
+  width: '100%',
+  backgroundColor: disabled ? 'rgba(255,255,255,0.02)' : '#050505',
+  color: disabled ? '#52525b' : '#d4d4d8',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '6px',
+  padding: '7px 10px',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12.5px',
+  boxSizing: 'border-box',
+  cursor: disabled ? 'not-allowed' : 'text',
+});
+
+const envAddButtonStyle = {
+  width: '100%',
+  padding: '9px',
+  marginTop: '4px',
+  borderRadius: '7px',
+  border: '1px dashed rgba(62,207,142,0.35)',
+  backgroundColor: 'transparent',
+  color: '#3ecf8e',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12.5px',
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const subTabButtonStyle = (isActive) => ({
+  padding: '7px 14px',
+  borderRadius: '7px',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12px',
+  fontWeight: 600,
+  color: isActive ? '#08090a' : '#a1a1aa',
+  background: isActive ? '#3ecf8e' : 'rgba(255,255,255,0.04)',
+});
+
+const backButtonStyle = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '12.5px',
+  color: '#a1a1aa',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  padding: 0,
+};
+
+// Small reusable modal shell so every popup shares one overlay/box implementation.
+function Modal({ maxWidth = '440px', accent, children }) {
+  return (
+    <div style={modalOverlayStyle}>
+      <div style={{ ...modalBoxStyle, maxWidth, ...(accent ? { border: `1px solid ${accent}` } : {}) }}>{children}</div>
+    </div>
+  );
+}
+
+// Shared KEY/VALUE table used by both the deploy modal and the details "Environment Variables" tab.
+function EnvVarTable({ rows, onChangeRow, onAddRow, onRemoveRow, readOnly = false, masked = false }) {
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: readOnly ? '1fr 1fr' : '1fr 1fr 28px', gap: '8px', marginBottom: '8px' }}>
+        <span style={{ ...sectionLabelStyle, margin: 0, fontSize: '11px' }}>Key</span>
+        <span style={{ ...sectionLabelStyle, margin: 0, fontSize: '11px' }}>Value</span>
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.id}
+          style={{ display: 'grid', gridTemplateColumns: readOnly ? '1fr 1fr' : '1fr 1fr 28px', gap: '8px', marginBottom: '8px', alignItems: 'center' }}
+        >
+          <input
+            value={row.key}
+            onChange={(e) => onChangeRow(row.id, 'key', e.target.value)}
+            placeholder="KEY"
+            disabled={readOnly}
+            style={envInputStyle(readOnly)}
+          />
+          <input
+            value={masked ? '••••••••' : row.value}
+            onChange={(e) => onChangeRow(row.id, 'value', e.target.value)}
+            placeholder="VALUE"
+            disabled={readOnly}
+            style={envInputStyle(readOnly)}
+          />
+          {!readOnly && (
+            <button
+              onClick={() => onRemoveRow(row.id)}
+              style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px' }}
+              aria-label="Remove variable"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      {!readOnly && (
+        <button onClick={onAddRow} style={envAddButtonStyle}>
+          + Add Variable
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) {
   const [activeTab, setActiveTab] = useState('deployed');
   const [userId, setUserId] = useState(null);
 
-  // ---------- SESSION (fetch userId once) ----------
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`${AUTH_BASE}/session`, { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setUserId(data.userId);
-        }
+        if (res.ok) setUserId((await res.json()).userId);
       } catch (err) {
         console.error('[Session Fetch Error]:', err.message);
       }
     })();
   }, []);
 
-  // ---------- DEPLOYED PROJECTS STATE ----------
+  // ---------- DEPLOYED PROJECTS ----------
   const [deployments, setDeployments] = useState([]);
   const [loadingDeployments, setLoadingDeployments] = useState(true);
   const [deploymentsError, setDeploymentsError] = useState(null);
@@ -218,8 +314,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
     try {
       const res = await fetch(`${DASH_BASE}/analytics-list`, { credentials: 'include' });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      const data = await res.json();
-      setDeployments(data);
+      setDeployments(await res.json());
       setDeploymentsError(null);
     } catch (err) {
       console.error('[Deployments Fetch Error]:', err.message);
@@ -231,17 +326,14 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
 
   useEffect(() => {
     fetchDeployments();
-    const interval = setInterval(fetchDeployments, 5000); // consistent 5s polling
+    const interval = setInterval(fetchDeployments, 5000);
     return () => clearInterval(interval);
   }, [fetchDeployments]);
 
   const handleDeleteDeployment = async (deploymentId) => {
     setDeletingId(deploymentId);
     try {
-      const res = await fetch(`${DASH_BASE}/deployment/${deploymentId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const res = await fetch(`${DASH_BASE}/deployment/${deploymentId}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       setDeployments((prev) => prev.filter((d) => d.id !== deploymentId));
     } catch (err) {
@@ -252,10 +344,10 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
     }
   };
 
-  // ---------- LIVE LOGS STATE ----------
+  // ---------- LIVE LOGS (build logs -> runtime logs, same stream) ----------
   const [activeDeploymentId, setActiveDeploymentId] = useState(null);
   const [buildLogs, setBuildLogs] = useState([]);
-  const [buildStatus, setBuildStatus] = useState('Idle');
+  const [buildStatus, setBuildStatus] = useState('IDLE');
   const terminalEndRef = useRef(null);
 
   useEffect(() => {
@@ -264,122 +356,159 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
 
   useEffect(() => {
     if (!activeDeploymentId) return;
+    const socket = io('http://localhost:8080', { withCredentials: true, transports: ['websocket', 'polling'] });
 
-    console.log(`[Socket Init]: Connecting to backend for Room: ${activeDeploymentId}`);
-
-    const socket = io('http://localhost:8080', {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-    });
-
-    socket.on('connect', () => {
-      console.log('[Socket Connected]: Requesting to join room:', activeDeploymentId);
-      socket.emit('join-deployment-stream', activeDeploymentId);
-    });
+    socket.on('connect', () => socket.emit('join-deployment-stream', activeDeploymentId));
 
     socket.on('live_logs', (payload) => {
-      const incomingText = typeof payload === 'object' && payload !== null ? payload.text : payload;
-      if (incomingText) {
-        setBuildLogs((prev) => [...prev, incomingText]);
-      }
+      const text = typeof payload === 'object' && payload !== null ? payload.text : payload;
+      if (text) setBuildLogs((prev) => [...prev, text]);
     });
 
     socket.on('status_update', (data) => {
-      let displayStatus = data.status;
-      if (data.status === 'BUILDING') displayStatus = 'Building...';
-      if (data.status === 'READY') displayStatus = 'Success';
-      if (data.status === 'FAILED') displayStatus = 'Failed';
-
-      setBuildStatus(displayStatus);
-
-      if (data.status === 'READY' || data.status === 'FAILED') {
-        socket.disconnect();
-        fetchDeployments(); // refresh deployed list once a build finishes
-      }
+      setBuildStatus(data.status);
+      fetchDeployments();
+      if (STATUS_META[data.status]?.terminal) socket.disconnect();
     });
 
-    return () => {
-      console.log('[Socket Cleanup]: Disconnecting socket channel.');
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [activeDeploymentId, fetchDeployments]);
 
-  const handleTriggerBuild = async (repoName, cloneUrl, envText, targetType) => {
-    console.log(`[Build Triggered] for: ${repoName}`);
+  const goToLogs = (deploymentId) => {
     setBuildLogs([]);
-    setBuildStatus('Initializing...');
+    setBuildStatus('QUEUED');
+    setActiveDeploymentId(deploymentId);
     setActiveTab('logs');
-
-    try {
-      const responseData = await onDeploy(repoName, cloneUrl);
-      if (responseData && responseData.deploymentId) {
-        setActiveDeploymentId(responseData.deploymentId);
-        setBuildStatus('Building...');
-
-        // Push env-config to the backend now that we have a real deploymentId
-        if (envText && envText.trim().length > 0) {
-          try {
-            await fetch(ONE_CLICK_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                deploymentId: responseData.deploymentId,
-                gitLocalPath: cloneUrl,
-                envText,
-                targetType,
-              }),
-            });
-          } catch (envErr) {
-            console.error('[Env Config Push Error]:', envErr.message);
-          }
-        }
-      } else {
-        setBuildStatus('Failed');
-        setBuildLogs(['Error: Backend API did not return a valid deploymentId.']);
-      }
-    } catch (err) {
-      setBuildStatus('Failed');
-      setBuildLogs([`Network Error: ${err.message}`]);
-    }
   };
 
-  const isBusy = buildStatus === 'Building...' || buildStatus === 'Initializing...';
+  const isBusy = getStatusStyle(buildStatus).busy;
   const statusStyle = getStatusStyle(buildStatus);
+  const activeCount = deployments.filter((d) => d.status === 'RUNNING').length;
 
-  // ---------- DEPLOY MODAL (env config + free-tier limit) ----------
-  const [showEnvModal, setShowEnvModal] = useState(false);
+  // ---------- DEPLOY MODAL (project name + env vars) ----------
+  const [showDeployModal, setShowDeployModal] = useState(false);
   const [showLimitPopup, setShowLimitPopup] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState(null);
-  const [envText, setEnvText] = useState('');
-  const [targetType, setTargetType] = useState('backend');
-  const [deployingWithEnv, setDeployingWithEnv] = useState(false);
-
-  const activeDeploymentsCount = deployments.filter((d) => d.status === 'READY').length;
+  const [deployModalRepo, setDeployModalRepo] = useState(null);
+  const [projectName, setProjectName] = useState('');
+  const [modalEnvRows, setModalEnvRows] = useState([]);
+  const [deployingModal, setDeployingModal] = useState(false);
 
   const handleDeployClick = (repo) => {
-    if (activeDeploymentsCount >= FREE_TIER_LIMIT) {
+    if (activeCount >= FREE_TIER_LIMIT) {
       setShowLimitPopup(true);
       return;
     }
-    setSelectedRepo(repo);
-    setEnvText('');
-    setTargetType('backend');
-    setShowEnvModal(true);
+    setDeployModalRepo(repo);
+    setProjectName(repo.name);
+    setModalEnvRows(DEFAULT_ENV_ROWS());
+    setShowDeployModal(true);
   };
 
   const handleConfirmDeploy = async () => {
-    if (!selectedRepo) return;
-    setDeployingWithEnv(true);
+    if (!deployModalRepo) return;
+    setDeployingModal(true);
     try {
-      await handleTriggerBuild(selectedRepo.name, selectedRepo.clone_url, envText, targetType);
+      const buildData = await onDeploy(deployModalRepo.name, deployModalRepo.clone_url, projectName);
+      if (!buildData?.deploymentId) throw new Error('Backend did not return a valid deploymentId.');
+
+      await fetch(`${ENV_BASE}/${buildData.deploymentId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(rowsToObject(modalEnvRows)),
+      });
+
+      setShowDeployModal(false);
+      goToLogs(buildData.deploymentId);
+    } catch (err) {
+      console.error('[Deploy Error]:', err.message);
+      alert(`Failed to start deployment: ${err.message}`);
     } finally {
-      setDeployingWithEnv(false);
-      setShowEnvModal(false);
-      setSelectedRepo(null);
+      setDeployingModal(false);
     }
   };
 
-  // ---------- SETTINGS / DELETE ACCOUNT STATE ----------
+  // ---------- DEPLOYMENT DETAILS (Overview + Environment Variables) ----------
+  const [viewingDeployment, setViewingDeployment] = useState(null);
+  const [detailsSubTab, setDetailsSubTab] = useState('overview');
+  const [envRows, setEnvRows] = useState([]);
+  const [envOriginalRows, setEnvOriginalRows] = useState([]);
+  const [envLoading, setEnvLoading] = useState(false);
+  const [envEditing, setEnvEditing] = useState(false);
+  const [envSaving, setEnvSaving] = useState(false);
+
+  const openDetails = (dep) => {
+    setViewingDeployment(dep);
+    setDetailsSubTab('overview');
+    setEnvEditing(false);
+  };
+
+  useEffect(() => {
+    if (!viewingDeployment || detailsSubTab !== 'env') return;
+    (async () => {
+      setEnvLoading(true);
+      try {
+        const res = await fetch(`${ENV_BASE}/${viewingDeployment.id}`, { credentials: 'include' });
+        const data = res.ok ? await res.json() : {};
+        const rows = objectToRows(data);
+        setEnvRows(rows);
+        setEnvOriginalRows(rows);
+      } catch (err) {
+        console.error('[Env Fetch Error]:', err.message);
+        setEnvRows([]);
+        setEnvOriginalRows([]);
+      } finally {
+        setEnvLoading(false);
+      }
+    })();
+  }, [viewingDeployment, detailsSubTab]);
+
+  const handleSaveEnv = async () => {
+    if (!viewingDeployment) return;
+    setEnvSaving(true);
+    try {
+      await fetch(`${ENV_BASE}/${viewingDeployment.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(rowsToObject(envRows)),
+      });
+      setEnvOriginalRows(envRows);
+      setEnvEditing(false);
+    } catch (err) {
+      console.error('[Env Save Error]:', err.message);
+      alert('Failed to save environment variables.');
+    } finally {
+      setEnvSaving(false);
+    }
+  };
+
+  const handleRedeploy = async () => {
+    if (!viewingDeployment) return;
+    setEnvSaving(true);
+    try {
+      await fetch(`${ENV_BASE}/${viewingDeployment.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(rowsToObject(envRows)),
+      });
+      const res = await fetch(`${REDEPLOY_BASE}/${viewingDeployment.id}`, { method: 'POST', credentials: 'include' });
+      const data = res.ok ? await res.json() : {};
+
+      setEnvOriginalRows(envRows);
+      setEnvEditing(false);
+      setViewingDeployment(null);
+      goToLogs(data.deploymentId || viewingDeployment.id);
+    } catch (err) {
+      console.error('[Redeploy Error]:', err.message);
+      alert('Failed to trigger redeployment.');
+    } finally {
+      setEnvSaving(false);
+    }
+  };
+
+  // ---------- SETTINGS / DELETE ACCOUNT ----------
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
@@ -387,12 +516,9 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
     if (!userId) return;
     setDeletingAccount(true);
     try {
-      const res = await fetch(`${DASH_BASE}/purge-account/${userId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const res = await fetch(`${DASH_BASE}/purge-account/${userId}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      onDisconnect(); // signs user out and returns to landing
+      onDisconnect();
     } catch (err) {
       console.error('[Delete Account Error]:', err.message);
       alert('Failed to delete your account. Please try again.');
@@ -444,9 +570,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
           <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600, color: '#fafafa' }}>
             Welcome, <span style={{ color: '#3ecf8e' }}>{githubUser || 'Developer'}</span>
           </h2>
-          <p style={{ margin: '4px 0 0 0', color: '#71717a', fontSize: '13.5px' }}>
-            Manage and deploy your projects in real-time.
-          </p>
+          <p style={{ margin: '4px 0 0 0', color: '#71717a', fontSize: '13.5px' }}>Manage and deploy your projects in real-time.</p>
         </div>
 
         <button
@@ -537,7 +661,121 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
       </div>
 
       {/* ---------- 1. DEPLOYED PROJECTS TAB ---------- */}
-      {activeTab === 'deployed' && (
+      {activeTab === 'deployed' && viewingDeployment && (
+        <div style={cardShellStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <button onClick={() => setViewingDeployment(null)} style={backButtonStyle}>
+              ← Back to Deployed Projects
+            </button>
+            {(() => {
+              const s = getStatusStyle(viewingDeployment.status);
+              return (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    backgroundColor: s.bg,
+                    color: s.fg,
+                    border: `1px solid ${s.border}`,
+                    padding: '3px 9px',
+                    borderRadius: '9999px',
+                  }}
+                >
+                  {viewingDeployment.status}
+                </span>
+              );
+            })()}
+          </div>
+
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#fafafa', fontWeight: 600 }}>{viewingDeployment.project_name}</h3>
+          <a
+            href={`http://localhost:8000/visit/${viewingDeployment.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", color: '#3ecf8e', textDecoration: 'none' }}
+          >
+            ↗ localhost:8000/visit/{viewingDeployment.id}
+          </a>
+
+          <div style={{ display: 'flex', gap: '8px', margin: '20px 0' }}>
+            <button onClick={() => setDetailsSubTab('overview')} style={subTabButtonStyle(detailsSubTab === 'overview')}>
+              Overview
+            </button>
+            <button onClick={() => setDetailsSubTab('env')} style={subTabButtonStyle(detailsSubTab === 'env')}>
+              Environment Variables
+            </button>
+          </div>
+
+          {detailsSubTab === 'overview' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#a1a1aa' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#52525b' }}>Repository</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>{viewingDeployment.repo_name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#52525b' }}>Deployed at</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>
+                  {viewingDeployment.created_at ? new Date(viewingDeployment.created_at).toLocaleString() : '—'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {detailsSubTab === 'env' && (
+            <div>
+              {envLoading ? (
+                <p style={{ color: '#52525b', fontSize: '13px', fontFamily: "'JetBrains Mono', monospace" }}>$ loading environment variables...</p>
+              ) : (
+                <>
+                  <EnvVarTable
+                    rows={envRows}
+                    readOnly={!envEditing}
+                    masked={!envEditing}
+                    onChangeRow={(id, field, val) => updateRows(setEnvRows, id, field, val)}
+                    onAddRow={() => addRow(setEnvRows)}
+                    onRemoveRow={(id) => removeRowFrom(setEnvRows, id)}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+                    {envEditing && (
+                      <button
+                        onClick={() => {
+                          setEnvRows(envOriginalRows);
+                          setEnvEditing(false);
+                        }}
+                        disabled={envSaving}
+                        style={modalCancelButtonStyle}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {!envEditing && (
+                      <button onClick={() => setEnvEditing(true)} style={modalCancelButtonStyle}>
+                        Edit
+                      </button>
+                    )}
+                    {envEditing && (
+                      <button onClick={handleSaveEnv} disabled={envSaving} style={{ ...modalPrimaryButtonStyle, opacity: envSaving ? 0.6 : 1 }}>
+                        {envSaving ? 'Saving...' : 'Save'}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleRedeploy}
+                      disabled={envSaving}
+                      style={{ ...modalPrimaryButtonStyle, backgroundColor: '#38bdf8', opacity: envSaving ? 0.6 : 1 }}
+                    >
+                      {envSaving ? 'Working...' : 'Redeploy'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'deployed' && !viewingDeployment && (
         <div style={cardShellStyle}>
           <h3 style={sectionLabelStyle}>
             Deployed Projects <span style={{ color: '#3ecf8e' }}>({deployments.length})</span>
@@ -548,9 +786,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
               $ fetching deployment records from database...
             </p>
           ) : deploymentsError ? (
-            <p style={{ color: '#f87171', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>
-              $ {deploymentsError}
-            </p>
+            <p style={{ color: '#f87171', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>$ {deploymentsError}</p>
           ) : deployments.length === 0 ? (
             <p style={{ color: '#52525b', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>
               $ no deployments yet — deploy a repo from the Repos tab.
@@ -575,14 +811,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
                       <span
-                        style={{
-                          fontWeight: 600,
-                          color: '#fafafa',
-                          fontSize: '14px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
+                        style={{ fontWeight: 600, color: '#fafafa', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                       >
                         {dep.project_name}
                       </span>
@@ -624,27 +853,32 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
                       </a>
                     )}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '11px', color: '#52525b', fontFamily: "'JetBrains Mono', monospace" }}>
                         {dep.created_at ? new Date(dep.created_at).toLocaleString() : ''}
                       </span>
-                      <button
-                        onClick={() => handleDeleteDeployment(dep.id)}
-                        disabled={deletingId === dep.id}
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '11.5px',
-                          color: '#f87171',
-                          backgroundColor: 'rgba(248,113,113,0.08)',
-                          border: '1px solid rgba(248,113,113,0.3)',
-                          padding: '6px 12px',
-                          borderRadius: '7px',
-                          cursor: deletingId === dep.id ? 'not-allowed' : 'pointer',
-                          opacity: deletingId === dep.id ? 0.5 : 1,
-                        }}
-                      >
-                        {deletingId === dep.id ? 'Deleting...' : 'Delete'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => openDetails(dep)} style={{ ...modalCancelButtonStyle, padding: '6px 12px', fontSize: '11.5px' }}>
+                          Details
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDeployment(dep.id)}
+                          disabled={deletingId === dep.id}
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '11.5px',
+                            color: '#f87171',
+                            backgroundColor: 'rgba(248,113,113,0.08)',
+                            border: '1px solid rgba(248,113,113,0.3)',
+                            padding: '6px 12px',
+                            borderRadius: '7px',
+                            cursor: deletingId === dep.id ? 'not-allowed' : 'pointer',
+                            opacity: deletingId === dep.id ? 0.5 : 1,
+                          }}
+                        >
+                          {deletingId === dep.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -662,9 +896,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
           </h3>
 
           {loadingRepos ? (
-            <p style={{ color: '#52525b', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>
-              $ fetching repositories from github...
-            </p>
+            <p style={{ color: '#52525b', fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace" }}>$ fetching repositories from github...</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
               {repos?.map((repo) => (
@@ -737,15 +969,9 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
 
       {/* ---------- 3. LIVE LOGS TAB ---------- */}
       {activeTab === 'logs' && (
-        <div
-          style={{
-            ...cardShellStyle,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
+        <div style={{ ...cardShellStyle, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ ...sectionLabelStyle, margin: 0 }}>Build Logs</h3>
+            <h3 style={{ ...sectionLabelStyle, margin: 0 }}>Build & Runtime Logs</h3>
             <span
               style={{
                 fontSize: '11.5px',
@@ -830,9 +1056,17 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div
                   style={{
-                    width: 38, height: 38, borderRadius: '50%', background: 'rgba(62,207,142,0.12)',
-                    border: '1px solid rgba(62,207,142,0.3)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', color: '#3ecf8e', fontWeight: 700, fontSize: '14px',
+                    width: 38,
+                    height: 38,
+                    borderRadius: '50%',
+                    background: 'rgba(62,207,142,0.12)',
+                    border: '1px solid rgba(62,207,142,0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#3ecf8e',
+                    fontWeight: 700,
+                    fontSize: '14px',
                     fontFamily: "'JetBrains Mono', monospace",
                   }}
                 >
@@ -840,9 +1074,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#fafafa' }}>{githubUser || 'Developer'}</div>
-                  <div style={{ fontSize: '12px', color: '#52525b', fontFamily: "'JetBrains Mono', monospace" }}>
-                    connected via github
-                  </div>
+                  <div style={{ fontSize: '12px', color: '#52525b', fontFamily: "'JetBrains Mono', monospace" }}>connected via github</div>
                 </div>
               </div>
               <button
@@ -870,18 +1102,16 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
           <div style={cardShellStyle}>
             <h3 style={sectionLabelStyle}>About</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#a1a1aa' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#52525b' }}>Platform</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>VeloCore</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#52525b' }}>Deployed projects</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>{deployments.length}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#52525b' }}>Active repositories</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>{repos?.length || 0}</span>
-              </div>
+              {[
+                ['Platform', 'VeloCore'],
+                ['Deployed projects', deployments.length],
+                ['Active repositories', repos?.length || 0],
+              ].map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#52525b' }}>{label}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e4e4e7' }}>{value}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -921,142 +1151,80 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
         </div>
       )}
 
-      {/* DEPLOY ENV-CONFIG MODAL */}
-      {showEnvModal && selectedRepo && (
-        <div style={modalOverlayStyle}>
-          <div style={modalBoxStyle}>
-            <h3 style={modalTitleStyle}>Configure Environment</h3>
-            <p style={modalSubtitleStyle}>
-              Deploying <span style={{ color: '#3ecf8e', fontFamily: "'JetBrains Mono', monospace" }}>{selectedRepo.name}</span>.
-              Paste any environment variables this app needs (optional).
-            </p>
+      {/* DEPLOYMENT CONFIGURATION MODAL */}
+      {showDeployModal && deployModalRepo && (
+        <Modal maxWidth="560px">
+          <h3 style={modalTitleStyle}>Deployment Configuration</h3>
 
-            <div style={segmentedControlStyle}>
-              <button onClick={() => setTargetType('backend')} style={segmentButtonStyle(targetType === 'backend')}>
-                Backend (.env)
-              </button>
-              <button onClick={() => setTargetType('frontend')} style={segmentButtonStyle(targetType === 'frontend')}>
-                Frontend (.env)
-              </button>
-            </div>
+          <label style={fieldLabelStyle}>Project Name</label>
+          <input value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...fieldInputStyle, marginBottom: '18px' }} />
 
-            <textarea
-              rows={7}
-              placeholder={'KEY=VALUE\nANOTHER_KEY=SECRET'}
-              value={envText}
-              onChange={(e) => setEnvText(e.target.value)}
-              style={envTextareaStyle}
+          <span style={{ ...sectionLabelStyle, margin: '0 0 10px 0' }}>Environment Variables</span>
+          <div style={{ maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
+            <EnvVarTable
+              rows={modalEnvRows}
+              onChangeRow={(id, field, val) => updateRows(setModalEnvRows, id, field, val)}
+              onAddRow={() => addRow(setModalEnvRows)}
+              onRemoveRow={(id) => removeRowFrom(setModalEnvRows, id)}
             />
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
-              <button
-                onClick={() => {
-                  setShowEnvModal(false);
-                  setSelectedRepo(null);
-                }}
-                disabled={deployingWithEnv}
-                style={{ ...modalCancelButtonStyle, cursor: deployingWithEnv ? 'not-allowed' : 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDeploy}
-                disabled={deployingWithEnv}
-                style={{ ...modalPrimaryButtonStyle, cursor: deployingWithEnv ? 'not-allowed' : 'pointer', opacity: deployingWithEnv ? 0.6 : 1 }}
-              >
-                {deployingWithEnv ? 'Deploying...' : 'Deploy App with Logs'}
-              </button>
-            </div>
           </div>
-        </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
+            <button onClick={() => setShowDeployModal(false)} disabled={deployingModal} style={modalCancelButtonStyle}>
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmDeploy}
+              disabled={deployingModal}
+              style={{ ...modalPrimaryButtonStyle, opacity: deployingModal ? 0.6 : 1, cursor: deployingModal ? 'not-allowed' : 'pointer' }}
+            >
+              {deployingModal ? 'Deploying...' : 'Deploy'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* FREE-TIER LIMIT REACHED POPUP */}
       {showLimitPopup && (
-        <div style={modalOverlayStyle}>
-          <div style={{ ...modalBoxStyle, maxWidth: '380px', border: '1px solid rgba(250,204,21,0.35)' }}>
-            <h3 style={{ ...modalTitleStyle, color: '#facc15' }}>Free-tier limit reached</h3>
-            <p style={modalSubtitleStyle}>
-              You already have {activeDeploymentsCount} live deployments, and the free tier allows {FREE_TIER_LIMIT}.
-              Delete an existing deployment from the Deployed tab before creating a new one.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowLimitPopup(false)} style={modalPrimaryButtonStyle}>
-                Got it
-              </button>
-            </div>
+        <Modal maxWidth="380px" accent="rgba(250,204,21,0.35)">
+          <h3 style={{ ...modalTitleStyle, color: '#facc15' }}>Free-tier limit reached</h3>
+          <p style={modalSubtitleStyle}>
+            You already have {activeCount} running deployment{activeCount === 1 ? '' : 's'}, and the free tier allows {FREE_TIER_LIMIT}. Stop or
+            delete an existing deployment from the Deployed tab before creating a new one.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowLimitPopup(false)} style={modalPrimaryButtonStyle}>
+              Got it
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* DELETE ACCOUNT CONFIRM MODAL */}
       {showDeleteConfirm && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 100,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#0c0d0e',
-              border: '1px solid rgba(248,113,113,0.3)',
-              borderRadius: '14px',
-              padding: '24px',
-              maxWidth: '400px',
-              width: '100%',
-            }}
-          >
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#fafafa', fontWeight: 600 }}>
-              Delete your account?
-            </h3>
-            <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, margin: '0 0 20px 0' }}>
-              This will permanently remove your account, deployment history, and GitHub token from VeloCore. This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deletingAccount}
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12.5px',
-                  color: '#a1a1aa',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  padding: '9px 16px',
-                  borderRadius: '7px',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deletingAccount || !userId}
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  color: '#08090a',
-                  backgroundColor: '#f87171',
-                  border: 'none',
-                  padding: '9px 16px',
-                  borderRadius: '7px',
-                  cursor: deletingAccount ? 'not-allowed' : 'pointer',
-                  opacity: deletingAccount ? 0.6 : 1,
-                }}
-              >
-                {deletingAccount ? 'Deleting...' : 'Yes, delete permanently'}
-              </button>
-            </div>
+        <Modal>
+          <h3 style={modalTitleStyle}>Delete your account?</h3>
+          <p style={modalSubtitleStyle}>
+            This will permanently remove your account, deployment history, and GitHub token from VeloCore. This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button onClick={() => setShowDeleteConfirm(false)} disabled={deletingAccount} style={modalCancelButtonStyle}>
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount || !userId}
+              style={{
+                ...modalPrimaryButtonStyle,
+                backgroundColor: '#f87171',
+                cursor: deletingAccount ? 'not-allowed' : 'pointer',
+                opacity: deletingAccount ? 0.6 : 1,
+              }}
+            >
+              {deletingAccount ? 'Deleting...' : 'Yes, delete permanently'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       <style>{`

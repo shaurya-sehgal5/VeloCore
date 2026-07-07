@@ -8,35 +8,40 @@ function detectFramework(packageJson = {}) {
         ...(packageJson.devDependencies || {})
     };
 
-    if (deps.react && deps.vite)
+    if (deps.react && deps.vite) {
         return {
             framework: "vite-react",
             type: "frontend"
         };
+    }
 
-    if (deps.next)
+    if (deps.next) {
         return {
             framework: "nextjs",
             type: "frontend"
         };
+    }
 
-    if (deps.vue)
+    if (deps.vue) {
         return {
             framework: "vue",
             type: "frontend"
         };
+    }
 
-    if (deps.express)
+    if (deps.express) {
         return {
             framework: "express",
             type: "backend"
         };
+    }
 
-    if (deps["@nestjs/core"])
+    if (deps["@nestjs/core"]) {
         return {
             framework: "nestjs",
             type: "backend"
         };
+    }
 
     return {
         framework: "unknown",
@@ -79,7 +84,7 @@ function scanDirectory(rootPath, result) {
                 name: packageJson.name,
 
                 path: rootPath,
-                
+
                 repositoryRoot: result.repository,
 
                 framework: detected.framework,
@@ -88,7 +93,14 @@ function scanDirectory(rootPath, result) {
 
                 packageManager: detectPackageManager(rootPath),
 
-                scripts: packageJson.scripts || {}
+                scripts: packageJson.scripts || {},
+
+                startCommand: packageJson.scripts?.start || null,
+
+                containerPort:
+                    detected.type === "backend"
+                        ? (process.env.DEFAULT_BACKEND_PORT || 8080)
+                        : 80
 
             });
 
@@ -105,15 +117,12 @@ function scanDirectory(rootPath, result) {
                 "dist",
                 "build"
             ].includes(entry)
-        )
-            continue;
+        ) continue;
 
         const fullPath = path.join(rootPath, entry);
 
         if (fs.statSync(fullPath).isDirectory()) {
-
             scanDirectory(fullPath, result);
-
         }
 
     }

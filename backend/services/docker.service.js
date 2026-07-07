@@ -77,6 +77,7 @@ class DockerService {
     containerName,
     hostPort,
     containerPort,
+    buildPlan,
     env = {},
     network,
     deploymentId,
@@ -89,14 +90,33 @@ class DockerService {
 
     args.push("-p", `${hostPort}:${containerPort}`);
 
-    Object.entries(env).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(env || {})) {
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+
       args.push("-e");
+
       args.push(`${key}=${value}`);
-    });
+    }
 
     args.push(imageName);
 
+    if (buildPlan.startCommand) {
+      args.push("sh");
+      args.push("-c");
+      args.push(buildPlan.startCommand);
+    }
+
     logger.deployment(deploymentId, "🚀 Starting Container...");
+
+logger.deployment(
+
+    deploymentId,
+
+    `🌱 Injecting ${Object.keys(env || {}).length} environment variable(s).`
+
+);
 
     return new Promise((resolve, reject) => {
       const process = spawn("docker", args);
@@ -112,13 +132,14 @@ class DockerService {
         logger.deployment(deploymentId, data.toString().trim());
       });
 
-      process.on("close", (code) => {
+      process.on("close", async (code) => {
         if (code !== 0) {
           return reject(new Error("Failed to start container."));
         }
+        const containerId = output.trim();
 
         resolve({
-          containerId: output.trim(),
+          containerId,
           containerName,
           imageName,
           hostPort,

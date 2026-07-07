@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Runtime
+workspaces/
+tmp/
+temp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+
+# Build
+dist/
+build/
+
+# Docker
+docker-data/
+
+# Redis dump
+dump.rdb
+
+# Misc
+*.pid
+*.seed
+*.tgz
+
+# Package managers
+package-lock.json.bak
+yarn-error.log
+pnpm-lock.yaml.bak

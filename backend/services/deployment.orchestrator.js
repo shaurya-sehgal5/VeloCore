@@ -1,45 +1,39 @@
 const logger = require("./logger.service");
 const gitService = require("./git.service");
-const builderService = require("./builder.service");
 const workspaceService = require("./workspace.service");
-const { scanRepository } = require("./scanner.service");
-const dockerService = require("./docker.service");
-const registryService = require("./registry.service");
+const cleanupService = require("./cleanup.service");
 const statusService = require("./status.service");
 
+const { scanRepository } = require("./scanner.service");
+
+const repositoryGraph = require("./graph/repository-graph.service");
+const stackEngine = require("./engines/stack-engine.service");
 
 class DeploymentOrchestrator {
-  async deploy({ repoUrl, githubToken, deploymentId, io, env = {} }) {
+  async deploy({ repoUrl, githubToken, deploymentId, env = {} }) {
     let workspace = null;
 
     try {
-      logger.deployment(io, deploymentId, "🚀 Starting deployment...");
+      logger.deployment(deploymentId, "🚀 Starting deployment...");
 
       /*
-            ===================================
-            STEP 1
+            ----------------------------------
             Create Workspace
-            ===================================
+            ----------------------------------
             */
 
       workspace = await workspaceService.create();
 
-      logger.deployment(
-        io,
-        deploymentId,
-        `📁 Workspace Created : ${workspace.id}`,
-      );
+      logger.deployment(deploymentId, `📁 Workspace Created : ${workspace.id}`);
 
       /*
-            ===================================
-            STEP 2
+            ----------------------------------
             Clone Repository
-            ===================================
+            ----------------------------------
             */
-await statusService.update(
-    deploymentId,
-    "CLONING"
-);
+
+      await statusService.update(deploymentId, "CLONING");
+
       const repositoryPath = await gitService.clone(
         repoUrl,
         githubToken,
@@ -47,102 +41,92 @@ await statusService.update(
       );
 
       /*
-            ===================================
-            STEP 3
+            ----------------------------------
             Scan Repository
-            ===================================
+            ----------------------------------
             */
-await statusService.update(
+
+     await statusService.update(deploymentId, "SCANNING");
+
+const repository = scanRepository(repositoryPath);
+
+logger.deployment(
     deploymentId,
-    "SCANNING"
+    `🔍 ${repository.projects.length} deployable project(s) detected`
 );
-      const repository = scanRepository(repositoryPath);
 
-      logger.deployment(
-        io,
-        deploymentId,
-        `🔍 ${repository.projects.length} deployable project(s) found`,
-      );
+const graph = repositoryGraph.build(repository);
 
-      if (repository.projects.length === 0) {
-        throw new Error("No deployable project found.");
-      }
+logger.deployment(
+    deploymentId,
+    "📊 Deployment Graph Created"
+);
+
+logger.deployment(
+    deploymentId,
+    `Frontend : ${graph.frontend?.name || "None"}`
+);
+
+logger.deployment(
+    deploymentId,
+    `Backend : ${graph.backend?.name || "None"}`
+);
+
+logger.deployment(
+    deploymentId,
+    `Workers : ${graph.workers.length}`
+);
 
       /*
-            ===================================
-            STEP 4
-            Build Projects
-            ===================================
+            ----------------------------------
+            Deploy Entire Stack
+            ----------------------------------
             */
-await statusService.update(
-    deploymentId,
-    "BUILDING"
-);
-      for (const project of repository.projects) {
-        logger.deployment(io, deploymentId, `⚙ Building ${project.name}`);
 
-        const buildPlan = builderService.createBuildPlan(
-    project,
-    deploymentId
-);
-await statusService.update(
-    deploymentId,
-    "RUNNING"
-);
-await dockerService.buildImage({
-    imageName: buildPlan.imageName,
-    dockerfile: buildPlan.dockerfile,
-    context: repository.repository,
-    buildContext: buildPlan.buildContext,
-    deploymentId
-});
-
-const hostPort = Math.floor(Math.random() * 1000) + 9000;
-
-const runtime = await dockerService.runContainer({
-    imageName: buildPlan.imageName,
-    containerName: `runtime-${deploymentId}`,
-    hostPort,
-    containerPort: buildPlan.containerPort,
-    env,
-    deploymentId
-});
-
-await registryService.register({
-    deploymentId,
-    imageName: runtime.imageName,
-    containerName: runtime.containerName,
-    hostPort: runtime.hostPort,
-    containerPort: runtime.containerPort
-});
-return {
-    success: true,
-    deploymentId,
-    hostPort
-};
-      }
-
-      logger.deployment(
-        io,
+      await stackEngine.deploy({
+        graph,
 
         deploymentId,
-
-        "✅ Build Stage Completed.",
-      );
-
-      return {
-        success: true,
 
         workspace,
 
         repository,
+
+        env,
+      });
+
+      /*
+            ----------------------------------
+            Cleanup Workspace
+            ----------------------------------
+            */
+
+      await cleanupService.success(workspace);
+
+      logger.deployment(deploymentId, "🎉 Deployment Finished Successfully.");
+
+      return {
+        success: true,
+
+        deploymentId,
+
+        graph,
+
+        url: `http://localhost:8000/visit/${deploymentId}`,
       };
     } catch (error) {
       logger.error(error.message);
-await statusService.update(
-    deploymentId,
-    "FAILED"
-);
+
+      await statusService.update(deploymentId, "FAILED");
+
+      if (workspace) {
+        await cleanupService.failed({
+          workspace,
+
+          deploymentId,
+        });
+      }
+
       throw error;
     }
   }

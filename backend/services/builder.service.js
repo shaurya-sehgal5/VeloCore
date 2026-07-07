@@ -1,67 +1,59 @@
 const path = require("path");
 
 class BuilderService {
+  createBuildPlan(project, deploymentId) {
+    const imageName = `velocore-${deploymentId}`;
 
-    createBuildPlan(project, deploymentId) {
+    switch (project.framework) {
+      case "vite-react":
+        return {
+          type: "frontend",
 
-        const imageName = `velocore-${deploymentId}`;
+          imageName,
 
-        switch (project.framework) {
+          dockerfile: path.join(__dirname, "../templates/Frontend.Dockerfile"),
 
-            case "vite-react":
+          buildContext: path.relative(project.repositoryRoot, project.path),
 
-                return {
+          containerPort: 80,
 
-                    type: "frontend",
+          startCommand: project.startCommand,
+        };
+      case "express":
+        return {
+          type: "backend",
 
-                    imageName,
+          imageName,
 
-                    dockerfile: path.join(
-                        __dirname,
-                        "../templates/Frontend.Dockerfile"
-                    ),
+          dockerfile: path.join(__dirname, "../templates/Backend.Dockerfile"),
 
-                    buildContext: path.relative(
-                        project.repositoryRoot,
-                        project.path
-                    ),
+          buildContext: path.relative(project.repositoryRoot, project.path),
 
-                    containerPort: 80
+          containerPort: project.containerPort,
 
-                };
+          startCommand: project.startCommand,
+        };
+      case "bullmq":
+        return {
+          type: "worker",
 
-            case "express":
+          imageName,
 
-                return {
+          dockerfile: path.join(__dirname, "../templates/Backend.Dockerfile"),
 
-                    type: "backend",
+          buildContext: path.relative(project.repositoryRoot, project.path),
 
-                    imageName,
+          containerPort: 8080,
 
-                    dockerfile: path.join(
-                        __dirname,
-                        "../templates/Backend.Dockerfile"
-                    ),
+          containerPort: project.containerPort,
 
-                    buildContext: path.relative(
-                        project.repositoryRoot,
-                        project.path
-                    ),
+          startCommand: project.startCommand,
+        };
 
-                    containerPort: 8080
-
-                };
-
-            default:
-
-                throw new Error(
-                    `Unsupported framework: ${project.framework}`
-                );
-
-        }
-
+      default:
+        throw new Error(`Unsupported framework: ${project.framework}`);
     }
-
+  }
 }
 
 module.exports = new BuilderService();
