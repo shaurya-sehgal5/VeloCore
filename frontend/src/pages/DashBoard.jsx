@@ -5,6 +5,7 @@ import SystemAnalytics from '../components/SystemAnalytics';
 const AUTH_BASE = 'http://localhost:8080/api/auth';
 const DASH_BASE = 'http://localhost:8080/api/dashboard';
 const ENV_BASE = 'http://localhost:8080/api/env';
+const RUNTIME_BASE = 'http://localhost:8080/api/deployments';
 const REDEPLOY_BASE = 'http://localhost:8080/api/deploy/redeploy';
 const FREE_TIER_LIMIT = 2;
 
@@ -233,7 +234,99 @@ const backButtonStyle = {
   padding: 0,
 };
 
-// Small reusable modal shell so every popup shares one overlay/box implementation.
+const FRAMEWORK_LABELS = {
+  express: 'Express',
+  fastify: 'Fastify',
+  'vite-react': 'Vite React',
+  nextjs: 'Next.js',
+  bullmq: 'BullMQ',
+  django: 'Django',
+  flask: 'Flask',
+};
+const formatFramework = (fw) =>
+  FRAMEWORK_LABELS[fw] || (fw ? fw.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unknown');
+
+// One row per service returned by the runtime endpoint. Services without a URL
+// (e.g. background workers) simply skip the Open/Copy buttons.
+function ServiceRow({ service, isLast }) {
+  const [copied, setCopied] = useState(false);
+  const style = getStatusStyle(service.status);
+  const hasUrl = Boolean(service.url);
+
+  const handleCopy = async () => {
+    if (!hasUrl) return;
+    try {
+      await navigator.clipboard.writeText(service.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error('[Clipboard Error]:', err.message);
+    }
+  };
+
+  return (
+    <div style={{ padding: '16px 0', borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: style.fg, flexShrink: 0 }} />
+          <span style={{ fontWeight: 600, color: '#fafafa', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {service.name.charAt(0).toUpperCase() + service.name.slice(1)}
+          </span>
+        </div>
+        <span
+          style={{
+            fontSize: '10.5px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            backgroundColor: style.bg,
+            color: style.fg,
+            border: `1px solid ${style.border}`,
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {service.status}
+        </span>
+      </div>
+
+      <div style={{ fontSize: '12px', color: '#71717a', fontFamily: "'JetBrains Mono', monospace", marginBottom: hasUrl ? '4px' : '10px' }}>
+        {formatFramework(service.framework)}
+      </div>
+
+      {hasUrl && (
+        <div style={{ fontSize: '12.5px', color: '#3ecf8e', fontFamily: "'JetBrains Mono', monospace", marginBottom: '10px', wordBreak: 'break-all' }}>
+          {service.url}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {hasUrl && (
+          <a
+            href={service.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ ...modalCancelButtonStyle, textDecoration: 'none', padding: '6px 12px', fontSize: '11.5px', display: 'inline-block' }}
+          >
+            Open
+          </a>
+        )}
+        {hasUrl && (
+          <button onClick={handleCopy} style={{ ...modalCancelButtonStyle, padding: '6px 12px', fontSize: '11.5px' }}>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        )}
+        <button
+          onClick={() => alert('Service-level logs are coming soon.')}
+          style={{ ...modalCancelButtonStyle, padding: '6px 12px', fontSize: '11.5px' }}
+        >
+          Logs
+        </button>
+      </div>
+    </div>
+  );
+}
 function Modal({ maxWidth = '440px', accent, children }) {
   return (
     <div style={modalOverlayStyle}>
@@ -430,7 +523,10 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
 
   // ---------- DEPLOYMENT DETAILS (Overview + Environment Variables) ----------
   const [viewingDeployment, setViewingDeployment] = useState(null);
-  const [detailsSubTab, setDetailsSubTab] = useState('overview');
+  const [detailsSubTab, setDetailsSubTab] = useState('services');
+  const [services, setServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [servicesError, setServicesError] = useState(null);
   const [envRows, setEnvRows] = useState([]);
   const [envOriginalRows, setEnvOriginalRows] = useState([]);
   const [envLoading, setEnvLoading] = useState(false);
@@ -439,9 +535,50 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
 
   const openDetails = (dep) => {
     setViewingDeployment(dep);
-    setDetailsSubTab('overview');
+    setDetailsSubTab('services');
     setEnvEditing(false);
   };
+
+  const closeDetails = () => {
+    setViewingDeployment(null);
+    setServices([]);
+    setServicesError(null);
+  };
+
+  // Poll the runtime endpoint while the details page is open so status/URLs stay live.
+  useEffect(() => {
+    const deploymentId = viewingDeployment?.id;
+    if (!deploymentId) return;
+    let cancelled = false;
+
+    const loadServices = async () => {
+      try {
+        const res = await fetch(`${RUNTIME_BASE}/${deploymentId}/runtime`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setServices(data.services || []);
+          setServicesError(null);
+        }
+      } catch (err) {
+        console.error('[Runtime Fetch Error]:', err.message);
+        if (!cancelled) {
+          setServicesError('Failed to load services.');
+          setServices([]);
+        }
+      } finally {
+        if (!cancelled) setServicesLoading(false);
+      }
+    };
+
+    setServicesLoading(true);
+    loadServices();
+    const interval = setInterval(loadServices, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [viewingDeployment?.id]);
 
   useEffect(() => {
     if (!viewingDeployment || detailsSubTab !== 'env') return;
@@ -664,7 +801,7 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
       {activeTab === 'deployed' && viewingDeployment && (
         <div style={cardShellStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <button onClick={() => setViewingDeployment(null)} style={backButtonStyle}>
+            <button onClick={closeDetails} style={backButtonStyle}>
               ← Back to Deployed Projects
             </button>
             {(() => {
@@ -690,16 +827,11 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
           </div>
 
           <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#fafafa', fontWeight: 600 }}>{viewingDeployment.project_name}</h3>
-          <a
-            href={`http://localhost:8000/visit/${viewingDeployment.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", color: '#3ecf8e', textDecoration: 'none' }}
-          >
-            ↗ localhost:8000/visit/{viewingDeployment.id}
-          </a>
 
           <div style={{ display: 'flex', gap: '8px', margin: '20px 0' }}>
+            <button onClick={() => setDetailsSubTab('services')} style={subTabButtonStyle(detailsSubTab === 'services')}>
+              Services
+            </button>
             <button onClick={() => setDetailsSubTab('overview')} style={subTabButtonStyle(detailsSubTab === 'overview')}>
               Overview
             </button>
@@ -707,6 +839,27 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
               Environment Variables
             </button>
           </div>
+
+          {detailsSubTab === 'services' && (
+            <div>
+              <h4 style={{ ...sectionLabelStyle, margin: '0 0 4px 0' }}>Deployment Services</h4>
+              {servicesLoading ? (
+                <p style={{ color: '#52525b', fontSize: '13px', fontFamily: "'JetBrains Mono', monospace" }}>$ fetching runtime services...</p>
+              ) : servicesError ? (
+                <p style={{ color: '#f87171', fontSize: '13px', fontFamily: "'JetBrains Mono', monospace" }}>$ {servicesError}</p>
+              ) : services.length === 0 ? (
+                <p style={{ color: '#52525b', fontSize: '13px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  $ no services reported for this deployment yet.
+                </p>
+              ) : (
+                <div>
+                  {services.map((service, i) => (
+                    <ServiceRow key={`${service.name}-${i}`} service={service} isLast={i === services.length - 1} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {detailsSubTab === 'overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#a1a1aa' }}>
@@ -834,24 +987,9 @@ function Dashboard({ githubUser, repos, onDeploy, loadingRepos, onDisconnect }) 
                       </span>
                     </div>
 
-                    {dep.id && (
-                      <a
-                        href={`http://localhost:8000/visit/${dep.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: '12px',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: '#3ecf8e',
-                          textDecoration: 'none',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        ↗ localhost:8000/visit/{dep.id}
-                      </a>
-                    )}
+                    <span style={{ fontSize: '11.5px', color: '#52525b', fontFamily: "'JetBrains Mono', monospace" }}>
+                      view Details for live service URLs →
+                    </span>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '11px', color: '#52525b', fontFamily: "'JetBrains Mono', monospace" }}>

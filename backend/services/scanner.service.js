@@ -2,157 +2,148 @@ const fs = require("fs");
 const path = require("path");
 
 function detectFramework(packageJson = {}) {
+  const deps = {
+    ...(packageJson.dependencies || {}),
+    ...(packageJson.devDependencies || {}),
+  };
 
-    const deps = {
-        ...(packageJson.dependencies || {}),
-        ...(packageJson.devDependencies || {})
-    };
+  if (deps.react && deps.vite)
+    return { framework: "vite-react", type: "frontend" };
 
-    if (deps.react && deps.vite) {
-        return {
-            framework: "vite-react",
-            type: "frontend"
-        };
-    }
+  if (deps.next) return { framework: "nextjs", type: "frontend" };
 
-    if (deps.next) {
-        return {
-            framework: "nextjs",
-            type: "frontend"
-        };
-    }
+  if (deps.vue) return { framework: "vue", type: "frontend" };
 
-    if (deps.vue) {
-        return {
-            framework: "vue",
-            type: "frontend"
-        };
-    }
+  if (deps.express) return { framework: "express", type: "backend" };
 
-    if (deps.express) {
-        return {
-            framework: "express",
-            type: "backend"
-        };
-    }
+  if (deps["@nestjs/core"]) return { framework: "nestjs", type: "backend" };
 
-    if (deps["@nestjs/core"]) {
-        return {
-            framework: "nestjs",
-            type: "backend"
-        };
-    }
-
-    return {
-        framework: "unknown",
-        type: "unknown"
-    };
-
+  return {
+    framework: "unknown",
+    type: "unknown",
+  };
 }
 
 function detectPackageManager(projectPath) {
+  if (fs.existsSync(path.join(projectPath, "pnpm-lock.yaml"))) return "pnpm";
 
-    if (fs.existsSync(path.join(projectPath, "pnpm-lock.yaml")))
-        return "pnpm";
+  if (fs.existsSync(path.join(projectPath, "yarn.lock"))) return "yarn";
 
-    if (fs.existsSync(path.join(projectPath, "yarn.lock")))
-        return "yarn";
-
-    return "npm";
-
+  return "npm";
 }
 
 function scanDirectory(rootPath, result) {
+  const entries = fs.readdirSync(rootPath);
 
-    const entries = fs.readdirSync(rootPath);
+  /*
+    ------------------------------------
+    Detect Dockerfile
+    ------------------------------------
+    */
 
-    if (entries.includes("package.json")) {
+  if (entries.includes("Dockerfile")) {
+    result.dockerfiles.push({
+      path: path.join(rootPath, "Dockerfile"),
 
-        const packageJson = JSON.parse(
-            fs.readFileSync(
-                path.join(rootPath, "package.json"),
-                "utf8"
-            )
-        );
+      context: rootPath,
+    });
+  }
 
-        const detected = detectFramework(packageJson);
+  /*
+    ------------------------------------
+    Detect package.json
+    ------------------------------------
+    */
 
-        if (detected.type !== "unknown") {
+  if (entries.includes("package.json")) {
+    const packageJson = JSON.parse(
+      fs.readFileSync(
+        path.join(rootPath, "package.json"),
 
-            result.projects.push({
+        "utf8",
+      ),
+    );
 
-                name: packageJson.name,
+    const detected = detectFramework(packageJson);
 
-                path: rootPath,
+    if (detected.type !== "unknown") {
+      result.projects.push({
+        name: packageJson.name,
 
-                repositoryRoot: result.repository,
+        path: rootPath,
 
-                framework: detected.framework,
+        repositoryRoot: result.repository,
 
-                type: detected.type,
+        framework: detected.framework,
 
-                packageManager: detectPackageManager(rootPath),
+        type: detected.type,
 
-                scripts: packageJson.scripts || {},
+        packageManager: detectPackageManager(rootPath),
 
-                startCommand: packageJson.scripts?.start || null,
+        scripts: packageJson.scripts || {},
 
-                containerPort:
-                    detected.type === "backend"
-                        ? (process.env.DEFAULT_BACKEND_PORT || 8080)
-                        : 80
+        startCommand: packageJson.scripts?.start || null,
 
-            });
-
-        }
-
+        containerPort: detected.type === "backend" ? 8080 : 80,
+      });
     }
+  }
 
-    for (const entry of entries) {
+  /*
+    ------------------------------------
+    Recurse
+    ------------------------------------
+    */
 
-        if (
-            [
-                "node_modules",
-                ".git",
-                "dist",
-                "build"
-            ].includes(entry)
-        ) continue;
+  for (const entry of entries) {
+    if (
+      [".git", "node_modules", "dist", "build", ".next", ".turbo"].includes(
+        entry,
+      )
+    )
+      continue;
 
-        const fullPath = path.join(rootPath, entry);
+    const fullPath = path.join(rootPath, entry);
 
-        if (fs.statSync(fullPath).isDirectory()) {
-            scanDirectory(fullPath, result);
-        }
-
+    if (fs.statSync(fullPath).isDirectory()) {
+      scanDirectory(fullPath, result);
     }
-
+  }
 }
 
 function scanRepository(repositoryPath) {
+  const result = {
+    repository: repositoryPath,
 
-    const result = {
+    dockerCompose: null,
 
-        repository: repositoryPath,
+    dockerfiles: [],
 
-        dockerfile: fs.existsSync(
-            path.join(repositoryPath, "Dockerfile")
-        ),
+    projects: [],
+  };
 
-        dockerCompose: fs.existsSync(
-            path.join(repositoryPath, "docker-compose.yml")
-        ),
+  scanDirectory(repositoryPath, result);
 
-        projects: []
+  const composeFiles = [
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "compose.yml",
+    "compose.yaml",
+  ];
 
-    };
+  for (const file of composeFiles) {
+    const full = path.join(repositoryPath, file);
 
-    scanDirectory(repositoryPath, result);
+    if (fs.existsSync(full)) {
+      result.dockerCompose = full;
+      break;
+    }
+  }
+  result.dockerfile = result.dockerfiles.length > 0;
 
-    return result;
-
+  return result;
 }
 
 module.exports = {
-    scanRepository
+  scanRepository,
 };

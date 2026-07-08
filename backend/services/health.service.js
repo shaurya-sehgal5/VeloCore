@@ -7,7 +7,7 @@ class HealthService {
 
         hostPort,
         deploymentId,
-        retries = 15,
+        retries = 10,
         delay = 2000
 
     }) {
@@ -17,38 +17,65 @@ class HealthService {
             "🏥 Waiting for application health..."
         );
 
+        const endpoints = [
+
+            "/health",
+
+            "/"
+
+        ];
+
         for (let attempt = 1; attempt <= retries; attempt++) {
 
-            try {
+            for (const endpoint of endpoints) {
 
-                await axios.get(
-                    `http://localhost:${hostPort}`,
-                    {
-                        timeout: 3000
+                try {
+
+                    const response = await axios.get(
+
+                        `http://localhost:${hostPort}${endpoint}`,
+
+                        {
+
+                            timeout: 3000,
+
+                            validateStatus: () => true
+
+                        }
+
+                    );
+
+                    if (response.status >= 200 && response.status < 400) {
+
+                        logger.deployment(
+
+                            deploymentId,
+
+                            `✅ Health check passed (${endpoint})`
+
+                        );
+
+                        return true;
+
                     }
-                );
 
-                logger.deployment(
-                    deploymentId,
-                    "✅ Health check passed."
-                );
+                }
 
-                return true;
+                catch (_) {}
 
             }
 
-            catch {
+            logger.deployment(
 
-                logger.deployment(
-                    deploymentId,
-                    `⏳ Health check ${attempt}/${retries}`
-                );
+                deploymentId,
 
-                await new Promise(resolve =>
-                    setTimeout(resolve, delay)
-                );
+                `⏳ Health check ${attempt}/${retries}`
 
-            }
+            );
+
+            await new Promise(resolve =>
+                setTimeout(resolve, delay)
+            );
 
         }
 

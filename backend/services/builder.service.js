@@ -2,56 +2,104 @@ const path = require("path");
 
 class BuilderService {
   createBuildPlan(project, deploymentId) {
-    const imageName = `velocore-${deploymentId}`;
+    const projectName = project.name
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-");
+
+    const imageName = `velocore-${deploymentId}-${projectName}`;
+
+    const common = {
+      projectName,
+      imageName,
+      containerName: `runtime-${deploymentId}-${projectName}`,
+      containerPort: project.containerPort,
+      startCommand: project.startCommand,
+      framework: project.framework,
+    };
+
+    /*
+    ------------------------------------
+    Custom Dockerfile
+    ------------------------------------
+    */
+
+    if (project.useCustomDockerfile) {
+      return {
+        ...common,
+
+        type: project.type,
+
+        dockerfile: project.dockerfile,
+
+        buildContext: path.relative(
+          project.repositoryRoot,
+          project.buildContext
+        ),
+      };
+    }
+
+    /*
+    ------------------------------------
+    Framework Templates
+    ------------------------------------
+    */
 
     switch (project.framework) {
       case "vite-react":
         return {
+          ...common,
+
           type: "frontend",
 
-          imageName,
+          dockerfile: path.join(
+            __dirname,
+            "../templates/Frontend.Dockerfile"
+          ),
 
-          dockerfile: path.join(__dirname, "../templates/Frontend.Dockerfile"),
-
-          buildContext: path.relative(project.repositoryRoot, project.path),
-
-          containerPort: 80,
-
-          startCommand: project.startCommand,
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
+
       case "express":
         return {
+          ...common,
+
           type: "backend",
 
-          imageName,
+          dockerfile: path.join(
+            __dirname,
+            "../templates/Backend.Dockerfile"
+          ),
 
-          dockerfile: path.join(__dirname, "../templates/Backend.Dockerfile"),
-
-          buildContext: path.relative(project.repositoryRoot, project.path),
-
-          containerPort: project.containerPort,
-
-          startCommand: project.startCommand,
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
+
       case "bullmq":
         return {
+          ...common,
+
           type: "worker",
 
-          imageName,
+          dockerfile: path.join(
+            __dirname,
+            "../templates/Backend.Dockerfile"
+          ),
 
-          dockerfile: path.join(__dirname, "../templates/Backend.Dockerfile"),
-
-          buildContext: path.relative(project.repositoryRoot, project.path),
-
-          containerPort: 8080,
-
-          containerPort: project.containerPort,
-
-          startCommand: project.startCommand,
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
 
       default:
-        throw new Error(`Unsupported framework: ${project.framework}`);
+        throw new Error(
+          `Unsupported framework: ${project.framework}`
+        );
     }
   }
 }

@@ -7,6 +7,7 @@ const projectRoutes = require("./routes/project.routes");
 const authRoutes = require("./routes/auth.routes");
 const { initSocket } = require("./config/socket");
 const dashboardRoutes = require("./routes/dashboard.routes");
+const deploymentServicesRoutes = require("./routes/deployment-services.routes");
 
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
@@ -107,6 +108,12 @@ app.use("/api/auth", authRoutes);
 app.use("/api/project", projectRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/env", envRoutes);
+app.use("/api/deployments", deploymentServicesRoutes);
+app.use(
+  "/api/deployments",
+
+  require("./routes/runtime.routes"),
+);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {

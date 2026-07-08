@@ -1,22 +1,18 @@
-const dockerEngine = require("./docker-engine.service");
+const runtimeProvider = require("../runtime/runtime-provider.service");
+const runtimePipeline = require("../runtime/runtime-pipeline.service");
 
 class DeploymentEngine {
-  async deploy(options) {
-    switch (options.engine) {
-      case "docker":
-        options.engine ??= "docker";
-        return dockerEngine.deploy(options);
 
-      case "compose":
-        throw new Error("Docker Compose engine not implemented.");
+    async deploy(options) {
 
-      case "kubernetes":
-        throw new Error("Kubernetes engine not implemented.");
+        const runtime = await runtimeProvider.create(options);
 
-      default:
-        throw new Error(`Unknown deployment engine: ${options.engine}`);
+        await runtimePipeline.start(runtime);
+
+        return runtime;
+
     }
-  }
+
 }
 
 module.exports = new DeploymentEngine();

@@ -10,6 +10,7 @@ class StackEngine {
         const results = await Promise.all(
           stage.nodes.map((node) =>
             this.deployNode({
+              graph,
               node,
               deploymentId,
               workspace,
@@ -23,6 +24,7 @@ class StackEngine {
       } else {
         for (const node of stage.nodes) {
           const runtime = await this.deployNode({
+            graph,
             node,
             deploymentId,
             workspace,
@@ -38,7 +40,7 @@ class StackEngine {
     return deployments;
   }
 
-  async deployNode({ node, deploymentId, workspace, repository, env }) {
+  async deployNode({ node, deploymentId, workspace, repository, env , graph }) {
     const buildPlan = builderService.createBuildPlan(
       node,
 
@@ -47,6 +49,8 @@ class StackEngine {
 
     const runtime = await deploymentEngine.deploy({
       engine: "docker",
+
+      graph,
 
       deploymentId,
 

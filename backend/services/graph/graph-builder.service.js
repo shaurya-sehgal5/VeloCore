@@ -14,6 +14,12 @@ class GraphBuilder {
 
     for (const project of repository.projects) {
       graph.nodes.push({
+        dockerfile: project.dockerfile,
+
+        buildContext: project.buildContext,
+
+        useCustomDockerfile: project.useCustomDockerfile,
+
         id: project.name,
 
         name: project.name,
@@ -31,7 +37,7 @@ class GraphBuilder {
         scripts: project.scripts,
 
         startCommand: project.startCommand,
-        
+
         containerPort: project.containerPort,
       });
     }
