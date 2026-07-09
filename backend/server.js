@@ -8,6 +8,7 @@ const authRoutes = require("./routes/auth.routes");
 const { initSocket } = require("./config/socket");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const deploymentServicesRoutes = require("./routes/deployment-services.routes");
+const runtimeMonitor = require("./services/runtime-monitor.service");
 
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
@@ -125,6 +126,7 @@ app.use((req, res) => {
     .json({ error: `The endpoint path ${req.url} does not exist.` });
 });
 
+runtimeMonitor.start();
 // --- 6. SERVER START ---
 const PORT = 8080;
 server.listen(PORT, () => {

@@ -1,33 +1,52 @@
 const runtimeQueryService = require("../services/runtime-query.service");
+const runtimeManager = require("../services/runtime-manager.service");
+
+/*
+------------------------------------
+Deployment Runtime (Database)
+------------------------------------
+*/
 
 exports.list = async (req, res) => {
+  try {
+    const services = await runtimeQueryService.getByDeployment(
+      req.params.deploymentId,
+    );
 
-    try {
+    res.json({
+      deploymentId: req.params.deploymentId,
+      services,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+};
 
-        const services = await runtimeQueryService.getByDeployment(
+/*
+------------------------------------
+Live Runtime (Memory)
+------------------------------------
+*/
 
-            req.params.deploymentId
+exports.live = (req, res) => {
+  res.json(runtimeManager.list());
+};
+/*
+------------------------------------
+Single Live Runtime
+------------------------------------
+*/
 
-        );
+exports.get = (req, res) => {
+  const runtime = runtimeManager.get(req.params.deploymentId);
 
-        res.json({
+  if (!runtime) {
+    return res.status(404).json({
+      error: "Runtime not found",
+    });
+  }
 
-            deploymentId: req.params.deploymentId,
-
-            services
-
-        });
-
-    }
-
-    catch (error) {
-
-        res.status(500).json({
-
-            error: error.message
-
-        });
-
-    }
-
+  res.json(runtime);
 };

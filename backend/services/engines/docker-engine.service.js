@@ -4,32 +4,18 @@ const portService = require("../port.service");
 const logger = require("../logger.service");
 const envService = require("../env.service");
 const runtimeRegistry = require("../runtime-registry.service");
-
+const runtimeManager = require("../runtime-manager.service");
 class DockerEngine {
-
-  async deploy({
-
-    deploymentId,
-    workspace,
-    buildPlan,
-    repository,
-    env
-
-  }) {
-
+  async deploy({ deploymentId, workspace, buildPlan, repository, env }) {
     /*
     ------------------------------------
     Build Image
     ------------------------------------
     */
 
-    await statusService.update(
-      deploymentId,
-      "BUILDING"
-    );
+    await statusService.update(deploymentId, "BUILDING");
 
     await dockerService.buildImage({
-
       imageName: buildPlan.imageName,
 
       dockerfile: buildPlan.dockerfile,
@@ -38,8 +24,7 @@ class DockerEngine {
 
       buildContext: buildPlan.buildContext,
 
-      deploymentId
-
+      deploymentId,
     });
 
     /*
@@ -48,21 +33,15 @@ class DockerEngine {
     ------------------------------------
     */
 
-    await statusService.update(
-      deploymentId,
-      "DEPLOYING"
-    );
+    await statusService.update(deploymentId, "DEPLOYING");
 
     const hostPort = await portService.allocate();
 
     const containerName = buildPlan.containerName;
 
-    const deploymentEnv = await envService.get(
-      deploymentId
-    );
+    const deploymentEnv = await envService.get(deploymentId);
 
     const runtime = await dockerService.runContainer({
-
       imageName: buildPlan.imageName,
 
       containerName,
@@ -74,15 +53,12 @@ class DockerEngine {
       buildPlan,
 
       env: {
-
         ...deploymentEnv,
 
-        ...env
-
+        ...env,
       },
 
-      deploymentId
-
+      deploymentId,
     });
 
     /*
@@ -91,9 +67,7 @@ class DockerEngine {
     ------------------------------------
     */
 
-    await new Promise(resolve =>
-      setTimeout(resolve, 3000)
-    );
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     /*
     ------------------------------------
@@ -102,25 +76,14 @@ class DockerEngine {
     */
 
     const logs = await dockerService.execute(
-
       "docker",
 
-      [
+      ["logs", runtime.containerId],
 
-        "logs",
-
-        runtime.containerId
-
-      ],
-
-      deploymentId
-
-    );
-
-    logger.deployment(
       deploymentId,
-      logs
     );
+
+    logger.deployment(deploymentId, logs);
 
     /*
     ------------------------------------
@@ -129,7 +92,6 @@ class DockerEngine {
     */
 
     await runtimeRegistry.register({
-
       deploymentId,
 
       name: buildPlan.projectName,
@@ -144,8 +106,25 @@ class DockerEngine {
 
       hostPort,
 
-      containerPort: runtime.containerPort
+      containerPort: runtime.containerPort,
+    });
 
+    runtimeManager.register({
+      deploymentId,
+
+      project: buildPlan.projectName,
+
+      type: buildPlan.type,
+
+      framework: buildPlan.framework,
+
+      imageName: runtime.imageName,
+
+      containerName,
+
+      hostPort,
+
+      containerPort: runtime.containerPort,
     });
 
     /*
@@ -155,7 +134,6 @@ class DockerEngine {
     */
 
     return {
-
       deploymentId,
 
       workspace,
@@ -172,12 +150,9 @@ class DockerEngine {
 
       hostPort,
 
-      containerPort: runtime.containerPort
-
+      containerPort: runtime.containerPort,
     };
-
   }
-
 }
 
 module.exports = new DockerEngine();
