@@ -24,7 +24,7 @@ class RuntimeMonitorService {
 
       logger.deployment(
         deploymentId,
-        `⚠ Container exited with code ${exitCode}`
+        `⚠ Container exited with code ${exitCode}`,
       );
 
       runtimeManager.remove(deploymentId);
@@ -69,19 +69,24 @@ class RuntimeMonitorService {
             try {
               const stats = JSON.parse(stdout);
 
-              runtimeManager.update(runtime.deploymentId, {
-                metrics: {
-                  cpu: stats.CPUPerc,
-                  memory: stats.MemUsage,
-                  memoryPercent: stats.MemPerc,
-                  network: stats.NetIO,
-                  blockIO: stats.BlockIO,
-                  pids: stats.PIDs,
+              runtimeManager.update(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.slot,
+                {
+                  metrics: {
+                    cpu: stats.CPUPerc,
+                    memory: stats.MemUsage,
+                    memoryPercent: stats.MemPerc,
+                    network: stats.NetIO,
+                    blockIO: stats.BlockIO,
+                    pids: stats.PIDs,
+                  },
+                  lastMetricsUpdate: Date.now(),
                 },
-                lastMetricsUpdate: Date.now(),
-              });
+              );
             } catch {}
-          }
+          },
         );
       }
     }, interval);

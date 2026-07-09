@@ -10,23 +10,21 @@ class RuntimeManager {
   */
 
   register(runtime) {
-    console.log("REGISTERING:", runtime.deploymentId);
+  const key = `${runtime.deploymentId}:${runtime.project}:${runtime.slot}`;
 
-    this.runtimes.set(runtime.deploymentId, {
-      ...runtime,
-      status: "RUNNING",
-      health: "UNKNOWN",
-      startedAt: Date.now(),
-      metrics: {
-        cpu: "0%",
-        memory: "0 MB",
-        network: "0 B",
-        uptime: 0,
-      },
-    });
-
-    console.log("MAP SIZE:", this.runtimes.size);
-  }
+  this.runtimes.set(key, {
+    ...runtime,
+    status: "RUNNING",
+    health: "UNKNOWN",
+    startedAt: Date.now(),
+    metrics: {
+      cpu: "0%",
+      memory: "0 MB",
+      network: "0 B",
+      uptime: 0,
+    },
+  });
+}
 
   /*
   ------------------------------------
@@ -34,34 +32,39 @@ class RuntimeManager {
   ------------------------------------
   */
 
-  get(deploymentId) {
-    return this.runtimes.get(deploymentId);
-  }
+ get(deploymentId, project, slot) {
+  return this.runtimes.get(
+    `${deploymentId}:${project}:${slot}`
+  );
+}
 
   /*
   ------------------------------------
   Update Runtime
   ------------------------------------
   */
+update(deploymentId, project, slot, values) {
+  const runtime = this.get(
+    deploymentId,
+    project,
+    slot
+  );
 
-  update(deploymentId, values) {
-    const runtime = this.get(deploymentId);
+  if (!runtime) return;
 
-    if (!runtime) return;
-
-    Object.assign(runtime, values);
-  }
-
+  Object.assign(runtime, values);
+}
   /*
   ------------------------------------
   Remove Runtime
   ------------------------------------
   */
 
-  remove(deploymentId) {
-    this.runtimes.delete(deploymentId);
-  }
-
+remove(deploymentId, project, slot) {
+  this.runtimes.delete(
+    `${deploymentId}:${project}:${slot}`
+  );
+}
   /*
   ------------------------------------
   List

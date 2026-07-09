@@ -1,20 +1,21 @@
 const path = require("path");
 
 class BuilderService {
-  createBuildPlan(project, deploymentId) {
+  createBuildPlan(project, deploymentId , slot = "blue") {
     const projectName = project.name
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-");
 
-    const imageName = `velocore-${deploymentId}-${projectName}`;
+    const imageName = `velocore-${deploymentId}-${projectName}-${slot}`;
 
     const common = {
       projectName,
       imageName,
-      containerName: `runtime-${deploymentId}-${projectName}`,
+      containerName: `runtime-${deploymentId}-${projectName}-${slot}`,
       containerPort: project.containerPort,
       startCommand: project.startCommand,
       framework: project.framework,
+      slot,
     };
 
     /*

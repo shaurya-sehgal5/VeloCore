@@ -1,5 +1,6 @@
 const builderService = require("../builder.service");
 const deploymentEngine = require("./deployment-engine.service");
+const deploymentSlot = require("../deployment-slot.service");
 
 class StackEngine {
   async deploy({ graph, deploymentId, workspace, repository, env }) {
@@ -41,11 +42,13 @@ class StackEngine {
   }
 
   async deployNode({ node, deploymentId, workspace, repository, env , graph }) {
-    const buildPlan = builderService.createBuildPlan(
-      node,
+   const slot = deploymentSlot.next(deploymentId);
 
-      deploymentId,
-    );
+const buildPlan = builderService.createBuildPlan(
+    node,
+    deploymentId,
+    slot
+);
 
     const runtime = await deploymentEngine.deploy({
       engine: "docker",

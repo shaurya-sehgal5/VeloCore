@@ -31,18 +31,16 @@ class RuntimePipeline {
       deploymentId,
     });
 
-    await registryService.register({
-      deploymentId,
-
-      imageName,
-
-      containerName,
-
-      hostPort,
-
-      containerPort,
-    });
-
+  await registryService.register({
+    deploymentId,
+    name: runtime.project,
+    type: runtime.type,
+    framework: runtime.framework,
+    imageName,
+    containerName,
+    hostPort,
+    containerPort,
+});
     runtimeLogService.stream(containerName, deploymentId);
 
     runtimeMonitorService.monitor({
