@@ -1,6 +1,7 @@
 const builderService = require("../builder.service");
 const deploymentEngine = require("./deployment-engine.service");
 const deploymentSlot = require("../deployment-slot.service");
+const runtimeGroup = require("../runtime-group.service");
 
 class StackEngine {
   async deploy({ graph, deploymentId, workspace, repository, env }) {
@@ -34,21 +35,26 @@ class StackEngine {
           });
 
           deployments.push(runtime);
+          runtimeGroup.add(deploymentId, runtime.runtime);
         }
       }
     }
+    deployments.sort((a, b) => {
+      const order = {
+        backend: 1,
+        worker: 2,
+        frontend: 3,
+      };
 
+      return (order[a.runtime.type] || 99) - (order[b.runtime.type] || 99);
+    });
     return deployments;
   }
 
-  async deployNode({ node, deploymentId, workspace, repository, env , graph }) {
-   const slot = deploymentSlot.next(deploymentId);
+  async deployNode({ node, deploymentId, workspace, repository, env, graph }) {
+    const slot = deploymentSlot.next(deploymentId);
 
-const buildPlan = builderService.createBuildPlan(
-    node,
-    deploymentId,
-    slot
-);
+    const buildPlan = builderService.createBuildPlan(node, deploymentId, slot);
 
     const runtime = await deploymentEngine.deploy({
       engine: "docker",

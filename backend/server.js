@@ -9,7 +9,7 @@ const { initSocket } = require("./config/socket");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const deploymentServicesRoutes = require("./routes/deployment-services.routes");
 const runtimeMonitor = require("./services/runtime-monitor.service");
-console.log("🔥 SERVER FILE:", __filename);
+
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
   processOneClickDeployment,
@@ -113,6 +113,10 @@ app.use("/api/deployments", deploymentServicesRoutes);
 app.use("/api/deployments", require("./routes/runtime-action.routes"));
 app.use("/api/deployments", require("./routes/runtime.routes"));
 app.use("/api/deployments", require("./routes/traffic.routes"));
+app.use("/api/deployments", require("./routes/rollback.routes"));
+app.use("/api/deployments", require("./routes/deployment-event.routes"));
+app.use("/api/deployments", require("./routes/runtime-status.routes"));
+app.use("/api/deployments", require("./routes/runtime-group.routes"));
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {
@@ -125,6 +129,19 @@ app.use((req, res) => {
 });
 
 runtimeMonitor.start();
+
+process.on("SIGINT", async () => {
+  console.log("🛑 Shutting down...");
+
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("🛑 Shutting down...");
+
+  process.exit(0);
+});
+
 // --- 6. SERVER START ---
 const PORT = 8080;
 server.listen(PORT, () => {

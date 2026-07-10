@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const logger = require("./logger.service");
 
 class RuntimeRegistryService {
   async register({
@@ -68,6 +69,7 @@ class RuntimeRegistryService {
         containerPort,
         slot,
       ],
+      logger.deployment(deploymentId, `📦 Registered ${name}`),
     );
   }
 }

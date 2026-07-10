@@ -1,3 +1,4 @@
+
 class RollbackService {
   constructor() {
     this.history = new Map();
@@ -10,10 +11,13 @@ class RollbackService {
   */
 
   save(runtime) {
-    this.history.set(
-      runtime.deploymentId,
-      runtime
-    );
+    const previous = this.history.get(runtime.deploymentId);
+
+    if (previous?.slot === runtime.slot) {
+      return;
+    }
+
+    this.history.set(runtime.deploymentId, runtime);
   }
 
   /*

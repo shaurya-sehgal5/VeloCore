@@ -25,5 +25,6 @@ Single Live Runtime
 */
 
 router.get("/runtime/:deploymentId", runtimeController.get);
-
+router.get("/:deploymentId/group", runtimeController.group);
+router.get("/all", runtimeController.all);
 module.exports = router;

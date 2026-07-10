@@ -1,6 +1,6 @@
 const runtimeQueryService = require("../services/runtime-query.service");
 const runtimeManager = require("../services/runtime-manager.service");
-
+const runtimeQuery = require("../services/runtime-query.service");
 /*
 ------------------------------------
 Deployment Runtime (Database)
@@ -49,4 +49,24 @@ exports.get = (req, res) => {
   }
 
   res.json(runtime);
+};
+exports.group = async (req, res) => {
+  try {
+    const runtimes = await runtimeQuery.group(req.params.deploymentId);
+
+    res.json(runtimes);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+};
+exports.all = async (req, res) => {
+  try {
+    res.json(await runtimeQuery.all());
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
 };

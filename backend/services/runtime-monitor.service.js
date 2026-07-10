@@ -1,5 +1,5 @@
 const { spawn, exec } = require("child_process");
-
+const runtimeStatus = require("./runtime-status.service");
 const logger = require("./logger.service");
 const statusService = require("./status.service");
 const cleanupService = require("./cleanup.service");
@@ -28,7 +28,10 @@ class RuntimeMonitorService {
       );
 
       runtimeManager.remove(deploymentId);
-
+      runtimeStatus.publish(deploymentId, {
+        type: "runtime_exit",
+        exitCode,
+      });
       await statusService.update(deploymentId, "FAILED");
 
       await cleanupService.failed({
@@ -85,6 +88,18 @@ class RuntimeMonitorService {
                   lastMetricsUpdate: Date.now(),
                 },
               );
+
+              runtimeStatus.publish(runtime.deploymentId, {
+                type: "metrics",
+                metrics: {
+                  cpu: stats.CPUPerc,
+                  memory: stats.MemUsage,
+                  memoryPercent: stats.MemPerc,
+                  network: stats.NetIO,
+                  blockIO: stats.BlockIO,
+                  pids: stats.PIDs,
+                },
+              });
             } catch {}
           },
         );
