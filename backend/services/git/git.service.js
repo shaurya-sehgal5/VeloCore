@@ -1,7 +1,7 @@
 const simpleGit = require("simple-git");
 const fs = require("fs-extra");
 
-const logger = require("./logger.service");
+const logger = require("../monitoring/logger.service");
 
 class GitService {
 

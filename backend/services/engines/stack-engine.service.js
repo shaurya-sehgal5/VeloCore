@@ -1,7 +1,7 @@
-const builderService = require("../builder.service");
+const builderService = require("../docker/builder.service");
 const deploymentEngine = require("./deployment-engine.service");
-const deploymentSlot = require("../deployment-slot.service");
-const runtimeGroup = require("../runtime-group.service");
+const deploymentSlot = require("../deployment/deployment-slot.service");
+const runtimeGroup = require("../runtime/runtime-group.service");
 
 class StackEngine {
   async deploy({ graph, deploymentId, workspace, repository, env }) {

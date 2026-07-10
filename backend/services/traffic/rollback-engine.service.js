@@ -1,8 +1,8 @@
 const rollbackService = require("./rollback.service");
-const dockerService = require("./docker.service");
+const dockerService = require("../docker/docker.service");
 const trafficSwitch = require("./traffic-switch.service");
-const logger = require("./logger.service");
-const runtimeStatus = require("./runtime-status.service");
+const logger = require("../monitoring/logger.service");
+const runtimeStatus = require("../runtime/runtime-status.service");
 
 class RollbackEngine {
   async rollback(deploymentId) {

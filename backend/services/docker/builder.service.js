@@ -54,7 +54,7 @@ class BuilderService {
 
           dockerfile: path.join(
             __dirname,
-            "../templates/Frontend.Dockerfile"
+            "../../templates/Frontend.Dockerfile"
           ),
 
           buildContext: path.relative(
@@ -71,7 +71,7 @@ class BuilderService {
 
           dockerfile: path.join(
             __dirname,
-            "../templates/Backend.Dockerfile"
+            "../../templates/Backend.Dockerfile"
           ),
 
           buildContext: path.relative(
@@ -88,7 +88,7 @@ class BuilderService {
 
           dockerfile: path.join(
             __dirname,
-            "../templates/Backend.Dockerfile"
+            "../../templates/Backend.Dockerfile"
           ),
 
           buildContext: path.relative(

@@ -1,7 +1,7 @@
 const { Queue, Worker } = require("bullmq");
 const IORedis = require("ioredis");
 
-const deploymentOrchestrator = require("../services/deployment.orchestrator");
+const deploymentOrchestrator = require("../services/deployment/deployment.orchestrator");
 
 const redisConnection = new IORedis({
     host: "127.0.0.1",

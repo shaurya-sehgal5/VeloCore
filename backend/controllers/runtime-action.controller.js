@@ -1,8 +1,8 @@
-const restartService = require("../services/restart.service");
-const stopService = require("../services/stop.service");
-const destroyService = require("../services/destroy.service");
-const logsService = require("../services/logs.service");
-const statsService = require("../services/stats.service");
+const restartService = require("../services/runtime/restart.service");
+const stopService = require("../services/runtime/stop.service");
+const destroyService = require("../services/runtime/destroy.service");
+const logsService = require("../services/runtime/logs.service");
+const statsService = require("../services/runtime/stats.service");
 
 exports.restart = async (req, res) => {
   try {

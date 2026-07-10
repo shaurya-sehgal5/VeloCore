@@ -1,4 +1,4 @@
-const deploymentQueryService = require("../services/deployment-query.service");
+const deploymentQueryService = require("../services/deployment/deployment-query.service");
 
 exports.getServices = async (req, res) => {
 

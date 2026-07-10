@@ -1,4 +1,4 @@
-const runtimeGroup = require("../services/runtime-group.service");
+const runtimeGroup = require("../services/runtime/runtime-group.service");
 
 exports.list = (req, res) => {
   const runtimes = runtimeGroup.get(

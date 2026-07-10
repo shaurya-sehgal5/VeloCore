@@ -1,13 +1,13 @@
-const logger = require("./logger.service");
-const gitService = require("./git.service");
-const workspaceService = require("./workspace.service");
-const cleanupService = require("./cleanup.service");
-const statusService = require("./status.service");
+const logger = require("../monitoring/logger.service");
+const gitService = require("../git/git.service");
+const workspaceService = require("../git/workspace.service");
+const cleanupService = require("../docker/cleanup.service");
+const statusService = require("../monitoring/status.service");
 
-const { scanRepository } = require("./scanner.service");
+const { scanRepository } = require("../git/scanner.service");
 
-const repositoryGraph = require("./graph/repository-graph.service");
-const stackEngine = require("./engines/stack-engine.service");
+const repositoryGraph = require("../graph/repository-graph.service");
+const stackEngine = require("../engines/stack-engine.service");
 
 class DeploymentOrchestrator {
   async deploy({ repoUrl, githubToken, deploymentId, env = {} }) {

@@ -1,8 +1,8 @@
 const { spawn, exec } = require("child_process");
 const runtimeStatus = require("./runtime-status.service");
-const logger = require("./logger.service");
-const statusService = require("./status.service");
-const cleanupService = require("./cleanup.service");
+const logger = require("../monitoring/logger.service");
+const statusService = require("../monitoring/status.service");
+const cleanupService = require("../docker/cleanup.service");
 const runtimeManager = require("./runtime-manager.service");
 
 class RuntimeMonitorService {

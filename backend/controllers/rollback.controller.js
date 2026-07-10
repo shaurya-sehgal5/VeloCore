@@ -1,4 +1,4 @@
-const rollbackEngine = require("../services/rollback-engine.service");
+const rollbackEngine = require("../services/traffic/rollback-engine.service");
 
 exports.rollback = async (req, res) => {
   try {

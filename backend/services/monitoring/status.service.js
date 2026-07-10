@@ -1,6 +1,6 @@
-const db = require("../config/db");
-const { getIO } = require("../config/socket");
-const runtimeStatus = require("./runtime-status.service");
+const db = require("../../config/db");
+const { getIO } = require("../../config/socket");
+const runtimeStatus = require("../runtime/runtime-status.service");
 const logger = require("./logger.service");
 class StatusService {
   async update(deploymentId, status) {

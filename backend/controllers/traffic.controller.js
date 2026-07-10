@@ -1,4 +1,4 @@
-const traffic = require("../services/traffic-switch.service");
+const traffic = require("../services/traffic/traffic-switch.service");
 
 exports.switch = async (req, res) => {
   try {

@@ -8,12 +8,12 @@ const authRoutes = require("./routes/auth.routes");
 const { initSocket } = require("./config/socket");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const deploymentServicesRoutes = require("./routes/deployment-services.routes");
-const runtimeMonitor = require("./services/runtime-monitor.service");
+const runtimeMonitor = require("./services/runtime/runtime-monitor.service");
 
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
   processOneClickDeployment,
-} = require("./services/deployment.orchestrator");
+} = require("./services/deployment/deployment.orchestrator");
 
 const app = express();
 const server = http.createServer(app);

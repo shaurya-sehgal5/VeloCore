@@ -1,4 +1,4 @@
-const db = require("../config/db");
+const db = require("../../config/db");
 
 class TrafficSwitchService {
   async switch(deploymentId, slot) {

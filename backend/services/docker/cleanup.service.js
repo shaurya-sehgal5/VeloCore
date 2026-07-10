@@ -1,7 +1,7 @@
 const fs = require("fs-extra");
-const runtimeStatus = require("./runtime-status.service");
+const runtimeStatus = require("../runtime/runtime-status.service");
 const dockerService = require("./docker.service");
-const logger = require("./logger.service");
+const logger = require("../monitoring/logger.service");
 
 class CleanupService {
   async success(workspace) {

@@ -1,6 +1,6 @@
-const { getIO } = require("../config/socket");
-const events = require("./deployment-event.service");
-const runtimeStatus = require("./runtime-status.service");
+const { getIO } = require("../../config/socket");
+const events = require("../deployment/deployment-event.service");
+const runtimeStatus = require("../runtime/runtime-status.service");
 
 class LoggerService {
   log(level, message) {

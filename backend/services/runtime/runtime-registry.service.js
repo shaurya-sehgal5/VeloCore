@@ -1,35 +1,73 @@
-class RuntimeRegistry {
+const db = require("../../config/db");
+const logger = require("../monitoring/logger.service");
 
-    constructor() {
+class RuntimeRegistryService {
+  async register({
+    deploymentId,
+    name,
+    type,
+    framework,
+    imageName,
+    containerName,
+    hostPort,
+    containerPort,
+    slot,
+  }) {
+    /*
+        ------------------------------------
+        Prevent Duplicate Registration
+        ------------------------------------
+        */
 
-        this.runtimes = new Map();
+    await db.query(
+      `
+            DELETE FROM deployment_services
+            WHERE deployment_id = $1
+            AND name = $2
+            `,
 
-    }
+      [deploymentId, name],
+    );
 
-    add(runtime) {
+    /*
+        ------------------------------------
+        Register Runtime
+        ------------------------------------
+        */
 
-        this.runtimes.set(
+    await db.query(
+      `
+  INSERT INTO deployment_services (
+      deployment_id,
+      name,
+      type,
+      framework,
+      image_name,
+      container_name,
+      host_port,
+      container_port,
+      status,
+      slot
+  )
+  VALUES (
+      $1,$2,$3,$4,$5,$6,$7,$8,'RUNNING',$9
+  )
+  `,
+      [
+        deploymentId,
+        name,
+        type,
+        framework,
+        imageName,
+        containerName,
+        hostPort,
+        containerPort,
+        slot,
+      ],
+    );
 
-            runtime.deploymentId,
-
-            runtime
-
-        );
-
-    }
-
-    get(id) {
-
-        return this.runtimes.get(id);
-
-    }
-
-    remove(id) {
-
-        this.runtimes.delete(id);
-
-    }
-
+    logger.deployment(deploymentId, `📦 Registered ${name}`);
+  }
 }
 
-module.exports = new RuntimeRegistry();
+module.exports = new RuntimeRegistryService();

@@ -3,7 +3,7 @@ const dependencyAnalyzer = require("./dependency-analyzer.service");
 const graphValidator = require("./graph-validator.service");
 const deploymentOrderService = require("./deployment-order.service");
 const deploymentPlanService = require("./deployment-plan.service");
-const dockerfileMapper = require("../dockerfile-mapper.service");
+const dockerfileMapper = require("../git/dockerfile-mapper.service");
 
 class RepositoryGraphService {
   build(repository) {

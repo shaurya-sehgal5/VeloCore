@@ -1,6 +1,6 @@
-const runtimeQueryService = require("../services/runtime-query.service");
-const runtimeManager = require("../services/runtime-manager.service");
-const runtimeQuery = require("../services/runtime-query.service");
+const runtimeQueryService = require("../services/runtime/runtime-query.service");
+const runtimeManager = require("../services/runtime/runtime-manager.service");
+const runtimeQuery = require("../services/runtime/runtime-query.service");
 /*
 ------------------------------------
 Deployment Runtime (Database)

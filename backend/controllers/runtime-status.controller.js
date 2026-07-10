@@ -1,4 +1,4 @@
-const runtimeStatus = require("../services/runtime-status.service");
+const runtimeStatus = require("../services/runtime/runtime-status.service");
 
 exports.stream = (req, res) => {
 

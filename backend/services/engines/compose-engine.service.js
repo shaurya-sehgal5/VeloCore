@@ -1,8 +1,8 @@
-const dockerService = require("../docker.service");
-const composeParser = require("../compose-parser.service");
+const dockerService = require("../docker/docker.service");
+const composeParser = require("../git/compose-parser.service");
 const composeRuntime = require("../runtime/compose-runtime.service");
-const logger = require("../logger.service");
-const statusService = require("../status.service");
+const logger = require("../monitoring/logger.service");
+const statusService = require("../monitoring/status.service");
 
 class ComposeEngine {
   async deploy({

@@ -1,4 +1,4 @@
-const dockerService = require("./docker.service");
+const dockerService = require("../docker/docker.service");
 const runtimeResolver = require("./runtime-resolver.service");
 
 class StatsService {

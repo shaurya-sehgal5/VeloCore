@@ -1,6 +1,6 @@
-const dockerService = require("./docker.service");
+const dockerService = require("../docker/docker.service");
 const runtimeResolver = require("./runtime-resolver.service");
-const db = require("../config/db");
+const db = require("../../config/db");
 
 class StopService {
   async stop(deploymentId) {

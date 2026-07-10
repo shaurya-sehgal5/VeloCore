@@ -1,4 +1,4 @@
-const envService = require("../services/env.service");
+const envService = require("../config/env.service");
 
 class EnvController {
 

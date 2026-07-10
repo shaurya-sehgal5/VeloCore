@@ -1,4 +1,4 @@
-const service = require("../services/deployment-event.service");
+const service = require("../services/deployment/deployment-event.service");
 
 exports.list = async (req, res) => {
   try {

@@ -1,10 +1,9 @@
-const registryService = require("../registry.service");
-const runtimeLogService = require("../runtime-log.service");
-const runtimeMonitorService = require("../runtime-monitor.service");
-const healthService = require("../health.service");
-const statusService = require("../status.service");
-const logger = require("../logger.service");
-const runtimeRegistry = require("./runtime-registry.service");
+
+const runtimeLogService = require("./runtime-log.service");
+const runtimeMonitorService = require("./runtime-monitor.service");
+const healthService = require("../monitoring/health.service");
+const statusService = require("../monitoring/status.service");
+const logger = require("../monitoring/logger.service");
 
 class RuntimePipeline {
   async start(runtime) {
@@ -24,23 +23,14 @@ class RuntimePipeline {
 
     logger.deployment(deploymentId, "🚀 Runtime created.");
 
-    runtimeRegistry.add(runtime);
+  
     
     await healthService.waitUntilHealthy({
       hostPort,
       deploymentId,
     });
 
-  await registryService.register({
-    deploymentId,
-    name: runtime.project,
-    type: runtime.type,
-    framework: runtime.framework,
-    imageName,
-    containerName,
-    hostPort,
-    containerPort,
-});
+ 
     runtimeLogService.stream(containerName, deploymentId);
 
     runtimeMonitorService.monitor({
