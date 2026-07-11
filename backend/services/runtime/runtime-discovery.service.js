@@ -1,5 +1,6 @@
 const dockerService = require("../docker/docker.service");
 const runtimeManager = require("./runtime-manager.service");
+const metrics = require("../monitoring/metrics.service");
 
 class RuntimeDiscoveryService {
   async recover() {
@@ -35,6 +36,10 @@ class RuntimeDiscoveryService {
     console.log(
       `✅ Recovered ${runtimeManager.list().length} runtime(s).`,
     );
+
+    metrics.runtimeCount.set(
+    runtimeManager.list().length
+);
   }
 }
 

@@ -1,24 +1,24 @@
 const client = require("./prometheus.service");
 
 const deployments = new client.Counter({
-    name: "velocore_deployments_total",
-    help: "Total deployments"
+  name: "velocore_deployments_total",
+  help: "Total deployments",
 });
 
 const failedDeployments = new client.Counter({
-    name: "velocore_failed_deployments_total",
-    help: "Failed deployments"
+  name: "velocore_failed_deployments_total",
+  help: "Failed deployments",
 });
 
 const runningDeployments = new client.Gauge({
-    name: "velocore_running_deployments",
-    help: "Running deployments"
+  name: "velocore_running_deployments",
+  help: "Running deployments",
 });
 
 const buildDuration = new client.Histogram({
-    name: "velocore_build_duration_seconds",
-    help: "Deployment duration",
-    buckets: [1,5,10,20,30,60,120]
+  name: "velocore_build_duration_seconds",
+  help: "Deployment duration",
+  buckets: [1, 5, 10, 20, 30, 60, 120],
 });
 
 const queueJobs = new client.Gauge({
@@ -27,25 +27,63 @@ const queueJobs = new client.Gauge({
 });
 
 const runtimeCount = new client.Gauge({
+  name: "velocore_runtime_count",
 
-  name:"velocore_runtime_count",
+  help: "Running runtime containers",
+});
 
-  help:"Running runtime containers"
+const containerCpu = new client.Gauge({
+  name: "velocore_container_cpu_percent",
+  help: "Container CPU usage percentage",
+  labelNames: ["deployment", "project"],
+});
 
+const containerMemory = new client.Gauge({
+  name: "velocore_container_memory_bytes",
+  help: "Container memory usage in bytes",
+  labelNames: ["deployment", "project"],
+});
+
+const containerNetworkRx = new client.Gauge({
+  name: "velocore_container_network_receive_bytes",
+  help: "Container network received bytes",
+  labelNames: ["deployment", "project"],
+});
+
+const containerNetworkTx = new client.Gauge({
+  name: "velocore_container_network_transmit_bytes",
+  help: "Container network transmitted bytes",
+  labelNames: ["deployment", "project"],
+});
+
+const containerPids = new client.Gauge({
+  name: "velocore_container_pids",
+  help: "Container running processes",
+  labelNames: ["deployment", "project"],
 });
 
 module.exports = {
-    client,
+  client,
 
-    deployments,
+  deployments,
 
-    failedDeployments,
+  failedDeployments,
 
-    runningDeployments,
+  runningDeployments,
 
-    buildDuration , 
+  buildDuration,
 
-    queueJobs,
+  queueJobs,
 
-    runtimeCount,
+  runtimeCount,
+
+  containerCpu,
+
+  containerMemory,
+
+  containerNetworkRx,
+
+  containerNetworkTx,
+
+  containerPids,
 };

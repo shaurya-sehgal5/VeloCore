@@ -5,6 +5,29 @@ const statusService = require("../monitoring/status.service");
 const cleanupService = require("../docker/cleanup.service");
 const runtimeManager = require("./runtime-manager.service");
 const dockerMetrics = require("../monitoring/docker-metrics.service");
+const metrics = require("../monitoring/metrics.service");
+
+function memoryToBytes(memory) {
+  const value = memory.split("/")[0].trim();
+
+  const number = parseFloat(value);
+
+  if (value.endsWith("KiB")) return number * 1024;
+  if (value.endsWith("MiB")) return number * 1024 * 1024;
+  if (value.endsWith("GiB")) return number * 1024 * 1024 * 1024;
+
+  return number;
+}
+
+function networkToBytes(value) {
+  const number = parseFloat(value);
+
+  if (value.endsWith("kB")) return number * 1000;
+  if (value.endsWith("MB")) return number * 1000000;
+  if (value.endsWith("GB")) return number * 1000000000;
+
+  return number;
+}
 
 class RuntimeMonitorService {
   constructor() {
@@ -58,41 +81,60 @@ class RuntimeMonitorService {
   ------------------------------------
   */
 
-  start(interval = 60000) {
+  start(interval = 5000) {
     if (this.metricInterval) return;
 
     this.metricInterval = setInterval(async () => {
       const runtimes = runtimeManager.list();
 
       for (const runtime of runtimes) {
-        for (const runtime of runtimes) {
-          try {
-            const stats = await dockerMetrics.get(runtime.containerName);
+        try {
+          const stats = await dockerMetrics.get(runtime.containerName);
 
-            runtimeManager.update(
-              runtime.deploymentId,
-              runtime.project,
-              runtime.slot,
-              {
-                metrics: {
-                  cpu: stats.CPUPerc,
-                  memory: stats.MemUsage,
-                  memoryPercent: stats.MemPerc,
-                  network: stats.NetIO,
-                  blockIO: stats.BlockIO,
-                  pids: stats.PIDs,
-                  uptime: Math.floor((Date.now() - runtime.startedAt) / 1000),
-                },
+          runtimeManager.update(
+            runtime.deploymentId,
+            runtime.project,
+            runtime.slot,
+            {
+              metrics: {
+                cpu: stats.CPUPerc,
+                memory: stats.MemUsage,
+                memoryPercent: stats.MemPerc,
+                network: stats.NetIO,
+                blockIO: stats.BlockIO,
+                pids: stats.PIDs,
+                uptime: Math.floor((Date.now() - runtime.startedAt) / 1000),
               },
-            );
-          } catch (err) {
-            logger.deployment(
-              runtime.deploymentId,
-              `Metrics Error: ${err.message}`,
-            );
-          }
-        }
+            },
+          );
 
+          metrics.containerCpu
+            .labels(runtime.deploymentId, runtime.project)
+            .set(parseFloat(stats.CPUPerc));
+
+          metrics.containerPids
+            .labels(runtime.deploymentId, runtime.project)
+            .set(parseInt(stats.PIDs));
+
+          metrics.containerMemory
+            .labels(runtime.deploymentId, runtime.project)
+            .set(memoryToBytes(stats.MemUsage));
+
+          const [rx, tx] = stats.NetIO.split("/").map((v) => v.trim());
+
+          metrics.containerNetworkRx
+            .labels(runtime.deploymentId, runtime.project)
+            .set(networkToBytes(rx));
+
+          metrics.containerNetworkTx
+            .labels(runtime.deploymentId, runtime.project)
+            .set(networkToBytes(tx));
+        } catch (err) {
+          logger.deployment(
+            runtime.deploymentId,
+            `Metrics Error: ${err.message}`,
+          );
+        }
       }
     }, interval);
   }
