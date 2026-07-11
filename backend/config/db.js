@@ -11,7 +11,7 @@ const pool = new Pool({
 
 // Explicit event validation listeners to track the pool integrity
 pool.on('connect', () => {
-  console.log('✅ PostgreSQL Shared Infrastructure Connected Successfully.');
+  console.log('');
 });
 
 pool.on('error', (err) => {

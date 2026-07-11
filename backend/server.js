@@ -9,6 +9,7 @@ const { initSocket } = require("./config/socket");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const deploymentServicesRoutes = require("./routes/deployment-services.routes");
 const runtimeMonitor = require("./services/runtime/runtime-monitor.service");
+const redeployRoutes = require("./routes/redeploy.routes");
 
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
@@ -117,6 +118,7 @@ app.use("/api/deployments", require("./routes/rollback.routes"));
 app.use("/api/deployments", require("./routes/deployment-event.routes"));
 app.use("/api/deployments", require("./routes/runtime-status.routes"));
 app.use("/api/deployments", require("./routes/runtime-group.routes"));
+app.use("/api/deploy/redeploy", redeployRoutes);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {

@@ -54,6 +54,53 @@ exports.deployProject = async (req, res) => {
     const deploymentId = uuidv4();
     const deploymentUrl = `http://localhost:8000/visit/${deploymentId}`;
 
+    let finalProjectId = projectId;
+
+    if (!finalProjectId) {
+      const { rows } = await db.query(
+        `
+    INSERT INTO projects
+    (
+      user_id,
+      name,
+      repo_url,
+      branch
+    )
+    VALUES
+    (
+      $1,$2,$3,'main'
+    )
+    RETURNING id
+    `,
+        [userId, repoName, cloneUrl],
+      );
+
+      finalProjectId = rows[0].id;
+    }
+    
+
+    if (!finalProjectId) {
+      const { rows } = await db.query(
+        `
+    INSERT INTO projects
+    (
+      user_id,
+      name,
+      repo_url,
+      branch
+    )
+    VALUES
+    (
+      $1,$2,$3,'main'
+    )
+    RETURNING id
+    `,
+        [userId, repoName, cloneUrl],
+      );
+
+      finalProjectId = rows[0].id;
+    }
+
     await db.query(
       `
     INSERT INTO deployments (
@@ -79,14 +126,7 @@ exports.deployProject = async (req, res) => {
         NOW()
     )
     `,
-      [
-        deploymentId,
-        projectId || null,
-        userId,
-        repoName,
-        cloneUrl,
-        deploymentUrl,
-      ],
+      [deploymentId, finalProjectId, userId, repoName, cloneUrl, deploymentUrl],
     );
 
     await buildQueue.add(
