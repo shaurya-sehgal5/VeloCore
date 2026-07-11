@@ -37,7 +37,33 @@ class DockerService {
       });
     });
   }
+  executeSilent(command, args) {
+    return new Promise((resolve, reject) => {
+      const child = spawn(command, args, {
+        shell: false,
+      });
 
+      let output = "";
+
+      child.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+
+      child.stderr.on("data", (data) => {
+        output += data.toString();
+      });
+
+      child.on("error", reject);
+
+      child.on("close", (code) => {
+        if (code !== 0) {
+          return reject(new Error(output));
+        }
+
+        resolve(output);
+      });
+    });
+  }
   async buildImage({
     imageName,
 
@@ -83,6 +109,34 @@ class DockerService {
     deploymentId,
   }) {
     const args = ["run", "-d", "--name", containerName];
+    args.push(
+      "--label",
+      "velocore=true",
+
+      "--label",
+      `deploymentId=${deploymentId}`,
+
+      "--label",
+      `project=${buildPlan.projectName}`,
+
+      "--label",
+      `slot=${buildPlan.slot}`,
+
+      "--label",
+      `framework=${buildPlan.framework}`,
+
+      "--label",
+      `type=${buildPlan.type}`,
+
+      "--label",
+      `hostPort=${hostPort}`,
+
+      "--label",
+      `containerPort=${containerPort}`,
+
+      "--label",
+      `imageName=${imageName}`,
+    );
 
     if (network) {
       args.push("--network", network);
@@ -110,13 +164,11 @@ class DockerService {
 
     logger.deployment(deploymentId, "🚀 Starting Container...");
 
-logger.deployment(
+    logger.deployment(
+      deploymentId,
 
-    deploymentId,
-
-    `🌱 Injecting ${Object.keys(env || {}).length} environment variable(s).`
-
-);
+      `🌱 Injecting ${Object.keys(env || {}).length} environment variable(s).`,
+    );
 
     return new Promise((resolve, reject) => {
       const process = spawn("docker", args);
@@ -187,6 +239,22 @@ logger.deployment(
 
       ["network", "rm", network],
     );
+  }
+ async listContainers() {
+  const output = await this.executeSilent("docker", [
+      "ps",
+      "-q",
+      "--filter",
+      "label=velocore=true",
+    ]);
+
+    return output.trim().split("\n").filter(Boolean);
+  }
+
+ async inspectContainer(containerId) {
+  const output = await this.executeSilent("docker", ["inspect", containerId]);
+
+    return JSON.parse(output)[0];
   }
 }
 

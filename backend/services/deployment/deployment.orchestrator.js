@@ -3,9 +3,8 @@ const gitService = require("../git/git.service");
 const workspaceService = require("../git/workspace.service");
 const cleanupService = require("../docker/cleanup.service");
 const statusService = require("../monitoring/status.service");
-
+const metrics = require("../monitoring/metrics.service");
 const { scanRepository } = require("../git/scanner.service");
-
 const repositoryGraph = require("../graph/repository-graph.service");
 const stackEngine = require("../engines/stack-engine.service");
 
@@ -15,7 +14,9 @@ class DeploymentOrchestrator {
 
     try {
       logger.deployment(deploymentId, "🚀 Starting deployment...");
+      const timer = metrics.buildDuration.startTimer();
 
+      metrics.deployments.inc();
       /*
             ----------------------------------
             Create Workspace
@@ -46,36 +47,30 @@ class DeploymentOrchestrator {
             ----------------------------------
             */
 
-     await statusService.update(deploymentId, "SCANNING");
+      await statusService.update(deploymentId, "SCANNING");
 
-const repository = scanRepository(repositoryPath);
+      const repository = scanRepository(repositoryPath);
 
-logger.deployment(
-    deploymentId,
-    `🔍 ${repository.projects.length} deployable project(s) detected`
-);
+      logger.deployment(
+        deploymentId,
+        `🔍 ${repository.projects.length} deployable project(s) detected`,
+      );
 
-const graph = repositoryGraph.build(repository);
+      const graph = repositoryGraph.build(repository);
 
-logger.deployment(
-    deploymentId,
-    "📊 Deployment Graph Created"
-);
+      logger.deployment(deploymentId, "📊 Deployment Graph Created");
 
-logger.deployment(
-    deploymentId,
-    `Frontend : ${graph.frontend?.name || "None"}`
-);
+      logger.deployment(
+        deploymentId,
+        `Frontend : ${graph.frontend?.name || "None"}`,
+      );
 
-logger.deployment(
-    deploymentId,
-    `Backend : ${graph.backend?.name || "None"}`
-);
+      logger.deployment(
+        deploymentId,
+        `Backend : ${graph.backend?.name || "None"}`,
+      );
 
-logger.deployment(
-    deploymentId,
-    `Workers : ${graph.workers.length}`
-);
+      logger.deployment(deploymentId, `Workers : ${graph.workers.length}`);
 
       /*
             ----------------------------------
@@ -105,6 +100,9 @@ logger.deployment(
 
       logger.deployment(deploymentId, "🎉 Deployment Finished Successfully.");
 
+      metrics.runningDeployments.inc();
+
+      timer();
       return {
         success: true,
 
@@ -126,7 +124,9 @@ logger.deployment(
           deploymentId,
         });
       }
+      metrics.failedDeployments.inc();
 
+      timer();
       throw error;
     }
   }

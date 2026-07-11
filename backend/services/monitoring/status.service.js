@@ -2,6 +2,8 @@ const db = require("../../config/db");
 const { getIO } = require("../../config/socket");
 const runtimeStatus = require("../runtime/runtime-status.service");
 const logger = require("./logger.service");
+const metrics = require("./metrics.service");
+
 class StatusService {
   async update(deploymentId, status) {
     await db.query(
@@ -14,6 +16,16 @@ class StatusService {
             `,
       [status, deploymentId],
     );
+    switch (status) {
+      case "RUNNING":
+        metrics.runningDeployments.inc();
+        break;
+
+      case "FAILED":
+        metrics.failedDeployments.inc();
+        break;
+    }
+
     logger.deployment(deploymentId, `Status -> ${status}`);
     try {
       runtimeStatus.publish(deploymentId, {

@@ -1,93 +1,76 @@
 const { Queue, Worker } = require("bullmq");
 const IORedis = require("ioredis");
-
+const metrics = require("../services/monitoring/metrics.service");
 const deploymentOrchestrator = require("../services/deployment/deployment.orchestrator");
 
 const redisConnection = new IORedis({
-    host: "127.0.0.1",
-    port: 6379,
-    maxRetriesPerRequest: null
+  host: "127.0.0.1",
+  port: 6379,
+  maxRetriesPerRequest: null,
 });
 
-const buildQueue = new Queue(
-    "production-build-queue",
-    {
-        connection: redisConnection
-    }
-);
+const buildQueue = new Queue("production-build-queue", {
+  connection: redisConnection,
+});
+
+setInterval(async () => {
+  const waiting = await buildQueue.getWaitingCount();
+
+  metrics.queueJobs.set(waiting);
+}, 5000);
 
 const buildWorker = new Worker(
+  "production-build-queue",
 
-    "production-build-queue",
+  async (job) => {
+    const {
+      deploymentId,
 
-    async (job) => {
+      cloneUrl,
 
-        const {
+      githubToken,
 
-            deploymentId,
+      io,
 
-            cloneUrl,
+      env = {},
+    } = job.data;
 
-            githubToken,
+    console.log(`🚀 Processing Deployment ${deploymentId}`);
 
-            io,
+    metrics.deployments.inc();
 
-            env = {}
+    return await deploymentOrchestrator.deploy({
+      repoUrl: cloneUrl,
 
-        } = job.data;
+      githubToken,
 
-        console.log(
-            `🚀 Processing Deployment ${deploymentId}`
-        );
+      deploymentId,
 
-        return await deploymentOrchestrator.deploy({
+      io,
 
-            repoUrl: cloneUrl,
+      env,
+    });
+  },
 
-            githubToken,
+  {
+    connection: redisConnection,
 
-            deploymentId,
-
-            io,
-
-            env
-
-        });
-
-    },
-
-    {
-
-        connection: redisConnection,
-
-        concurrency: 1
-
-    }
-
+    concurrency: 1,
+  },
 );
 
-buildWorker.on("completed", job => {
-
-    console.log(
-        `✅ Job ${job.id} completed`
-    );
-
+buildWorker.on("completed", (job) => {
+  console.log(`✅ Job ${job.id} completed`);
 });
 
 buildWorker.on("failed", (job, err) => {
+  console.error(
+    `❌ Job ${job?.id} failed`,
 
-    console.error(
-
-        `❌ Job ${job?.id} failed`,
-
-        err.message
-
-    );
-
+    err.message,
+  );
 });
 
 module.exports = {
-
-    buildQueue
-
+  buildQueue,
 };

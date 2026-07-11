@@ -10,6 +10,8 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const deploymentServicesRoutes = require("./routes/deployment-services.routes");
 const runtimeMonitor = require("./services/runtime/runtime-monitor.service");
 const redeployRoutes = require("./routes/redeploy.routes");
+const metricsRoutes = require("./routes/metrics.routes");
+const runtimeDiscovery = require("./services/runtime/runtime-discovery.service");
 
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
@@ -119,6 +121,7 @@ app.use("/api/deployments", require("./routes/deployment-event.routes"));
 app.use("/api/deployments", require("./routes/runtime-status.routes"));
 app.use("/api/deployments", require("./routes/runtime-group.routes"));
 app.use("/api/deploy/redeploy", redeployRoutes);
+app.use("/metrics", metricsRoutes);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {
@@ -130,7 +133,11 @@ app.use((req, res) => {
     .json({ error: `The endpoint path ${req.url} does not exist.` });
 });
 
-runtimeMonitor.start();
+(async () => {
+  await runtimeDiscovery.recover();
+
+  runtimeMonitor.start();
+})();
 
 process.on("SIGINT", async () => {
   console.log("🛑 Shutting down...");

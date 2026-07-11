@@ -1,3 +1,5 @@
+const metrics = require("../monitoring/metrics.service");
+
 class RuntimeManager {
   constructor() {
     this.runtimes = new Map();
@@ -10,21 +12,23 @@ class RuntimeManager {
   */
 
   register(runtime) {
-  const key = `${runtime.deploymentId}:${runtime.project}:${runtime.slot}`;
+    const key = `${runtime.deploymentId}:${runtime.project}:${runtime.slot}`;
 
-  this.runtimes.set(key, {
-    ...runtime,
-    status: "RUNNING",
-    health: "UNKNOWN",
-    startedAt: Date.now(),
-    metrics: {
-      cpu: "0%",
-      memory: "0 MB",
-      network: "0 B",
-      uptime: 0,
-    },
-  });
-}
+    this.runtimes.set(key, {
+      ...runtime,
+      status: "RUNNING",
+      health: "UNKNOWN",
+      startedAt: Date.now(),
+      metrics: {
+        cpu: "0%",
+        memory: "0 MB",
+        network: "0 B",
+        uptime: 0,
+      },
+    });
+
+    metrics.runtimeCount.set(this.runtimes.size);
+  }
 
   /*
   ------------------------------------
@@ -32,39 +36,44 @@ class RuntimeManager {
   ------------------------------------
   */
 
- get(deploymentId, project, slot) {
-  return this.runtimes.get(
-    `${deploymentId}:${project}:${slot}`
-  );
-}
+  get(deploymentId, project, slot) {
+    return this.runtimes.get(
+      `${deploymentId}:${project}:${slot}`,
+    );
+  }
 
   /*
   ------------------------------------
   Update Runtime
   ------------------------------------
   */
-update(deploymentId, project, slot, values) {
-  const runtime = this.get(
-    deploymentId,
-    project,
-    slot
-  );
 
-  if (!runtime) return;
+  update(deploymentId, project, slot, values) {
+    const runtime = this.get(
+      deploymentId,
+      project,
+      slot,
+    );
 
-  Object.assign(runtime, values);
-}
+    if (!runtime) return;
+
+    Object.assign(runtime, values);
+  }
+
   /*
   ------------------------------------
   Remove Runtime
   ------------------------------------
   */
 
-remove(deploymentId, project, slot) {
-  this.runtimes.delete(
-    `${deploymentId}:${project}:${slot}`
-  );
-}
+  remove(deploymentId, project, slot) {
+    this.runtimes.delete(
+      `${deploymentId}:${project}:${slot}`,
+    );
+
+    metrics.runtimeCount.set(this.runtimes.size);
+  }
+
   /*
   ------------------------------------
   List

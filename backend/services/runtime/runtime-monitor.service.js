@@ -4,6 +4,7 @@ const logger = require("../monitoring/logger.service");
 const statusService = require("../monitoring/status.service");
 const cleanupService = require("../docker/cleanup.service");
 const runtimeManager = require("./runtime-manager.service");
+const dockerMetrics = require("../monitoring/docker-metrics.service");
 
 class RuntimeMonitorService {
   constructor() {
@@ -64,33 +65,15 @@ class RuntimeMonitorService {
       const runtimes = runtimeManager.list();
 
       for (const runtime of runtimes) {
-        exec(
-          `docker stats ${runtime.containerName} --no-stream --format "{{json .}}"`,
-          (err, stdout) => {
-            if (err || !stdout.trim()) return;
+        for (const runtime of runtimes) {
+          try {
+            const stats = await dockerMetrics.get(runtime.containerName);
 
-            try {
-              const stats = JSON.parse(stdout);
-
-              runtimeManager.update(
-                runtime.deploymentId,
-                runtime.project,
-                runtime.slot,
-                {
-                  metrics: {
-                    cpu: stats.CPUPerc,
-                    memory: stats.MemUsage,
-                    memoryPercent: stats.MemPerc,
-                    network: stats.NetIO,
-                    blockIO: stats.BlockIO,
-                    pids: stats.PIDs,
-                  },
-                  lastMetricsUpdate: Date.now(),
-                },
-              );
-
-              runtimeStatus.publish(runtime.deploymentId, {
-                type: "metrics",
+            runtimeManager.update(
+              runtime.deploymentId,
+              runtime.project,
+              runtime.slot,
+              {
                 metrics: {
                   cpu: stats.CPUPerc,
                   memory: stats.MemUsage,
@@ -98,11 +81,18 @@ class RuntimeMonitorService {
                   network: stats.NetIO,
                   blockIO: stats.BlockIO,
                   pids: stats.PIDs,
+                  uptime: Math.floor((Date.now() - runtime.startedAt) / 1000),
                 },
-              });
-            } catch {}
-          },
-        );
+              },
+            );
+          } catch (err) {
+            logger.deployment(
+              runtime.deploymentId,
+              `Metrics Error: ${err.message}`,
+            );
+          }
+        }
+
       }
     }, interval);
   }
