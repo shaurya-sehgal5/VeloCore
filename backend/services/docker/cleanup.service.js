@@ -7,47 +7,56 @@ class CleanupService {
   async success(workspace) {
     if (!workspace) return;
 
-    await fs.remove(workspace.path);
+    // Keep workspace for debugging
+    // await fs.remove(workspace.path);
   }
+
+  /*
+  ------------------------------------
+  Runtime Cleanup
+  ------------------------------------
+  */
 
   async runtime(runtime) {
-    try {
-      await dockerService.removeContainer(runtime.containerName);
-    } catch {}
+    logger.deployment(
+      runtime.deploymentId,
+      "⚠ Runtime cleanup skipped (debug mode).",
+    );
 
-    try {
-      await dockerService.removeImage(runtime.imageName);
-    } catch {}
+    // await dockerService.removeContainer(runtime.containerName);
+    // await dockerService.removeImage(runtime.imageName);
   }
+
+  /*
+  ------------------------------------
+  Failed Deployment Cleanup
+  ------------------------------------
+  */
 
   async failed({
     workspace,
-
     containerName,
-
     imageName,
-
     deploymentId,
   }) {
-    logger.deployment(deploymentId, "🧹 Cleaning failed deployment...");
+    logger.deployment(
+      deploymentId,
+      "🧹 Cleanup skipped (debug mode).",
+    );
 
-    try {
-      if (containerName) {
-        await dockerService.removeContainer(containerName);
-      }
-    } catch {}
+    // Leave everything untouched for debugging
 
-    try {
-      if (imageName) {
-        await dockerService.removeImage(imageName);
-      }
-    } catch {}
+    // if (containerName) {
+    //   await dockerService.removeContainer(containerName);
+    // }
 
-    try {
-      if (workspace) {
-        await fs.remove(workspace.path);
-      }
-    } catch {}
+    // if (imageName) {
+    //   await dockerService.removeImage(imageName);
+    // }
+
+    // if (workspace) {
+    //   await fs.remove(workspace.path);
+    // }
 
     runtimeStatus.publish(deploymentId, {
       type: "cleanup",

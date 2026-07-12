@@ -12,7 +12,9 @@ const runtimeMonitor = require("./services/runtime/runtime-monitor.service");
 const redeployRoutes = require("./routes/redeploy.routes");
 const metricsRoutes = require("./routes/metrics.routes");
 const runtimeDiscovery = require("./services/runtime/runtime-discovery.service");
-
+const gitRoutes = require("./routes/git.routes");
+const githubWebhookRoutes = require("./routes/github-webhook.routes");
+require("dotenv").config();
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
   processOneClickDeployment,
@@ -28,7 +30,15 @@ const io = initSocket(server);
 app.set("io", io);
 
 // --- 1. GLOBAL MIDDLEWARES ---
+app.use(
+  "/api/github/webhook",
+  express.raw({
+    type: "application/json",
+  }),
+);
+
 app.use(express.json());
+
 app.use(cookieParser());
 app.use(
   cors({
@@ -122,6 +132,8 @@ app.use("/api/deployments", require("./routes/runtime-status.routes"));
 app.use("/api/deployments", require("./routes/runtime-group.routes"));
 app.use("/api/deploy/redeploy", redeployRoutes);
 app.use("/metrics", metricsRoutes);
+app.use("/api/git", gitRoutes);
+app.use("/api/github/webhook", githubWebhookRoutes);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {

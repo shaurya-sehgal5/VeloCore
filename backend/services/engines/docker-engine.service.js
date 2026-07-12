@@ -114,18 +114,24 @@ class DockerEngine {
 
     const deploymentEnv = await envService.get(deploymentId);
 
-    const runtime = await dockerService.runContainer({
-      imageName: buildPlan.imageName,
-      containerName,
-      hostPort,
-      containerPort: buildPlan.containerPort,
-      buildPlan,
-      env: {
-        ...deploymentEnv,
-        ...env,
-      },
-      deploymentId,
-    });
+const systemEnv = {
+  PORT: String(buildPlan.containerPort),
+  NODE_ENV: "production",
+};
+
+const runtime = await dockerService.runContainer({
+  imageName: buildPlan.imageName,
+  containerName,
+  hostPort,
+  containerPort: buildPlan.containerPort,
+  buildPlan,
+  env: {
+    ...systemEnv,
+    ...deploymentEnv,
+    ...env,
+  },
+  deploymentId,
+});
 
     logger.deployment(deploymentId, "🚀 Container Started");
 
@@ -136,35 +142,56 @@ class DockerEngine {
     };
   }
   //
-  async verifyHealth(deploymentId, hostPort, containerName) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+ async verifyHealth(deploymentId, hostPort, containerName) {
+  const maxRetries = 15;
 
+  for (let i = 1; i <= maxRetries; i++) {
     const healthy = await trafficHealth.verify(hostPort);
+
+    if (healthy) {
+      logger.deployment(
+        deploymentId,
+        `✅ Health Check Passed (${i}/${maxRetries})`,
+      );
+      return;
+    }
 
     logger.deployment(
       deploymentId,
-      healthy ? "✅ Health Check Passed" : "❌ Health Check Failed",
+      `⏳ Waiting for application... (${i}/${maxRetries})`,
     );
 
-    if (!healthy) {
-      const rollback = await rollbackEngine.rollback(deploymentId);
-
-      if (rollback) {
-        logger.deployment(
-          deploymentId,
-          `↩ Rolled back to ${rollback.slot.toUpperCase()}`,
-        );
-      }
-
-      await dockerService.execute(
-        "docker",
-        ["rm", "-f", containerName],
-        deploymentId,
-      );
-
-      throw new Error("Deployment failed health verification.");
-    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
+
+  logger.deployment(
+    deploymentId,
+    "❌ Health Check Failed",
+  );
+
+  const rollback = await rollbackEngine.rollback(deploymentId);
+
+  if (rollback) {
+    logger.deployment(
+      deploymentId,
+      `↩ Rolled back to ${rollback.slot.toUpperCase()}`,
+    );
+  } else {
+    logger.deployment(
+      deploymentId,
+      "⚠ No previous deployment available for rollback.",
+    );
+  }
+
+  // Leave the container for debugging while developing.
+  // await dockerService.execute(
+  //   "docker",
+  //   ["rm", "-f", containerName],
+  //   deploymentId,
+  // );
+
+  throw new Error("Deployment failed health verification.");
+}
   //
   async registerRuntime(
     deploymentId,

@@ -11,10 +11,10 @@ const stackEngine = require("../engines/stack-engine.service");
 class DeploymentOrchestrator {
   async deploy({ repoUrl, githubToken, deploymentId, env = {} }) {
     let workspace = null;
-
+ const timer = metrics.buildDuration.startTimer();
     try {
       logger.deployment(deploymentId, "🚀 Starting deployment...");
-      const timer = metrics.buildDuration.startTimer();
+     
 
       metrics.deployments.inc();
       /*
