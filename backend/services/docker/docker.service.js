@@ -15,11 +15,22 @@ class DockerService {
 
         output += text;
 
-        text.split(/\r?\n/).forEach((line) => {
-          if (line.trim().length > 0) {
-            logger.deployment(deploymentId, line);
+        const lines = text.split(/\r?\n/);
+
+        for (const line of lines) {
+          if (line.length > 5) {
+           if (
+    line.startsWith("#") ||
+    line.includes("transferring") ||
+    line.includes("exporting") ||
+    line.includes("DONE")
+) {
+    continue;
+}
+
+logger.deployment(deploymentId, line);
           }
-        });
+        }
       };
 
       child.stdout.on("data", stream);
@@ -66,15 +77,9 @@ class DockerService {
   }
   async buildImage({
     imageName,
-
     dockerfile,
-
     context,
-
     buildContext,
-
-    io,
-
     deploymentId,
   }) {
     logger.deployment(deploymentId, "🐳 Building Docker Image...");
@@ -82,16 +87,28 @@ class DockerService {
     const logs = await this.execute(
       "docker",
       [
-        "build",
-        "-t",
-        imageName,
-        "--progress=plain",
-        "--build-arg",
-        `BUILD_CONTEXT=${buildContext}`,
-        "-f",
-        dockerfile,
-        context,
-      ],
+  "build",
+
+  "--progress=auto",
+
+  "--pull=false",
+
+  "--network=host",
+
+  "--build-arg",
+  "BUILDKIT_INLINE_CACHE=1",
+
+  "--build-arg",
+  `BUILD_CONTEXT=${buildContext}`,
+
+  "-t",
+  imageName,
+
+  "-f",
+  dockerfile,
+
+  context,
+],
       deploymentId,
     );
 
@@ -240,8 +257,8 @@ class DockerService {
       ["network", "rm", network],
     );
   }
- async listContainers() {
-  const output = await this.executeSilent("docker", [
+  async listContainers() {
+    const output = await this.executeSilent("docker", [
       "ps",
       "-q",
       "--filter",
@@ -251,8 +268,8 @@ class DockerService {
     return output.trim().split("\n").filter(Boolean);
   }
 
- async inspectContainer(containerId) {
-  const output = await this.executeSilent("docker", ["inspect", containerId]);
+  async inspectContainer(containerId) {
+    const output = await this.executeSilent("docker", ["inspect", containerId]);
 
     return JSON.parse(output)[0];
   }

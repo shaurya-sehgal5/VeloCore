@@ -11,11 +11,10 @@ const stackEngine = require("../engines/stack-engine.service");
 class DeploymentOrchestrator {
   async deploy({ repoUrl, githubToken, deploymentId, env = {} }) {
     let workspace = null;
- const timer = metrics.buildDuration.startTimer();
+    const timer = metrics.buildDuration.startTimer();
     try {
       logger.deployment(deploymentId, "🚀 Starting deployment...");
-     
-
+      const started = Date.now();
       metrics.deployments.inc();
       /*
             ----------------------------------
@@ -34,7 +33,7 @@ class DeploymentOrchestrator {
             */
 
       await statusService.update(deploymentId, "CLONING");
-
+      logger.deployment(deploymentId, `⏱ Clone: ${Date.now() - started} ms`);
       const repositoryPath = await gitService.clone(
         repoUrl,
         githubToken,
@@ -89,7 +88,7 @@ class DeploymentOrchestrator {
 
         env,
       });
-
+      logger.deployment(deploymentId, `⏱ Deploy: ${Date.now() - started} ms`);
       /*
             ----------------------------------
             Cleanup Workspace
@@ -103,6 +102,8 @@ class DeploymentOrchestrator {
       metrics.runningDeployments.inc();
 
       timer();
+
+      logger.deployment(deploymentId, `🏁 Total: ${Date.now() - started} ms`);
       return {
         success: true,
 
@@ -115,7 +116,12 @@ class DeploymentOrchestrator {
     } catch (error) {
       logger.error(error.message);
 
-      await statusService.update(deploymentId, "FAILED");
+      logger.deployment(deploymentId, `❌ ${error.message}`);
+
+      await statusService.update(
+        deploymentId,
+        error.message.includes("timed out") ? "TIMEOUT" : "FAILED",
+      );
 
       if (workspace) {
         await cleanupService.failed({

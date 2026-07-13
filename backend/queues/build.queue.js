@@ -39,17 +39,47 @@ const buildWorker = new Worker(
 
     metrics.deployments.inc();
 
-    return await deploymentOrchestrator.deploy({
-      repoUrl: cloneUrl,
+    const timeout = new Promise((_, reject) =>
+  setTimeout(
+    () => reject(new Error("Build timed out after 10 minutes.")),
+    10 * 60 * 1000
+  )
+);
 
-      githubToken,
+let lastError;
 
-      deploymentId,
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    console.log(`🚀 Deployment Attempt ${attempt}/3`);
 
-      io,
+    return await Promise.race([
+      deploymentOrchestrator.deploy({
+        repoUrl: cloneUrl,
+        githubToken,
+        deploymentId,
+        io,
+        env,
+      }),
+      timeout,
+    ]);
+  } catch (err) {
+    lastError = err;
 
-      env,
-    });
+    console.log(
+      `❌ Attempt ${attempt} Failed: ${err.message}`
+    );
+
+    if (attempt < 3) {
+      console.log("🔄 Retrying in 5 seconds...");
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 5000)
+      );
+    }
+  }
+}
+
+throw lastError;
   },
 
   {

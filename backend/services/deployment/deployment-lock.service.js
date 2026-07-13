@@ -1,23 +1,24 @@
 class DeploymentLockService {
   constructor() {
-    this.deployments = new Set();
+    this.projects = new Set();
   }
 
-  acquire(deploymentId) {
-    if (this.deployments.has(deploymentId)) {
+  acquire(projectId) {
+    if (this.projects.has(projectId)) {
       return false;
     }
 
-    this.deployments.add(deploymentId);
+    this.projects.add(projectId);
+
     return true;
   }
 
-  release(deploymentId) {
-    this.deployments.delete(deploymentId);
+  release(projectId) {
+    this.projects.delete(projectId);
   }
 
-  locked(deploymentId) {
-    return this.deployments.has(deploymentId);
+  locked(projectId) {
+    return this.projects.has(projectId);
   }
 }
 

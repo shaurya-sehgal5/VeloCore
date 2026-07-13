@@ -1,73 +1,35 @@
 class DeploymentPlanService {
+  create(graph) {
+    const plan = [];
 
-    create(graph) {
+    const parallelNodes = [];
 
-        const plan = [];
-
-        /*
-        ----------------------------
-        Backend
-        ----------------------------
-        */
-
-        if (graph.backend) {
-
-            plan.push({
-
-                stage: "backend",
-
-                parallel: false,
-
-                nodes: [graph.backend]
-
-            });
-
-        }
-
-        /*
-        ----------------------------
-        Workers
-        ----------------------------
-        */
-
-        if (graph.workers.length) {
-
-            plan.push({
-
-                stage: "workers",
-
-                parallel: true,
-
-                nodes: graph.workers
-
-            });
-
-        }
-
-        /*
-        ----------------------------
-        Frontend
-        ----------------------------
-        */
-
-        if (graph.frontend) {
-
-            plan.push({
-
-                stage: "frontend",
-
-                parallel: false,
-
-                nodes: [graph.frontend]
-
-            });
-
-        }
-
-        return plan;
-
+    if (graph.backend) {
+      parallelNodes.push(graph.backend);
     }
 
+    if (graph.frontend) {
+      parallelNodes.push(graph.frontend);
+    }
+
+    if (parallelNodes.length) {
+      plan.push({
+        stage: "applications",
+        parallel: true,
+        nodes: parallelNodes,
+      });
+    }
+
+    if (graph.workers.length) {
+      plan.push({
+        stage: "workers",
+        parallel: true,
+        nodes: graph.workers,
+      });
+    }
+
+    return plan;
+  }
 }
 
 module.exports = new DeploymentPlanService();

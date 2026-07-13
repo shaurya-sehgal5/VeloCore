@@ -14,6 +14,7 @@ const metricsRoutes = require("./routes/metrics.routes");
 const runtimeDiscovery = require("./services/runtime/runtime-discovery.service");
 const gitRoutes = require("./routes/git.routes");
 const githubWebhookRoutes = require("./routes/github-webhook.routes");
+const cleanupScheduler = require("./services/docker/cleanup.scheduler");
 require("dotenv").config();
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
@@ -28,7 +29,7 @@ const io = initSocket(server);
 
 // Expose io instance to the global Express app instance before mounting routes
 app.set("io", io);
-
+cleanupScheduler.start();
 // --- 1. GLOBAL MIDDLEWARES ---
 app.use(
   "/api/github/webhook",

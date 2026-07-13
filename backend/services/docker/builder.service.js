@@ -1,12 +1,10 @@
 const path = require("path");
 
 class BuilderService {
-  createBuildPlan(project, deploymentId , slot = "blue") {
-    const projectName = project.name
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "-");
+  createBuildPlan(project, deploymentId, slot = "blue") {
+    const projectName = project.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
-    const imageName = `velocore-${deploymentId}-${projectName}-${slot}`;
+    const imageName = `velocore-${projectName}-${slot}`;
 
     const common = {
       projectName,
@@ -34,7 +32,7 @@ class BuilderService {
 
         buildContext: path.relative(
           project.repositoryRoot,
-          project.buildContext
+          project.buildContext,
         ),
       };
     }
@@ -54,13 +52,10 @@ class BuilderService {
 
           dockerfile: path.join(
             __dirname,
-            "../../templates/Frontend.Dockerfile"
+            "../../templates/Frontend.Dockerfile",
           ),
 
-          buildContext: path.relative(
-            project.repositoryRoot,
-            project.path
-          ),
+          buildContext: path.relative(project.repositoryRoot, project.path),
         };
 
       case "express":
@@ -71,13 +66,10 @@ class BuilderService {
 
           dockerfile: path.join(
             __dirname,
-            "../../templates/Backend.Dockerfile"
+            "../../templates/Backend.Dockerfile",
           ),
 
-          buildContext: path.relative(
-            project.repositoryRoot,
-            project.path
-          ),
+          buildContext: path.relative(project.repositoryRoot, project.path),
         };
 
       case "bullmq":
@@ -88,19 +80,14 @@ class BuilderService {
 
           dockerfile: path.join(
             __dirname,
-            "../../templates/Backend.Dockerfile"
+            "../../templates/Backend.Dockerfile",
           ),
 
-          buildContext: path.relative(
-            project.repositoryRoot,
-            project.path
-          ),
+          buildContext: path.relative(project.repositoryRoot, project.path),
         };
 
       default:
-        throw new Error(
-          `Unsupported framework: ${project.framework}`
-        );
+        throw new Error(`Unsupported framework: ${project.framework}`);
     }
   }
 }

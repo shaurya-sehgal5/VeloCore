@@ -55,20 +55,22 @@ LIMIT 1;
     Verify Signature
     -----------------------------
     */
+   await buildQueue.removeJobs(
+  `project-${project.id}`
+);
 
     const verified = signatureService.verify(
       project.webhook_secret,
       payload,
       signature,
     );
-    console.log("Signature Header:", signature);
-    console.log("Webhook Secret:", project.webhook_secret);
+ 
     if (!verified) {
       return res.status(401).json({
         error: "Invalid signature",
       });
     }
-    console.log("Verified:", verified);
+   
 
     console.log("✅ GitHub Webhook Verified");
     await db.query(
@@ -136,13 +138,20 @@ NOW()
       ],
     );
 
-    await buildQueue.add("deployment", {
-      deploymentId,
-      cloneUrl: project.repo_url,
-      githubToken,
-      env: {},
-    });
-
+   await buildQueue.add(
+  "deployment",
+  {
+    deploymentId,
+    cloneUrl: project.repo_url,
+    githubToken,
+    env: {},
+  },
+  {
+    jobId: `project-${project.id}`,
+    removeOnComplete: 20,
+    removeOnFail: 20,
+  }
+);
     console.log("");
 
     console.log("🚀 Auto Deployment Queued");

@@ -29,11 +29,16 @@ class GitService {
 
         logger.info("Cloning repository...");
 
-        await git.clone(
-            authenticatedUrl,
-            workspaceDir,
-            ["--depth=1"]
-        );
+      await git.clone(
+  authenticatedUrl,
+  workspaceDir,
+  [
+    "--depth=1",
+    "--single-branch",
+    "--no-tags",
+    "--filter=blob:none"
+  ]
+);
 
         logger.success("Repository cloned.");
 

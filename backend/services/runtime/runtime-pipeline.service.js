@@ -7,46 +7,29 @@ const logger = require("../monitoring/logger.service");
 
 class RuntimePipeline {
   async start(runtime) {
+
     const {
-      deploymentId,
-
-      hostPort,
-
-      containerName,
-
-      imageName,
-
-      containerPort,
-
-      workspace,
+        deploymentId,
+        containerName,
+        imageName,
+        workspace,
     } = runtime;
 
-    logger.deployment(deploymentId, "🚀 Runtime created.");
+    logger.deployment(deploymentId,"🚀 Runtime created.");
 
-  
-    
-    await healthService.waitUntilHealthy({
-      hostPort,
-      deploymentId,
-    });
-
- 
     runtimeLogService.stream(containerName, deploymentId);
 
     runtimeMonitorService.monitor({
-      deploymentId,
-
-      containerName,
-
-      imageName,
-
-      workspace,
+        deploymentId,
+        containerName,
+        imageName,
+        workspace,
     });
 
-    await statusService.update(deploymentId, "RUNNING");
+    await statusService.update(deploymentId,"RUNNING");
 
-    logger.deployment(deploymentId, "✅ Runtime Ready.");
-  }
+    logger.deployment(deploymentId,"✅ Runtime Ready.");
+}
 }
 
 module.exports = new RuntimePipeline();

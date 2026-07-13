@@ -15,9 +15,13 @@ const rollbackEngine = require("../traffic/rollback-engine.service");
 
 class DockerEngine {
   async deploy({ deploymentId, workspace, buildPlan, repository, env }) {
-    if (!deploymentLock.acquire(deploymentId)) {
-      throw new Error("Deployment already running.");
-    }
+    const lockKey = buildPlan.projectName;
+
+if (!deploymentLock.acquire(lockKey)) {
+  throw new Error(
+    `Project "${lockKey}" is already being deployed.`
+  );
+}
     /*
     ------------------------------------
     Build Image
@@ -64,7 +68,7 @@ class DockerEngine {
     } catch (err) {
       throw err;
     } finally {
-      deploymentLock.release(deploymentId);
+      deploymentLock.release(lockKey);
     }
 
     return {
@@ -143,7 +147,7 @@ const runtime = await dockerService.runContainer({
   }
   //
  async verifyHealth(deploymentId, hostPort, containerName) {
-  const maxRetries = 15;
+  const maxRetries = 6;
 
   for (let i = 1; i <= maxRetries; i++) {
     const healthy = await trafficHealth.verify(hostPort);
@@ -161,7 +165,7 @@ const runtime = await dockerService.runContainer({
       `⏳ Waiting for application... (${i}/${maxRetries})`,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 600));
   }
 
   logger.deployment(
@@ -183,12 +187,11 @@ const runtime = await dockerService.runContainer({
     );
   }
 
-  // Leave the container for debugging while developing.
-  // await dockerService.execute(
-  //   "docker",
-  //   ["rm", "-f", containerName],
-  //   deploymentId,
-  // );
+  await dockerService.execute(
+    "docker",
+    ["rm", "-f", containerName],
+    deploymentId,
+  );
 
   throw new Error("Deployment failed health verification.");
 }

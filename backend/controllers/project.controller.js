@@ -130,18 +130,19 @@ exports.deployProject = async (req, res) => {
     );
 
     await buildQueue.add(
-      "deployment",
-
-      {
-        deploymentId,
-
-        cloneUrl,
-
-        githubToken,
-
-        env: envVars || {},
-      },
-    );
+  "deployment",
+  {
+    deploymentId,
+    cloneUrl,
+    githubToken,
+    env: envVars || {},
+  },
+  {
+    jobId: `project-${finalProjectId}`,
+    removeOnComplete: 20,
+    removeOnFail: 20,
+  }
+);
 
     return res.status(202).json({
       success: true,
