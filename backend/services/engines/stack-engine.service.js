@@ -57,7 +57,7 @@ class StackEngine {
     const buildPlan = builderService.createBuildPlan(node, deploymentId, slot);
 
     const runtime = await deploymentEngine.deploy({
-      engine: "docker",
+      engine: process.env.RUNTIME_ENGINE || "docker",
 
       graph,
 

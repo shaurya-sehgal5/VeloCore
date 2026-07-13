@@ -19,13 +19,15 @@ class RuntimePipeline {
 
     runtimeLogService.stream(containerName, deploymentId);
 
+   if (runtime.engine !== "kubernetes") {
     runtimeMonitorService.monitor({
         deploymentId,
         containerName,
         imageName,
         workspace,
+         engine: runtime.engine,
     });
-
+}
     await statusService.update(deploymentId,"RUNNING");
 
     logger.deployment(deploymentId,"✅ Runtime Ready.");

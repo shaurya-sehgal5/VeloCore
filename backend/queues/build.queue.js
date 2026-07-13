@@ -48,7 +48,7 @@ const buildWorker = new Worker(
 
 let lastError;
 
-for (let attempt = 1; attempt <= 3; attempt++) {
+for (let attempt = 1; attempt <= 1; attempt++) {
   try {
     console.log(`🚀 Deployment Attempt ${attempt}/3`);
 
@@ -69,7 +69,7 @@ for (let attempt = 1; attempt <= 3; attempt++) {
       `❌ Attempt ${attempt} Failed: ${err.message}`
     );
 
-    if (attempt < 3) {
+    if (attempt < 1) {
       console.log("🔄 Retrying in 5 seconds...");
 
       await new Promise((resolve) =>

@@ -18,18 +18,13 @@ class DockerService {
         const lines = text.split(/\r?\n/);
 
         for (const line of lines) {
-          if (line.length > 5) {
-           if (
-    line.startsWith("#") ||
-    line.includes("transferring") ||
-    line.includes("exporting") ||
-    line.includes("DONE")
-) {
-    continue;
-}
+          const text = line.trim();
 
-logger.deployment(deploymentId, line);
-          }
+          if (!text) continue;
+
+          if (text.startsWith("=>")) continue;
+
+          logger.deployment(deploymentId, text);
         }
       };
 
@@ -87,28 +82,28 @@ logger.deployment(deploymentId, line);
     const logs = await this.execute(
       "docker",
       [
-  "build",
+        "build",
 
-  "--progress=auto",
+        "--progress=auto",
 
-  "--pull=false",
+        "--pull=false",
 
-  "--network=host",
+        "--network=host",
 
-  "--build-arg",
-  "BUILDKIT_INLINE_CACHE=1",
+        "--build-arg",
+        "BUILDKIT_INLINE_CACHE=1",
 
-  "--build-arg",
-  `BUILD_CONTEXT=${buildContext}`,
+        "--build-arg",
+        `BUILD_CONTEXT=${buildContext}`,
 
-  "-t",
-  imageName,
+        "-t",
+        imageName,
 
-  "-f",
-  dockerfile,
+        "-f",
+        dockerfile,
 
-  context,
-],
+        context,
+      ],
       deploymentId,
     );
 

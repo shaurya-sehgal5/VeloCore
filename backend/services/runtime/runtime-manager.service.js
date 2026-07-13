@@ -14,18 +14,32 @@ class RuntimeManager {
   register(runtime) {
     const key = `${runtime.deploymentId}:${runtime.project}:${runtime.slot}`;
 
-    this.runtimes.set(key, {
-      ...runtime,
-      status: "RUNNING",
-      health: "UNKNOWN",
-      startedAt: Date.now(),
-      metrics: {
-        cpu: "0%",
-        memory: "0 MB",
-        network: "0 B",
-        uptime: 0,
-      },
-    });
+   this.runtimes.set(key,{
+    ...runtime,
+
+    engine: runtime.engine || "docker",
+
+    deployment: runtime.deployment,
+
+    service: runtime.service,
+
+    pod: runtime.pod,
+
+    namespace: runtime.namespace || "default",
+
+    status:"RUNNING",
+
+    health:"UNKNOWN",
+
+    startedAt:Date.now(),
+
+    metrics:{
+        cpu:"0%",
+        memory:"0 MB",
+        network:"0 B",
+        uptime:0
+    }
+});
 
     metrics.runtimeCount.set(this.runtimes.size);
   }

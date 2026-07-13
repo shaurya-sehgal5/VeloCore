@@ -12,16 +12,15 @@ const trafficSwitch = require("../traffic/traffic-switch.service");
 const deploymentLock = require("../deployment/deployment-lock.service");
 const runtimeStatus = require("../runtime/runtime-status.service");
 const rollbackEngine = require("../traffic/rollback-engine.service");
+const trivyService = require("../security/trivy.service");
 
 class DockerEngine {
   async deploy({ deploymentId, workspace, buildPlan, repository, env }) {
     const lockKey = buildPlan.projectName;
 
-if (!deploymentLock.acquire(lockKey)) {
-  throw new Error(
-    `Project "${lockKey}" is already being deployed.`
-  );
-}
+    if (!deploymentLock.acquire(lockKey)) {
+      throw new Error(`Project "${lockKey}" is already being deployed.`);
+    }
     /*
     ------------------------------------
     Build Image
@@ -37,7 +36,15 @@ if (!deploymentLock.acquire(lockKey)) {
     Start Runtime
     ------------------------------------
     */
+      const report = await trivyService.scan(buildPlan.imageName);
 
+      const critical = (report.match(/CRITICAL/g) || []).length;
+      const high = (report.match(/HIGH/g) || []).length;
+
+      logger.deployment(
+        deploymentId,
+        `🔒 Trivy Scan Complete | HIGH=${high} | CRITICAL=${critical}`,
+      );
       ({ runtime, hostPort, containerName } = await this.startRuntime(
         deploymentId,
         buildPlan,
@@ -50,7 +57,7 @@ if (!deploymentLock.acquire(lockKey)) {
     */
       await this.verifyHealth(deploymentId, hostPort, containerName);
       await this.switchTraffic(deploymentId, buildPlan);
-      await this.collectLogs(deploymentId, runtime);
+    runtimeLogService.stream(containerName, deploymentId);
 
       await this.registerRuntime(
         deploymentId,
@@ -118,24 +125,24 @@ if (!deploymentLock.acquire(lockKey)) {
 
     const deploymentEnv = await envService.get(deploymentId);
 
-const systemEnv = {
-  PORT: String(buildPlan.containerPort),
-  NODE_ENV: "production",
-};
+    const systemEnv = {
+      PORT: String(buildPlan.containerPort),
+      NODE_ENV: "production",
+    };
 
-const runtime = await dockerService.runContainer({
-  imageName: buildPlan.imageName,
-  containerName,
-  hostPort,
-  containerPort: buildPlan.containerPort,
-  buildPlan,
-  env: {
-    ...systemEnv,
-    ...deploymentEnv,
-    ...env,
-  },
-  deploymentId,
-});
+    const runtime = await dockerService.runContainer({
+      imageName: buildPlan.imageName,
+      containerName,
+      hostPort,
+      containerPort: buildPlan.containerPort,
+      buildPlan,
+      env: {
+        ...systemEnv,
+        ...deploymentEnv,
+        ...env,
+      },
+      deploymentId,
+    });
 
     logger.deployment(deploymentId, "🚀 Container Started");
 
@@ -146,55 +153,52 @@ const runtime = await dockerService.runContainer({
     };
   }
   //
- async verifyHealth(deploymentId, hostPort, containerName) {
-  const maxRetries = 6;
+  async verifyHealth(deploymentId, hostPort, containerName) {
+    const maxRetries = 6;
 
-  for (let i = 1; i <= maxRetries; i++) {
-    const healthy = await trafficHealth.verify(hostPort);
+    for (let i = 1; i <= maxRetries; i++) {
+      const healthy = await trafficHealth.verify(hostPort);
 
-    if (healthy) {
+      if (healthy) {
+        logger.deployment(
+          deploymentId,
+          `✅ Health Check Passed (${i}/${maxRetries})`,
+        );
+        return;
+      }
+
       logger.deployment(
         deploymentId,
-        `✅ Health Check Passed (${i}/${maxRetries})`,
+        `⏳ Waiting for application... (${i}/${maxRetries})`,
       );
-      return;
+
+      await new Promise((resolve) => setTimeout(resolve, 600));
     }
 
-    logger.deployment(
+    logger.deployment(deploymentId, "❌ Health Check Failed");
+
+    const rollback = await rollbackEngine.rollback(deploymentId);
+
+    if (rollback) {
+      logger.deployment(
+        deploymentId,
+        `↩ Rolled back to ${rollback.slot.toUpperCase()}`,
+      );
+    } else {
+      logger.deployment(
+        deploymentId,
+        "⚠ No previous deployment available for rollback.",
+      );
+    }
+
+    await dockerService.execute(
+      "docker",
+      ["rm", "-f", containerName],
       deploymentId,
-      `⏳ Waiting for application... (${i}/${maxRetries})`,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    throw new Error("Deployment failed health verification.");
   }
-
-  logger.deployment(
-    deploymentId,
-    "❌ Health Check Failed",
-  );
-
-  const rollback = await rollbackEngine.rollback(deploymentId);
-
-  if (rollback) {
-    logger.deployment(
-      deploymentId,
-      `↩ Rolled back to ${rollback.slot.toUpperCase()}`,
-    );
-  } else {
-    logger.deployment(
-      deploymentId,
-      "⚠ No previous deployment available for rollback.",
-    );
-  }
-
-  await dockerService.execute(
-    "docker",
-    ["rm", "-f", containerName],
-    deploymentId,
-  );
-
-  throw new Error("Deployment failed health verification.");
-}
   //
   async registerRuntime(
     deploymentId,
@@ -266,14 +270,14 @@ const runtime = await dockerService.runContainer({
     await statusService.update(deploymentId, "RUNNING");
   }
   //
-  async collectLogs(deploymentId, runtime) {
-    const logs = await dockerService.execute(
-      "docker",
-      ["logs", runtime.containerId],
-      deploymentId,
-    );
+  // async collectLogs(deploymentId, runtime) {
+  //   const logs = await dockerService.execute(
+  //     "docker",
+  //     ["logs", runtime.containerId],
+  //     deploymentId,
+  //   );
 
-    logger.deployment(deploymentId, logs);
-  }
+  //   logger.deployment(deploymentId, logs);
+  // }
 }
 module.exports = new DockerEngine();

@@ -15,7 +15,10 @@ const runtimeDiscovery = require("./services/runtime/runtime-discovery.service")
 const gitRoutes = require("./routes/git.routes");
 const githubWebhookRoutes = require("./routes/github-webhook.routes");
 const cleanupScheduler = require("./services/docker/cleanup.scheduler");
+// const kubernetesService = require("./services/kubernetes/kubernetes.service");
 require("dotenv").config();
+
+
 // 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
   processOneClickDeployment,
@@ -163,7 +166,17 @@ process.on("SIGTERM", async () => {
 
   process.exit(0);
 });
+// (async () => {
+//   const file = await kubernetesService.generate({
+//     projectName: "test-app",
 
+//     imageName: "nginx:latest",
+
+//     containerPort: 80,
+//   });
+
+//   console.log(file);
+// })();
 // --- 6. SERVER START ---
 const PORT = 8080;
 server.listen(PORT, () => {

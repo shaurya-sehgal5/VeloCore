@@ -40,7 +40,21 @@ class RuntimeMonitorService {
   ------------------------------------
   */
 
-  monitor({ deploymentId, containerName, imageName, workspace }) {
+  monitor({
+    deploymentId,
+    containerName,
+    imageName,
+    workspace,
+    engine = "docker",
+  }) {
+    if (engine === "kubernetes") {
+      logger.deployment(
+        deploymentId,
+        "☸ Kubernetes runtime monitoring enabled.",
+      );
+      return;
+    }
+
     const monitor = spawn("docker", ["wait", containerName]);
 
     monitor.stdout.on("data", async (data) => {
@@ -51,7 +65,7 @@ class RuntimeMonitorService {
         `⚠ Container exited with code ${exitCode}`,
       );
 
-      runtimeManager.remove(deploymentId);
+      runtimeManager.remove(deploymentId, runtime.project, runtime.slot);
       runtimeStatus.publish(deploymentId, {
         type: "runtime_exit",
         exitCode,
@@ -88,6 +102,9 @@ class RuntimeMonitorService {
       const runtimes = runtimeManager.list();
 
       for (const runtime of runtimes) {
+        if (runtime.engine === "kubernetes") {
+          continue;
+        }
         try {
           const stats = await dockerMetrics.get(runtime.containerName);
 
