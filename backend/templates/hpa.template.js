@@ -1,5 +1,6 @@
 module.exports = ({
   name,
+  namespace,
   minReplicas = 1,
   maxReplicas = 5,
   cpu = 70,

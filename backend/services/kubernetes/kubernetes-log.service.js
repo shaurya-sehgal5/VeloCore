@@ -1,30 +1,33 @@
 const kubectl = require("./kubectl.service");
 const logger = require("../monitoring/logger.service");
+const socket = require("./kubernetes-socket.service");
 
 class KubernetesLogService {
   stream(pod, deploymentId, namespace = "default") {
-    logger.deployment(
-      deploymentId,
-      "📜 Streaming Kubernetes logs..."
-    );
+    logger.deployment(deploymentId, "📜 Streaming Kubernetes logs...");
 
-    const stream = kubectl.streamLogs(
-      pod,
-      namespace,
-    );
+    const stream = kubectl.streamLogs(pod, namespace);
 
     stream.stdout.on("data", (data) => {
-      logger.deployment(
+      const line = data.toString().trim();
+
+      logger.deployment(deploymentId, line);
+
+      socket.broadcast("k8s:logs", {
         deploymentId,
-        data.toString().trim(),
-      );
+        line,
+      });
     });
 
     stream.stderr.on("data", (data) => {
-      logger.deployment(
+      const line = data.toString().trim();
+
+      logger.deployment(deploymentId, line);
+
+      socket.broadcast("k8s:logs", {
         deploymentId,
-        data.toString().trim(),
-      );
+        line,
+      });
     });
 
     stream.on("close", (code) => {

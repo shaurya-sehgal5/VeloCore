@@ -1,3 +1,5 @@
+const { exec } = require("child_process");
+
 class KubernetesMetricsService {
   async get(pod) {
     return new Promise((resolve) => {
@@ -23,11 +25,13 @@ class KubernetesMetricsService {
           const parts = line.split(/\s+/);
 
           resolve({
-            cpu: parts[1],
-            memory: parts[2],
+            cpu: parts[1] || "0m",
+            memory: parts[2] || "0Mi",
           });
-        },
+        }
       );
     });
   }
 }
+
+module.exports = new KubernetesMetricsService();

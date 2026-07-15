@@ -16,23 +16,18 @@ class RuntimeManager {
 
     this.runtimes.set(key, {
       ...runtime,
-
       engine: runtime.engine || "docker",
-
       deployment: runtime.deployment,
-
       service: runtime.service,
-
       pod: runtime.pod,
-
       namespace: runtime.namespace || "default",
-
       status: "RUNNING",
-
       health: "UNKNOWN",
 
-      startedAt: Date.now(),
+      host: runtime.host,
+      namespace: runtime.namespace || "default",
 
+      startedAt: Date.now(),
       metrics: {
         cpu: "0%",
         memory: "0 MB",
@@ -90,9 +85,12 @@ class RuntimeManager {
     return [...this.runtimes.values()];
   }
   clearDeployment(deploymentId) {
-    this.runtimes = this.runtimes.filter(
-      (runtime) => runtime.deploymentId !== deploymentId,
-    );
+    for (const [key, runtime] of this.runtimes.entries()) {
+      if (runtime.deploymentId === deploymentId) {
+        this.runtimes.delete(key);
+      }
+    }
+    metrics.runtimeCount.set(this.runtimes.size);
   }
 }
 

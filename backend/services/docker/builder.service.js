@@ -14,6 +14,12 @@ class BuilderService {
       startCommand: project.startCommand,
       framework: project.framework,
       slot,
+      host: `${projectName}.velocore.local`,
+      persistentVolume: false,
+      storage: "1Gi",
+      namespace: `velocore-${deploymentId}`,
+      customDomain: null,
+      enableTLS: true,
     };
 
     /*

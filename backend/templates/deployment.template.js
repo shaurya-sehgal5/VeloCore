@@ -2,11 +2,13 @@ const resources = require("./resources.template");
 
 module.exports = ({
   name,
+  namespace,
   image,
   replicas = 1,
   containerPort,
-  env = [],
   healthCheck,
+  configMap,
+  secret,
 }) => ({
   apiVersion: "apps/v1",
 
@@ -64,7 +66,7 @@ module.exports = ({
 
             readinessProbe: {
               httpGet: {
-               path: healthCheck.path,
+                path: healthCheck.path,
                 port: containerPort,
               },
               initialDelaySeconds: 10,
@@ -73,7 +75,7 @@ module.exports = ({
 
             livenessProbe: {
               httpGet: {
-               path: healthCheck.path,
+                path: healthCheck.path,
                 port: containerPort,
               },
               initialDelaySeconds: 30,
@@ -85,10 +87,18 @@ module.exports = ({
               readOnlyRootFilesystem: false,
             },
 
-            env: env.map(([key, value]) => ({
-              name: key,
-              value: String(value),
-            })),
+            envFrom: [
+              {
+                configMapRef: {
+                  name: configMap,
+                },
+              },
+              {
+                secretRef: {
+                  name: secret,
+                },
+              },
+            ],
           },
         ],
       },

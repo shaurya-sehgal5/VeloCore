@@ -14,12 +14,14 @@ const metricsRoutes = require("./routes/metrics.routes");
 const runtimeDiscovery = require("./services/runtime/runtime-discovery.service");
 const gitRoutes = require("./routes/git.routes");
 const githubWebhookRoutes = require("./routes/github-webhook.routes");
+const kubernetesRoutes = require("./routes/kubernetes.routes");
 const cleanupScheduler = require("./services/docker/cleanup.scheduler");
-// const kubernetesService = require("./services/kubernetes/kubernetes.service");
+const kubernetesSocket = require("./services/kubernetes/kubernetes-socket.service");
+const eventBootstrap = require("./services/events/bootstrap.service");
+
 require("dotenv").config();
 
-
-// 🐳 THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
+// THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
   processOneClickDeployment,
 } = require("./services/deployment/deployment.orchestrator");
@@ -29,10 +31,12 @@ const server = http.createServer(app);
 
 // Initialize WebSockets and catch the returned 'io' instance
 const io = initSocket(server);
-
+kubernetesSocket.initialize(io);
+eventBootstrap.start();
 // Expose io instance to the global Express app instance before mounting routes
 app.set("io", io);
 cleanupScheduler.start();
+
 // --- 1. GLOBAL MIDDLEWARES ---
 app.use(
   "/api/github/webhook",
@@ -54,8 +58,6 @@ app.use(
     credentials: true,
   }),
 );
-
-// --- 2. 📊 METRICS ROUTE ---
 
 // --- 3. PRODUCTION AUTOMATION PIPELINES ---
 app.post("/api/deploy/one-click", async (req, res) => {
@@ -139,6 +141,7 @@ app.use("/metrics", metricsRoutes);
 app.use("/api/git", gitRoutes);
 app.use("/visit", require("./routes/visit.routes"));
 app.use("/api/github/webhook", githubWebhookRoutes);
+app.use("/api", kubernetesRoutes);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {
@@ -167,17 +170,7 @@ process.on("SIGTERM", async () => {
 
   process.exit(0);
 });
-// (async () => {
-//   const file = await kubernetesService.generate({
-//     projectName: "test-app",
 
-//     imageName: "nginx:latest",
-
-//     containerPort: 80,
-//   });
-
-//   console.log(file);
-// })();
 // --- 6. SERVER START ---
 const PORT = 8080;
 server.listen(PORT, () => {

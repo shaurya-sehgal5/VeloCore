@@ -35,16 +35,48 @@ class KubectlService {
     return this.execute(["delete", "-f", file]);
   }
 
-  logs(pod) {
-    return this.execute(["logs", "-f", pod]);
+  logs(pod, namespace = "default", follow = false) {
+    const args = ["logs", pod, "-n", namespace];
+
+    if (follow) {
+      args.push("-f");
+    }
+
+    return this.execute(args);
+  }
+  describe(resource, name, namespace = "default") {
+    return this.execute(["describe", resource, name, "-n", namespace]);
   }
 
+  get(resource, namespace = "default") {
+    return this.execute(["get", resource, "-n", namespace, "-o", "json"]);
+  }
+
+  deleteResource(resource, name, namespace = "default") {
+    return this.execute(["delete", resource, name, "-n", namespace]);
+  }
+  deletePod(name, namespace = "default") {
+    return this.execute(["delete", "pod", name, "-n", namespace]);
+  }
+
+  deleteDeployment(name, namespace = "default") {
+    return this.execute(["delete", "deployment", name, "-n", namespace]);
+  }
+
+  deleteService(name, namespace = "default") {
+    return this.execute(["delete", "service", name, "-n", namespace]);
+  }
   async pods() {
     return this.execute(["get", "pods", "-o", "json"]);
   }
 
   rollout(name) {
-    return this.execute(["rollout", "status", `deployment/${name}` ,  "--timeout=120s",]);
+    return this.execute([
+      "rollout",
+      "status",
+      `deployment/${name}`,
+      "--timeout=120s",
+    ]);
   }
 
   restart(name) {
@@ -53,6 +85,9 @@ class KubectlService {
 
   rollback(name) {
     return this.execute(["rollout", "undo", `deployment/${name}`]);
+  }
+  deleteNamespace(namespace) {
+    return this.execute(["delete", "namespace", namespace]);
   }
 
   scale(name, replicas) {

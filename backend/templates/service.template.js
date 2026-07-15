@@ -1,5 +1,6 @@
 module.exports = ({
   name,
+  namespace,
   port,
   targetPort,
 }) => ({

@@ -1,3 +1,5 @@
+const kubernetesSocket = require("../kubernetes/kubernetes-socket.service");
+
 class RuntimeStatusService {
   constructor() {
     this.clients = new Map();
@@ -12,14 +14,20 @@ class RuntimeStatusService {
   }
 
   publish(deploymentId, event) {
-    const client = this.clients.get(deploymentId);
+  const client = this.clients.get(deploymentId);
 
-    if (!client) return;
-
+  if (client) {
     client.write(
       `data: ${JSON.stringify(event)}\n\n`
     );
   }
+
+  kubernetesSocket.emit(
+    deploymentId,
+    "runtime:update",
+    event
+  );
+}
 }
 
 module.exports = new RuntimeStatusService();
