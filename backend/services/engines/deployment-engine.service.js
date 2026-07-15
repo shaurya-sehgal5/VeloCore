@@ -5,10 +5,10 @@ const kubernetesEngine = require("../kubernetes/kubernetes-engine.service");
 class DeploymentEngine {
   async deploy(options) {
     if (options.engine === "kubernetes") {
-    return kubernetesEngine.deploy(
-    options.buildPlan,
-    options.deploymentId
-);
+      return kubernetesEngine.deploy(
+        options.buildPlan,
+        options.deploymentId,
+      );
     }
 
     const runtime = await runtimeProvider.create(options);

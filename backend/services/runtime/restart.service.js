@@ -1,19 +1,15 @@
-const dockerService = require("../docker/docker.service");
 const runtimeResolver = require("./runtime-resolver.service");
+const runtimeAction = require("./runtime-action.service");
 
 class RestartService {
   async restart(deploymentId) {
-   const runtime = await runtimeResolver.resolve(deploymentId);
+    const runtime = await runtimeResolver.resolve(deploymentId);
 
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
 
-    await dockerService.execute(
-      "docker",
-      ["restart", runtime.container_name],
-      deploymentId
-    );
+    await runtimeAction.restart(runtime);
 
     return runtime;
   }

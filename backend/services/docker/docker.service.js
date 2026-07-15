@@ -212,7 +212,24 @@ class DockerService {
       });
     });
   }
+  // async loadKindImage(imageName, deploymentId) {
+  //   logger.deployment(
+  //     deploymentId,
+  //     `☸ Loading ${imageName} into KIND...`,
+  //   );
 
+  //   await this.execute(
+  //     "kind",
+  //     [
+  //       "load",
+  //       "docker-image",
+  //       imageName,
+  //       "--name",
+  //       "desktop",
+  //     ],
+  //     deploymentId,
+  //   );
+  // }
   async stopContainer(name) {
     return this.execute(
       "docker",

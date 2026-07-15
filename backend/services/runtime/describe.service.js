@@ -1,16 +1,16 @@
 const runtimeResolver = require("./runtime-resolver.service");
-const runtimeAction = require("./runtime-action.service");
+const runtimeAdapter = require("./runtime-adapter.service");
 
-class LogsService {
-  async logs(deploymentId) {
+class DescribeService {
+  async describe(deploymentId) {
     const runtime = await runtimeResolver.resolve(deploymentId);
 
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
 
-    return runtimeAction.logs(runtime);
+    return runtimeAdapter.describe(runtime);
   }
 }
 
-module.exports = new LogsService();
+module.exports = new DescribeService();

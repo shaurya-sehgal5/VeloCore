@@ -12,6 +12,8 @@ module.exports = ({
   },
 
   spec: {
+    type: "NodePort",
+
     selector: {
       app: name,
     },
@@ -23,9 +25,9 @@ module.exports = ({
         port,
 
         targetPort,
+
+        // Let Kubernetes choose the NodePort
       },
     ],
-
-    type: "NodePort",
   },
 });

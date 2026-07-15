@@ -50,8 +50,7 @@ let lastError;
 
 for (let attempt = 1; attempt <= 1; attempt++) {
   try {
-    console.log(`🚀 Deployment Attempt ${attempt}/3`);
-
+   
     return await Promise.race([
       deploymentOrchestrator.deploy({
         repoUrl: cloneUrl,

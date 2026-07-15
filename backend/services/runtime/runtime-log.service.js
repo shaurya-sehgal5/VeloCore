@@ -1,64 +1,45 @@
-const { spawn } = require("child_process");
+const runtimeAdapter = require("./runtime-adapter.service");
 const logger = require("../monitoring/logger.service");
 
 class RuntimeLogService {
+  async stream(runtime, deploymentId) {
+    logger.deployment(
+      deploymentId,
+      "📜 Streaming runtime logs...",
+    );
 
-    stream(containerName, deploymentId) {
+    const logs = await runtimeAdapter.logs(runtime);
 
-        logger.deployment(
-            deploymentId,
-            "📜 Streaming container logs..."
-        );
+    logs.stdout.on("data", (data) => {
+      logger.deployment(
+        deploymentId,
+        data.toString().trim(),
+      );
+    });
 
-        const logs = spawn(
-            "docker",
-            [
-                "logs",
-                "-f",
-                containerName
-            ]
-        );
+    logs.stderr.on("data", (data) => {
+      logger.deployment(
+        deploymentId,
+        data.toString().trim(),
+      );
+    });
 
-        logs.stdout.on("data", data => {
+    logs.on("error", (err) => {
+      logger.deployment(
+        deploymentId,
+        err.message,
+      );
+    });
 
-            logger.deployment(
-                deploymentId,
-                data.toString().trim()
-            );
+    logs.on("close", (code) => {
+      logger.deployment(
+        deploymentId,
+        `📦 Log stream ended (exit ${code})`,
+      );
+    });
 
-        });
-
-        logs.stderr.on("data", data => {
-
-            logger.deployment(
-                deploymentId,
-                data.toString().trim()
-            );
-
-        });
-
-        logs.on("error", err => {
-
-            logger.deployment(
-                deploymentId,
-                err.message
-            );
-
-        });
-
-        logs.on("close", code => {
-
-            logger.deployment(
-                deploymentId,
-                `📦 Log stream ended (exit ${code})`
-            );
-
-        });
-
-        return logs;
-
-    }
-
+    return logs;
+  }
 }
 
 module.exports = new RuntimeLogService();

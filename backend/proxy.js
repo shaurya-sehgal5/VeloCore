@@ -16,8 +16,7 @@ const deploymentCache = new Map();
 async function getHostPort(deploymentId) {
   const { rows } = await db.query(
     `
-    SELECT
-      active_slot
+    SELECT active_slot
     FROM deployments
     WHERE id = $1
     `,
@@ -29,18 +28,34 @@ async function getHostPort(deploymentId) {
   }
 
   const activeSlot = rows[0].active_slot || "blue";
-  console.log(`🚦 Proxy -> ${deploymentId} (${activeSlot.toUpperCase()})`);
-  const runtime = await db.query(
+
+  let runtime = await db.query(
     `
-    SELECT
-      host_port
+    SELECT host_port
     FROM deployment_services
     WHERE deployment_id = $1
       AND slot = $2
+      AND status = 'RUNNING'
+      AND type = 'frontend'
     LIMIT 1
     `,
     [deploymentId, activeSlot],
   );
+
+  if (!runtime.rows.length) {
+    runtime = await db.query(
+      `
+      SELECT host_port
+      FROM deployment_services
+      WHERE deployment_id = $1
+        AND slot = $2
+        AND status = 'RUNNING'
+        AND type = 'backend'
+      LIMIT 1
+      `,
+      [deploymentId, activeSlot],
+    );
+  }
 
   if (!runtime.rows.length) {
     return null;

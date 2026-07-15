@@ -137,6 +137,7 @@ app.use("/api/deployments", require("./routes/runtime-group.routes"));
 app.use("/api/deploy/redeploy", redeployRoutes);
 app.use("/metrics", metricsRoutes);
 app.use("/api/git", gitRoutes);
+app.use("/visit", require("./routes/visit.routes"));
 app.use("/api/github/webhook", githubWebhookRoutes);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---

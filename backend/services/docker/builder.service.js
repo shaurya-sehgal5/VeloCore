@@ -4,7 +4,7 @@ class BuilderService {
   createBuildPlan(project, deploymentId, slot = "blue") {
     const projectName = project.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
-    const imageName = `velocore-${projectName}-${slot}`;
+    const imageName = `velocore-${projectName}-${deploymentId}-${slot}`;
 
     const common = {
       projectName,

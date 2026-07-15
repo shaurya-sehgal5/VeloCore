@@ -44,7 +44,7 @@ class KubectlService {
   }
 
   rollout(name) {
-    return this.execute(["rollout", "status", `deployment/${name}`]);
+    return this.execute(["rollout", "status", `deployment/${name}` ,  "--timeout=120s",]);
   }
 
   restart(name) {
@@ -82,14 +82,19 @@ class KubectlService {
   }
 
   streamLogs(pod, namespace = "default") {
-  return spawn("kubectl", [
-    "logs",
-    "-f",
-    pod,
-    "-n",
-    namespace,
-  ]);
-}
+    return spawn("kubectl", ["logs", "-f", pod, "-n", namespace]);
+  }
+  async waitDeletion(name) {
+    while (true) {
+      try {
+        await this.execute(["get", "deployment", name]);
+
+        await new Promise((r) => setTimeout(r, 1000));
+      } catch {
+        return;
+      }
+    }
+  }
 }
 
 module.exports = new KubectlService();

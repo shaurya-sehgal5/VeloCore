@@ -1,9 +1,12 @@
+const resources = require("./resources.template");
+
 module.exports = ({
   name,
   image,
   replicas = 1,
   containerPort,
   env = [],
+  healthCheck,
 }) => ({
   apiVersion: "apps/v1",
 
@@ -15,6 +18,17 @@ module.exports = ({
 
   spec: {
     replicas,
+
+    revisionHistoryLimit: 5,
+
+    strategy: {
+      type: "RollingUpdate",
+
+      rollingUpdate: {
+        maxUnavailable: 0,
+        maxSurge: 1,
+      },
+    },
 
     selector: {
       matchLabels: {
@@ -30,19 +44,46 @@ module.exports = ({
       },
 
       spec: {
+        terminationGracePeriodSeconds: 30,
+
         containers: [
           {
             name,
 
             image,
 
-            imagePullPolicy: "IfNotPresent",
+            imagePullPolicy: "Always",
 
             ports: [
               {
                 containerPort,
               },
             ],
+
+            resources,
+
+            readinessProbe: {
+              httpGet: {
+               path: healthCheck.path,
+                port: containerPort,
+              },
+              initialDelaySeconds: 10,
+              periodSeconds: 5,
+            },
+
+            livenessProbe: {
+              httpGet: {
+               path: healthCheck.path,
+                port: containerPort,
+              },
+              initialDelaySeconds: 30,
+              periodSeconds: 10,
+            },
+
+            securityContext: {
+              allowPrivilegeEscalation: false,
+              readOnlyRootFilesystem: false,
+            },
 
             env: env.map(([key, value]) => ({
               name: key,

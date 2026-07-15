@@ -13,7 +13,11 @@ class KubernetesEngine {
     const file = await kubernetesService.generate(buildPlan);
 
     logger.deployment(deploymentId, "☸ Applying Manifest...");
+    try {
+      await kubectl.delete(file);
 
+      await kubectl.waitDeletion(buildPlan.projectName);
+    } catch {}
     await kubectl.apply(file);
 
     logger.deployment(deploymentId, "⏳ Waiting for rollout...");
@@ -23,7 +27,7 @@ class KubernetesEngine {
     const pod = await kubectl.getPod(buildPlan.projectName);
 
     const service = await kubectl.getService(buildPlan.projectName);
-
+    const nodePort = service.spec.ports[0].nodePort;
     kubernetesLogs.stream(pod.metadata.name, deploymentId);
 
     runtimeManager.register({
@@ -40,7 +44,7 @@ class KubernetesEngine {
       service: buildPlan.projectName,
 
       pod: pod.metadata.name,
-
+      hostPort: nodePort,
       namespace: "default",
     });
     await runtimeRegistry.register({
@@ -56,8 +60,7 @@ class KubernetesEngine {
 
       containerName: pod.metadata.name,
 
-      hostPort: service.spec.ports[0].nodePort,
-
+      hostPort: nodePort,
       containerPort: service.spec.ports[0].port,
 
       slot: buildPlan.slot,

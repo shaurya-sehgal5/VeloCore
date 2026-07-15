@@ -14,32 +14,32 @@ class RuntimeManager {
   register(runtime) {
     const key = `${runtime.deploymentId}:${runtime.project}:${runtime.slot}`;
 
-   this.runtimes.set(key,{
-    ...runtime,
+    this.runtimes.set(key, {
+      ...runtime,
 
-    engine: runtime.engine || "docker",
+      engine: runtime.engine || "docker",
 
-    deployment: runtime.deployment,
+      deployment: runtime.deployment,
 
-    service: runtime.service,
+      service: runtime.service,
 
-    pod: runtime.pod,
+      pod: runtime.pod,
 
-    namespace: runtime.namespace || "default",
+      namespace: runtime.namespace || "default",
 
-    status:"RUNNING",
+      status: "RUNNING",
 
-    health:"UNKNOWN",
+      health: "UNKNOWN",
 
-    startedAt:Date.now(),
+      startedAt: Date.now(),
 
-    metrics:{
-        cpu:"0%",
-        memory:"0 MB",
-        network:"0 B",
-        uptime:0
-    }
-});
+      metrics: {
+        cpu: "0%",
+        memory: "0 MB",
+        network: "0 B",
+        uptime: 0,
+      },
+    });
 
     metrics.runtimeCount.set(this.runtimes.size);
   }
@@ -51,9 +51,7 @@ class RuntimeManager {
   */
 
   get(deploymentId, project, slot) {
-    return this.runtimes.get(
-      `${deploymentId}:${project}:${slot}`,
-    );
+    return this.runtimes.get(`${deploymentId}:${project}:${slot}`);
   }
 
   /*
@@ -63,11 +61,7 @@ class RuntimeManager {
   */
 
   update(deploymentId, project, slot, values) {
-    const runtime = this.get(
-      deploymentId,
-      project,
-      slot,
-    );
+    const runtime = this.get(deploymentId, project, slot);
 
     if (!runtime) return;
 
@@ -81,9 +75,7 @@ class RuntimeManager {
   */
 
   remove(deploymentId, project, slot) {
-    this.runtimes.delete(
-      `${deploymentId}:${project}:${slot}`,
-    );
+    this.runtimes.delete(`${deploymentId}:${project}:${slot}`);
 
     metrics.runtimeCount.set(this.runtimes.size);
   }
@@ -96,6 +88,11 @@ class RuntimeManager {
 
   list() {
     return [...this.runtimes.values()];
+  }
+  clearDeployment(deploymentId) {
+    this.runtimes = this.runtimes.filter(
+      (runtime) => runtime.deploymentId !== deploymentId,
+    );
   }
 }
 

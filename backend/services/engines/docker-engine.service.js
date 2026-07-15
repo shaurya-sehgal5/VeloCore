@@ -1,4 +1,3 @@
-const dockerService = require("../docker/docker.service");
 const statusService = require("../monitoring/status.service");
 const portService = require("../docker/port.service");
 const logger = require("../monitoring/logger.service");
@@ -12,7 +11,7 @@ const trafficSwitch = require("../traffic/traffic-switch.service");
 const deploymentLock = require("../deployment/deployment-lock.service");
 const runtimeStatus = require("../runtime/runtime-status.service");
 const rollbackEngine = require("../traffic/rollback-engine.service");
-const trivyService = require("../security/trivy.service");
+const runtimeLogService = require("../runtime/runtime-log.service");
 
 class DockerEngine {
   async deploy({ deploymentId, workspace, buildPlan, repository, env }) {
@@ -29,35 +28,19 @@ class DockerEngine {
     let runtime;
     let hostPort;
     let containerName;
+
     try {
-      await this.buildImage(deploymentId, buildPlan, repository);
-      /*
-    ------------------------------------
-    Start Runtime
-    ------------------------------------
-    */
-      const report = await trivyService.scan(buildPlan.imageName);
-
-      const critical = (report.match(/CRITICAL/g) || []).length;
-      const high = (report.match(/HIGH/g) || []).length;
-
-      logger.deployment(
-        deploymentId,
-        `🔒 Trivy Scan Complete | HIGH=${high} | CRITICAL=${critical}`,
-      );
       ({ runtime, hostPort, containerName } = await this.startRuntime(
         deploymentId,
         buildPlan,
         env,
       ));
-      /*
-    ------------------------------------
-    Give container time to boot
-    ------------------------------------
-    */
+
       await this.verifyHealth(deploymentId, hostPort, containerName);
+
       await this.switchTraffic(deploymentId, buildPlan);
-    runtimeLogService.stream(containerName, deploymentId);
+
+   runtimeLogService.stream(containerName, deploymentId);
 
       await this.registerRuntime(
         deploymentId,
@@ -66,12 +49,9 @@ class DockerEngine {
         hostPort,
         containerName,
       );
-      /*
-    ------------------------------------
-    Runtime Info
-    ------------------------------------
-    */
+
       await this.finishDeployment(deploymentId, buildPlan, hostPort);
+
     } catch (err) {
       throw err;
     } finally {
@@ -99,21 +79,21 @@ class DockerEngine {
     };
   }
 
-  async buildImage(deploymentId, buildPlan, repository) {
-    await statusService.update(deploymentId, "BUILDING");
+  // async buildImage(deploymentId, buildPlan, repository) {
+  //   await statusService.update(deploymentId, "BUILDING");
 
-    logger.deployment(deploymentId, "🏗 Build Started");
+  //   logger.deployment(deploymentId, "🏗 Build Started");
 
-    await dockerService.buildImage({
-      imageName: buildPlan.imageName,
-      dockerfile: buildPlan.dockerfile,
-      context: repository.repository,
-      buildContext: buildPlan.buildContext,
-      deploymentId,
-    });
+  //   await dockerService.buildImage({
+  //     imageName: buildPlan.imageName,
+  //     dockerfile: buildPlan.dockerfile,
+  //     context: repository.repository,
+  //     buildContext: buildPlan.buildContext,
+  //     deploymentId,
+  //   });
 
-    logger.deployment(deploymentId, "✅ Image Built");
-  }
+  //   logger.deployment(deploymentId, "✅ Image Built");
+  // }
 
   //
   async startRuntime(deploymentId, buildPlan, env) {

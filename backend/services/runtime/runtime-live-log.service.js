@@ -1,27 +1,20 @@
 const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
 
-class StatsService {
-  async stats(deploymentId) {
+class RuntimeLiveLogService {
+  async stream(deploymentId) {
     const runtime = await runtimeResolver.resolve(deploymentId);
 
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
 
-    const stats = await runtimeAction.stats(runtime);
-
     if (runtime.engine === "docker") {
-      return JSON.parse(stats);
+      return null;
     }
 
-    const parts = stats.trim().split(/\s+/);
-
-    return {
-      cpu: parts[1],
-      memory: parts[2],
-    };
+    return runtimeAction.logs(runtime, true);
   }
 }
 
-module.exports = new StatsService();
+module.exports = new RuntimeLiveLogService();

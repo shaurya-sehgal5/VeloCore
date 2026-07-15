@@ -17,7 +17,7 @@ class RuntimePipeline {
 
     logger.deployment(deploymentId,"🚀 Runtime created.");
 
-    runtimeLogService.stream(containerName, deploymentId);
+   runtimeLogService.stream(runtime, deploymentId);
 
    if (runtime.engine !== "kubernetes") {
     runtimeMonitorService.monitor({

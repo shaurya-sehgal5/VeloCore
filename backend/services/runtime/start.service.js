@@ -2,20 +2,20 @@ const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
 const db = require("../../config/db");
 
-class StopService {
-  async stop(deploymentId) {
+class StartService {
+  async start(deploymentId) {
     const runtime = await runtimeResolver.resolve(deploymentId);
 
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
 
-    await runtimeAction.stop(runtime);
+    await runtimeAction.start(runtime);
 
     await db.query(
       `
       UPDATE deployment_services
-      SET status='STOPPED'
+      SET status='RUNNING'
       WHERE deployment_id=$1
       `,
       [deploymentId]
@@ -25,4 +25,4 @@ class StopService {
   }
 }
 
-module.exports = new StopService();
+module.exports = new StartService();
