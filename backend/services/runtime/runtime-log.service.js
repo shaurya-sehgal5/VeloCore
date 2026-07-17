@@ -11,17 +11,43 @@ class RuntimeLogService {
     const logs = await runtimeAdapter.logs(runtime);
 
     logs.stdout.on("data", (data) => {
-      logger.deployment(
-        deploymentId,
-        data.toString().trim(),
-      );
+      const lines = data
+        .toString()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      for (const line of lines) {
+        if (
+          line.startsWith(">") ||
+          line.includes("npm notice") ||
+          line.includes("Debugger attached")
+        ) {
+          continue;
+        }
+
+        logger.deployment(deploymentId, line);
+      }
     });
 
     logs.stderr.on("data", (data) => {
-      logger.deployment(
-        deploymentId,
-        data.toString().trim(),
-      );
+      const lines = data
+        .toString()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      for (const line of lines) {
+        if (
+          line.startsWith(">") ||
+          line.includes("npm notice") ||
+          line.includes("Debugger attached")
+        ) {
+          continue;
+        }
+
+        logger.deployment(deploymentId, line);
+      }
     });
 
     logs.on("error", (err) => {

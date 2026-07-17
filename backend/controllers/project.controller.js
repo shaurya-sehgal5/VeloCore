@@ -77,29 +77,6 @@ exports.deployProject = async (req, res) => {
 
       finalProjectId = rows[0].id;
     }
-    
-
-    if (!finalProjectId) {
-      const { rows } = await db.query(
-        `
-    INSERT INTO projects
-    (
-      user_id,
-      name,
-      repo_url,
-      branch
-    )
-    VALUES
-    (
-      $1,$2,$3,'main'
-    )
-    RETURNING id
-    `,
-        [userId, repoName, cloneUrl],
-      );
-
-      finalProjectId = rows[0].id;
-    }
 
     await db.query(
       `
@@ -130,19 +107,19 @@ exports.deployProject = async (req, res) => {
     );
 
     await buildQueue.add(
-  "deployment",
-  {
-    deploymentId,
-    cloneUrl,
-    githubToken,
-    env: envVars || {},
-  },
-  {
-    jobId: `project-${finalProjectId}`,
-    removeOnComplete: 20,
-    removeOnFail: 20,
-  }
-);
+      "deployment",
+      {
+        deploymentId,
+        cloneUrl,
+        githubToken,
+        env: envVars || {},
+      },
+      {
+        jobId: `project-${finalProjectId}`,
+        removeOnComplete: 20,
+        removeOnFail: 20,
+      }
+    );
 
     return res.status(202).json({
       success: true,

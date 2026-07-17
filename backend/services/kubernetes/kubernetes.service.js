@@ -4,7 +4,7 @@ const yaml = require("js-yaml");
 const hpaTemplate = require("../../templates/hpa.template");
 const deploymentTemplate = require("../../templates/deployment.template");
 const serviceTemplate = require("../../templates/service.template");
-const ingressTemplate = require("../../templates/ingress.template");
+
 const configMapTemplate = require("../../templates/configmap.template");
 const secretTemplate = require("../../templates/secret.template");
 const namespaceTemplate = require("../../templates/namespace.template");
@@ -31,15 +31,6 @@ class KubernetesService {
       port: buildPlan.containerPort,
 
       targetPort: buildPlan.containerPort,
-    });
-    const ingress = ingressTemplate({
-      name: buildPlan.projectName,
-      namespace: buildPlan.namespace,
-      host: `${buildPlan.projectName}.velocore.local`,
-
-      service: buildPlan.projectName,
-
-      port: buildPlan.containerPort,
     });
     const configMap = configMapTemplate({
       name: `${buildPlan.projectName}-config`,
@@ -70,12 +61,10 @@ class KubernetesService {
       secret,
       deployment,
       service,
-      ingress,
       hpa,
-      // ...(buildPlan.persistentVolume ? [pvc] : []),
     ]
-      .map((doc) => yaml.dump(doc))
-      .join("---\n");
+      .map((doc) => yaml.dump(doc).trim())
+      .join("\n---\n");
 
     const tempDir = path.join(__dirname, "../../temp");
 
@@ -83,8 +72,10 @@ class KubernetesService {
       recursive: true,
     });
 
-    const file = path.join(tempDir, `${buildPlan.projectName}.yaml`);
-
+    const file = path.join(
+      tempDir,
+      `${buildPlan.projectName}-${buildPlan.slot}-${Date.now()}.yaml`,
+    );
     await fs.writeFile(file, manifest);
 
     return file;

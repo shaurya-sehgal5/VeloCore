@@ -4,7 +4,10 @@ const socket = require("./kubernetes-socket.service");
 
 class KubernetesLogService {
   stream(pod, deploymentId, namespace = "default") {
-    logger.deployment(deploymentId, "📜 Streaming Kubernetes logs...");
+    logger.deployment(
+      deploymentId,
+      `📜 Streaming ${runtime.project || "runtime"} logs...`,
+    );
 
     const stream = kubectl.streamLogs(pod, namespace);
 

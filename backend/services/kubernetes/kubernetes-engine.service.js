@@ -8,6 +8,7 @@ const kubernetesLogs = require("./kubernetes-log.service");
 const namespaceService = require("./namespaces.service");
 const bus = require("../events/event-bus.service");
 const events = require("../events/runtime-events");
+const fs = require("fs/promises");
 
 class KubernetesEngine {
   async deploy(buildPlan, deploymentId) {
@@ -16,27 +17,33 @@ class KubernetesEngine {
     const file = await kubernetesService.generate(buildPlan);
 
     logger.deployment(deploymentId, "☸ Applying Manifest...");
-    try {
-      await kubectl.delete(file);
-
-      await kubectl.waitDeletion(buildPlan.projectName);
-    } catch {}
     await namespaceService.ensure(buildPlan.namespace);
 
     await kubectl.apply(file);
-
+    await fs.unlink(file).catch(() => { });
     logger.deployment(deploymentId, "⏳ Waiting for rollout...");
 
-    await kubectl.rollout(buildPlan.projectName);
+    await kubectl.rollout(
+      buildPlan.projectName,
+      buildPlan.namespace,
+    );
 
-    const pod = await kubectl.getPod(buildPlan.projectName);
+    const pod = await kubectl.getPod(
+      buildPlan.projectName,
+      buildPlan.namespace,
+    );
 
-    const service = await kubectl.getService(buildPlan.projectName);
-    const url = buildPlan.customDomain
-      ? `https://${buildPlan.customDomain}`
-      : `http://${buildPlan.host}`;
+    const service = await kubectl.getService(
+      buildPlan.projectName,
+      buildPlan.namespace,
+    );
+    const url = `http://localhost:8000/visit/${deploymentId}`;
     const nodePort = service.spec.ports[0].nodePort;
-    kubernetesLogs.stream(pod.metadata.name, deploymentId);
+    setImmediate(() => {
+      kubernetesLogs
+        .stream(pod.metadata.name, deploymentId)
+        .catch((err) => logger.error(deploymentId, err.message));
+    });
 
     runtimeManager.register({
       deploymentId,
@@ -46,7 +53,7 @@ class KubernetesEngine {
       framework: buildPlan.framework,
 
       engine: "kubernetes",
-      host: buildPlan.host,
+      host: null,
 
       namespace: buildPlan.namespace,
 
@@ -69,7 +76,7 @@ class KubernetesEngine {
       imageName: buildPlan.imageName,
 
       containerName: pod.metadata.name,
-      host: buildPlan.host,
+      host: null,
 
       namespace: buildPlan.namespace,
 

@@ -6,10 +6,9 @@ const logger = require("../monitoring/logger.service");
 class GitService {
 
     async clone(repoUrl, githubToken, workspaceDir) {
-
         logger.info(`Preparing workspace ${workspaceDir}`);
 
-        await fs.ensureDir(workspaceDir);
+        await fs.emptyDir(workspaceDir);
 
         let authenticatedUrl = repoUrl;
 
@@ -17,33 +16,29 @@ class GitService {
             githubToken &&
             repoUrl.startsWith("https://github.com/")
         ) {
-
             authenticatedUrl = repoUrl.replace(
                 "https://github.com/",
                 `https://x-token-auth:${githubToken}@github.com/`
             );
-
         }
-
-        const git = simpleGit();
 
         logger.info("Cloning repository...");
 
-      await git.clone(
-  authenticatedUrl,
-  workspaceDir,
-  [
-    "--depth=1",
-    "--single-branch",
-    "--no-tags",
-    "--filter=blob:none"
-  ]
-);
+        await simpleGit().clone(
+            authenticatedUrl,
+            workspaceDir,
+            [
+                "--depth=1",
+                "--single-branch",
+                "--no-tags",
+                "--filter=tree:0",
+                "--quiet",
+            ]
+        );
 
         logger.success("Repository cloned.");
 
         return workspaceDir;
-
     }
 
 }

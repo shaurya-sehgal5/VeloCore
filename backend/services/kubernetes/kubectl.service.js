@@ -28,7 +28,12 @@ class KubectlService {
   }
 
   apply(file) {
-    return this.execute(["apply", "-f", file]);
+    return this.execute([
+      "apply",
+      "--server-side",
+      "-f",
+      file,
+    ]);
   }
 
   delete(file) {
@@ -70,12 +75,14 @@ class KubectlService {
     return this.execute(["get", "pods", "-o", "json"]);
   }
 
-  rollout(name) {
+  rollout(name, namespace = "default") {
     return this.execute([
       "rollout",
       "status",
       `deployment/${name}`,
-      "--timeout=120s",
+      "-n",
+      namespace,
+      "--timeout=20s",
     ]);
   }
 
@@ -97,25 +104,40 @@ class KubectlService {
       `--replicas=${replicas}`,
     ]);
   }
-  async getPod(name) {
+  async getPod(name, namespace = "default") {
     const output = await this.execute([
       "get",
       "pods",
+      "-n",
+      namespace,
       "-l",
       `app=${name}`,
       "-o",
       "json",
     ]);
 
-    return JSON.parse(output).items[0];
+    const pods = JSON.parse(output).items;
+
+    if (!pods.length) {
+      return null;
+    }
+
+    return pods[0];
   }
 
-  async getService(name) {
-    const output = await this.execute(["get", "svc", name, "-o", "json"]);
+  async getService(name, namespace = "default") {
+    const output = await this.execute([
+      "get",
+      "svc",
+      name,
+      "-n",
+      namespace,
+      "-o",
+      "json",
+    ]);
 
     return JSON.parse(output);
   }
-
   streamLogs(pod, namespace = "default") {
     return spawn("kubectl", ["logs", "-f", pod, "-n", namespace]);
   }
@@ -124,7 +146,7 @@ class KubectlService {
       try {
         await this.execute(["get", "deployment", name]);
 
-        await new Promise((r) => setTimeout(r, 1000));
+       await new Promise((r) => setTimeout(r, 300));
       } catch {
         return;
       }

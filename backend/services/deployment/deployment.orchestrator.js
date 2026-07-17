@@ -15,23 +15,29 @@ class DeploymentOrchestrator {
     try {
       logger.deployment(deploymentId, "🚀 Starting deployment...");
       const started = Date.now();
+      const stageTimers = {};
+
+      const startStage = (name) => {
+        stageTimers[name] = Date.now();
+      };
+
+      const endStage = (name) => {
+        logger.success(
+          deploymentId,
+          `${name} completed in ${(
+            (Date.now() - stageTimers[name]) / 1000
+          ).toFixed(2)}s`,
+        );
+      };
       metrics.deployments.inc();
-      /*
-            ----------------------------------
-            Create Workspace
-            ----------------------------------
-            */
 
+      startStage("Workspace");
       workspace = await workspaceService.create();
-
+      endStage("Workspace");
       logger.deployment(deploymentId, `📁 Workspace Created : ${workspace.id}`);
 
-      /*
-            ----------------------------------
-            Clone Repository
-            ----------------------------------
-            */
 
+      startStage("Clone");
       await statusService.update(deploymentId, "CLONING");
       logger.deployment(deploymentId, `⏱ Clone: ${Date.now() - started} ms`);
       const repositoryPath = await gitService.clone(
@@ -39,24 +45,20 @@ class DeploymentOrchestrator {
         githubToken,
         workspace.path,
       );
+      endStage("Clone");
 
-      /*
-            ----------------------------------
-            Scan Repository
-            ----------------------------------
-            */
-
+      startStage("Repository Scan");
       await statusService.update(deploymentId, "SCANNING");
 
       const repository = scanRepository(repositoryPath);
-
+      endStage("Repository Scan");
       logger.deployment(
         deploymentId,
         `🔍 ${repository.projects.length} deployable project(s) detected`,
       );
-
+      startStage("Dependency Graph");
       const graph = repositoryGraph.build(repository);
-
+      endStage("Dependency Graph");
       logger.deployment(deploymentId, "📊 Deployment Graph Created");
 
       logger.deployment(
@@ -71,12 +73,7 @@ class DeploymentOrchestrator {
 
       logger.deployment(deploymentId, `Workers : ${graph.workers.length}`);
 
-      /*
-            ----------------------------------
-            Deploy Entire Stack
-            ----------------------------------
-            */
-
+      startStage("Deployment");
       await stackEngine.deploy({
         graph,
 
@@ -88,6 +85,7 @@ class DeploymentOrchestrator {
 
         env,
       });
+      endStage("Deployment");
       logger.deployment(deploymentId, `⏱ Deploy: ${Date.now() - started} ms`);
       /*
             ----------------------------------

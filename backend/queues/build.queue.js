@@ -13,11 +13,17 @@ const buildQueue = new Queue("production-build-queue", {
   connection: redisConnection,
 });
 
-setInterval(async () => {
-  const waiting = await buildQueue.getWaitingCount();
+buildQueue.on("waiting", async () => {
+  metrics.queueJobs.set(await buildQueue.getWaitingCount());
+});
 
-  metrics.queueJobs.set(waiting);
-}, 5000);
+buildQueue.on("completed", async () => {
+  metrics.queueJobs.set(await buildQueue.getWaitingCount());
+});
+
+buildQueue.on("failed", async () => {
+  metrics.queueJobs.set(await buildQueue.getWaitingCount());
+});
 
 const buildWorker = new Worker(
   "production-build-queue",
@@ -40,45 +46,45 @@ const buildWorker = new Worker(
     metrics.deployments.inc();
 
     const timeout = new Promise((_, reject) =>
-  setTimeout(
-    () => reject(new Error("Build timed out after 10 minutes.")),
-    10 * 60 * 1000
-  )
-);
-
-let lastError;
-
-for (let attempt = 1; attempt <= 1; attempt++) {
-  try {
-   
-    return await Promise.race([
-      deploymentOrchestrator.deploy({
-        repoUrl: cloneUrl,
-        githubToken,
-        deploymentId,
-        io,
-        env,
-      }),
-      timeout,
-    ]);
-  } catch (err) {
-    lastError = err;
-
-    console.log(
-      `❌ Attempt ${attempt} Failed: ${err.message}`
+      setTimeout(
+        () => reject(new Error("Deployment exceeded 10 minute timeout.")),
+        600000
+      )
     );
 
-    if (attempt < 1) {
-      console.log("🔄 Retrying in 5 seconds...");
+    const MAX_RETRIES = 2;
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, 5000)
-      );
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+
+        return await Promise.race([
+          deploymentOrchestrator.deploy({
+            repoUrl: cloneUrl,
+            githubToken,
+            deploymentId,
+            io,
+            env,
+          }),
+          timeout,
+        ]);
+      } catch (err) {
+        lastError = err;
+
+        console.log(
+          `❌ Attempt ${attempt} Failed: ${err.message}`
+        );
+
+        if (attempt < MAX_RETRIES) {
+          console.log("🔄 Retrying in 5 seconds...");
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 5000)
+          );
+        }
+      }
     }
-  }
-}
 
-throw lastError;
+    throw lastError;
   },
 
   {

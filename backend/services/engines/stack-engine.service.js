@@ -37,6 +37,8 @@ class StackEngine {
     ------------------------------------
     */
 
+    const buildStarted = Date.now();
+
     await Promise.all(
       jobs.map((job) =>
         buildEngine.build({
@@ -47,27 +49,41 @@ class StackEngine {
       ),
     );
 
- 
-  /*
-------------------------------------
-Phase 2 - Security Scan
-------------------------------------
-*/
+    logger.success(
+      deploymentId,
+      `Images built in ${((Date.now() - buildStarted) / 1000).toFixed(1)}s`,
+    );
 
-for (const job of jobs) {
-  logger.deployment(
-    deploymentId,
-    `🔍 Scanning ${job.buildPlan.projectName}...`,
-  );
-
-  await trivyService.scan(job.buildPlan.imageName);
-
-  logger.deployment(
-    deploymentId,
-    `🔒 ${job.buildPlan.projectName} scan completed`,
-  );
-}
     /*
+    ------------------------------------
+    Phase 2 - Security Scan (Background)
+    ------------------------------------
+    */
+
+    Promise.all(
+      jobs.map(async (job) => {
+        try {
+          logger.deployment(
+            deploymentId,
+            `🔍 Security scanning ${job.buildPlan.projectName}...`,
+          );
+
+          await trivyService.scan(job.buildPlan.imageName);
+
+          logger.success(
+            deploymentId,
+            `${job.buildPlan.projectName} security scan passed`,
+          );
+        } catch (err) {
+          logger.warning(
+            deploymentId,
+            `${job.buildPlan.projectName} security scan failed`,
+          );
+
+          logger.error(err.message);
+        }
+      }),
+    );  /*
     ------------------------------------
     Phase 3 - Deploy
     ------------------------------------

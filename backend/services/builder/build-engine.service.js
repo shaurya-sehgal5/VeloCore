@@ -5,6 +5,8 @@ const statusService = require("../monitoring/status.service");
 
 class BuildEngine {
   async build({ deploymentId, repository, buildPlan }) {
+    const started = Date.now();
+
     await statusService.update(deploymentId, "BUILDING");
 
     logger.deployment(
@@ -13,29 +15,27 @@ class BuildEngine {
     );
 
     await dockerService.buildImage({
-      
       imageName: buildPlan.imageName,
       dockerfile: buildPlan.dockerfile,
       context: repository.repository,
       buildContext: buildPlan.buildContext,
       deploymentId,
     });
-// if ((process.env.RUNTIME_ENGINE || "docker") === "kubernetes") {
-//   await dockerService.loadKindImage(
-//     buildPlan.imageName,
-//     deploymentId,
-//   );
-// }
-    logger.deployment(
+
+    logger.success(
       deploymentId,
-      `✅ ${buildPlan.projectName} image built`,
+      `${buildPlan.projectName} built in ${(
+        (Date.now() - started) /
+        1000
+      ).toFixed(2)}s`,
     );
   }
-
   async scan({ deploymentId, buildPlan }) {
+    const started = Date.now();
+
     logger.deployment(
       deploymentId,
-      `🔍 Scanning ${buildPlan.projectName}...`,
+      `🔍 Security scanning ${buildPlan.projectName}...`,
     );
 
     const report = await trivyService.scan(buildPlan.imageName);
@@ -43,9 +43,12 @@ class BuildEngine {
     const critical = (report.match(/CRITICAL/g) || []).length;
     const high = (report.match(/HIGH/g) || []).length;
 
-    logger.deployment(
+    logger.success(
       deploymentId,
-      `🔒 ${buildPlan.projectName} | HIGH=${high} | CRITICAL=${critical}`,
+      `${buildPlan.projectName} scan completed (${(
+        (Date.now() - started) /
+        1000
+      ).toFixed(2)}s) HIGH=${high} CRITICAL=${critical}`,
     );
   }
 }

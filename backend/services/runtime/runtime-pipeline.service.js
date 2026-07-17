@@ -6,32 +6,34 @@ const statusService = require("../monitoring/status.service");
 const logger = require("../monitoring/logger.service");
 
 class RuntimePipeline {
-  async start(runtime) {
+    async start(runtime) {
 
-    const {
-        deploymentId,
-        containerName,
-        imageName,
-        workspace,
-    } = runtime;
+        const {
+            deploymentId,
+            containerName,
+            imageName,
+            workspace,
+        } = runtime;
 
-    logger.deployment(deploymentId,"🚀 Runtime created.");
+        logger.deployment(deploymentId, "🚀 Runtime created.");
 
-   runtimeLogService.stream(runtime, deploymentId);
+        setImmediate(() => {
+            runtimeLogService.stream(runtime, deploymentId);
+        });
 
-   if (runtime.engine !== "kubernetes") {
-    runtimeMonitorService.monitor({
-        deploymentId,
-        containerName,
-        imageName,
-        workspace,
-         engine: runtime.engine,
-    });
-}
-    await statusService.update(deploymentId,"RUNNING");
+        if (runtime.engine !== "kubernetes") {
+            runtimeMonitorService.monitor({
+                deploymentId,
+                containerName,
+                imageName,
+                workspace,
+                engine: runtime.engine,
+            });
+        }
+        await statusService.update(deploymentId, "RUNNING");
 
-    logger.deployment(deploymentId,"✅ Runtime Ready.");
-}
+        logger.deployment(deploymentId, "✅ Runtime Ready.");
+    }
 }
 
 module.exports = new RuntimePipeline();

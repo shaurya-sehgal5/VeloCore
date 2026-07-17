@@ -1,23 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db'); 
-const secureShield = require('../middleware/auth.middleware'); 
+const db = require('../config/db');
+const secureShield = require('../middleware/auth.middleware');
 
 // 🔥 NEW: Dynamic authenticated analytics list lookup (No hardcoded IDs needed)
 router.get('/analytics-list', secureShield, async (req, res) => {
   try {
     const userId = req.user.userId;
     const result = await db.query(
-      `SELECT d.*, COALESCE(p.name, d.repo_name) as project_name
-       FROM deployments d
-       LEFT JOIN projects p ON d.project_id = p.id
-       WHERE d.user_id = $1
-       ORDER BY d.created_at DESC`,
+      `
+  SELECT DISTINCT ON (d.project_id)
+      d.*,
+      COALESCE(p.name, d.repo_name) AS project_name
+  FROM deployments d
+  LEFT JOIN projects p
+      ON d.project_id = p.id
+  WHERE d.user_id = $1
+  ORDER BY d.project_id, d.created_at DESC
+  `,
       [userId]
     );
 
-  
-  
+
+
 
     res.json(result.rows);
   } catch (err) {
@@ -48,16 +53,16 @@ router.get('/deployments/:userId', async (req, res) => {
 // 2. 🚀 TRIGGER DEPLOYMENT WITH 2-APP FREE TIER CHECK
 router.post('/deploy', async (req, res) => {
   const { deploymentId, projectId, userId, repoName, deploy_url } = req.body;
-  
+
   try {
     const activeCheck = await db.query(
       "SELECT COUNT(*) FROM deployments WHERE user_id = $1 AND status = 'RUNNING'",
       [userId]
     );
-    
+
     if (parseInt(activeCheck.rows[0].count) >= 2) {
-      return res.status(403).json({ 
-        error: "Free-tier limit reached! You can only have 2 live deployments active." 
+      return res.status(403).json({
+        error: "Free-tier limit reached! You can only have 2 live deployments active."
       });
     }
 

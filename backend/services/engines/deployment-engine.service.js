@@ -10,10 +10,12 @@ class DeploymentEngine {
         options.deploymentId,
       );
     }
-
     const runtime = await runtimeProvider.create(options);
 
-    await runtimePipeline.start(runtime);
+  
+    runtimePipeline.start(runtime).catch((err) => {
+      console.error("Runtime pipeline failed:", err);
+    });
 
     return runtime;
   }

@@ -1,13 +1,17 @@
 const { spawn } = require("child_process");
 const logger = require("../monitoring/logger.service");
+const logParser = require("../monitoring/log-parser.service");
 
 class DockerService {
   execute(command, args, deploymentId) {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         shell: false,
+        env: {
+          ...process.env,
+          DOCKER_BUILDKIT: "1",
+        },
       });
-
       let output = "";
 
       const stream = (data) => {
@@ -23,8 +27,11 @@ class DockerService {
           if (!text) continue;
 
           if (text.startsWith("=>")) continue;
+          const parsed = logParser.parse(text);
 
-          logger.deployment(deploymentId, text);
+          if (parsed) {
+            logger.deployment(deploymentId, parsed);
+          }
         }
       };
 
@@ -47,6 +54,10 @@ class DockerService {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         shell: false,
+        env: {
+          ...process.env,
+          DOCKER_BUILDKIT: "1",
+        },
       });
 
       let output = "";
@@ -83,18 +94,21 @@ class DockerService {
       "docker",
       [
         "build",
+        "--rm",
 
-        "--progress=auto",
 
         "--pull=false",
 
-        "--network=host",
+
 
         "--build-arg",
         "BUILDKIT_INLINE_CACHE=1",
 
         "--build-arg",
         `BUILD_CONTEXT=${buildContext}`,
+
+        "--label",
+        "velocore.build=true",
 
         "-t",
         imageName,
@@ -212,24 +226,7 @@ class DockerService {
       });
     });
   }
-  // async loadKindImage(imageName, deploymentId) {
-  //   logger.deployment(
-  //     deploymentId,
-  //     `☸ Loading ${imageName} into KIND...`,
-  //   );
 
-  //   await this.execute(
-  //     "kind",
-  //     [
-  //       "load",
-  //       "docker-image",
-  //       imageName,
-  //       "--name",
-  //       "desktop",
-  //     ],
-  //     deploymentId,
-  //   );
-  // }
   async stopContainer(name) {
     return this.execute(
       "docker",
