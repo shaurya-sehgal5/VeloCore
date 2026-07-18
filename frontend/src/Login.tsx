@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import LogoLoop from '../components/LogoLoop/LogoLoop';
+import LogoLoop from './components/LogoLoop/LogoLoop';
 
 
 const STACK = [

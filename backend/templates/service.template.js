@@ -8,9 +8,10 @@ module.exports = ({
 
   kind: "Service",
 
-  metadata: {
+ metadata: {
     name,
-  },
+    namespace,
+},
 
   spec: {
     type: "NodePort",

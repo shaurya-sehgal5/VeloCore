@@ -1,14 +1,16 @@
 module.exports = ({
     name,
+    namespace,
     data = {},
 }) => ({
     apiVersion: "v1",
 
     kind: "ConfigMap",
 
-    metadata: {
-        name,
-    },
+   metadata: {
+    name,
+    namespace,
+},
 
     data,
 });

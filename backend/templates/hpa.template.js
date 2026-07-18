@@ -9,9 +9,10 @@ module.exports = ({
 
   kind: "HorizontalPodAutoscaler",
 
-  metadata: {
+ metadata: {
     name,
-  },
+    namespace,
+},
 
   spec: {
     scaleTargetRef: {

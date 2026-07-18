@@ -79,23 +79,6 @@ class DockerEngine {
     };
   }
 
-  // async buildImage(deploymentId, buildPlan, repository) {
-  //   await statusService.update(deploymentId, "BUILDING");
-
-  //   logger.deployment(deploymentId, "🏗 Build Started");
-
-  //   await dockerService.buildImage({
-  //     imageName: buildPlan.imageName,
-  //     dockerfile: buildPlan.dockerfile,
-  //     context: repository.repository,
-  //     buildContext: buildPlan.buildContext,
-  //     deploymentId,
-  //   });
-
-  //   logger.deployment(deploymentId, "✅ Image Built");
-  // }
-
-  //
   async startRuntime(deploymentId, buildPlan, env) {
     await statusService.update(deploymentId, "DEPLOYING");
 
@@ -249,15 +232,5 @@ class DockerEngine {
 
     await statusService.update(deploymentId, "RUNNING");
   }
-  //
-  // async collectLogs(deploymentId, runtime) {
-  //   const logs = await dockerService.execute(
-  //     "docker",
-  //     ["logs", runtime.containerId],
-  //     deploymentId,
-  //   );
-
-  //   logger.deployment(deploymentId, logs);
-  // }
 }
 module.exports = new DockerEngine();

@@ -82,7 +82,7 @@ class KubectlService {
       `deployment/${name}`,
       "-n",
       namespace,
-      "--timeout=20s",
+      "--timeout=90s",
     ]);
   }
 

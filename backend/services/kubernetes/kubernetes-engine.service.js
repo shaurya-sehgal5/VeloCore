@@ -40,10 +40,22 @@ class KubernetesEngine {
     const url = `http://localhost:8000/visit/${deploymentId}`;
     const nodePort = service.spec.ports[0].nodePort;
     setImmediate(() => {
-      kubernetesLogs
-        .stream(pod.metadata.name, deploymentId)
-        .catch((err) => logger.error(deploymentId, err.message));
-    });
+  const logStream = kubernetesLogs.stream(deploymentId, pod);
+
+  logStream.on("data", (chunk) => {
+    // If you are printing logs to your console/dashboard
+    logger.info(deploymentId, chunk.toString());
+  });
+
+  logStream.on("error", (err) => {
+    // This catches the stream failure cleanly without killing Node.js
+    logger.error(deploymentId, `Log stream error: ${err.message}`);
+  });
+  
+  logStream.on("end", () => {
+    logger.info(deploymentId, "Log stream closed cleanly.");
+  });
+});
 
     runtimeManager.register({
       deploymentId,

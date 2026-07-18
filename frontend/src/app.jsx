@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+import Login from './Login';
+import Dashboard from './Dashboard';
 
 function App() {
   const [currentView, setCurrentView] = useState('login');
@@ -74,7 +74,10 @@ function App() {
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
   };
 
-  const handleDeployRepository = async (repoName, cloneUrl) => {
+  // Dashboard's deploy modal now collects a project name alongside the repo,
+  // so this accepts and forwards a third argument. Existing behavior for
+  // repoName/cloneUrl is unchanged.
+  const handleDeployRepository = async (repoName, cloneUrl, projectName) => {
     setError(null);
 
     try {
@@ -86,7 +89,8 @@ function App() {
         credentials: 'include',
         body: JSON.stringify({
           repoName,
-          cloneUrl
+          cloneUrl,
+          projectName
         })
       });
 
