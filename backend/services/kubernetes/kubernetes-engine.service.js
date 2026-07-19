@@ -20,42 +20,45 @@ class KubernetesEngine {
     await namespaceService.ensure(buildPlan.namespace);
 
     await kubectl.apply(file);
-    await fs.unlink(file).catch(() => { });
+    // await fs.unlink(file).catch(() => { });
     logger.deployment(deploymentId, "⏳ Waiting for rollout...");
 
     await kubectl.rollout(
       buildPlan.projectName,
-      buildPlan.namespace,
+      buildPlan.namespace
     );
+    const [pod, service] = await Promise.all([
+      kubectl.getPod(
+        buildPlan.projectName,
+        buildPlan.namespace
+      ),
+      kubectl.getService(
+        buildPlan.projectName,
+        buildPlan.namespace
+      ),
+    ]);
 
-    const pod = await kubectl.getPod(
-      buildPlan.projectName,
-      buildPlan.namespace,
-    );
-
-    const service = await kubectl.getService(
-      buildPlan.projectName,
-      buildPlan.namespace,
-    );
+    if (!pod) {
+      throw new Error(
+        `No running pod found for ${buildPlan.projectName}`
+      );
+    }
     const url = `http://localhost:8000/visit/${deploymentId}`;
     const nodePort = service.spec.ports[0].nodePort;
     setImmediate(() => {
-  const logStream = kubernetesLogs.stream(deploymentId, pod);
+      const logStream = kubernetesLogs.stream(
+        pod.metadata.name,
+        deploymentId,
+        buildPlan.namespace
+      );
 
-  logStream.on("data", (chunk) => {
-    // If you are printing logs to your console/dashboard
-    logger.info(deploymentId, chunk.toString());
-  });
-
-  logStream.on("error", (err) => {
-    // This catches the stream failure cleanly without killing Node.js
-    logger.error(deploymentId, `Log stream error: ${err.message}`);
-  });
-  
-  logStream.on("end", () => {
-    logger.info(deploymentId, "Log stream closed cleanly.");
-  });
-});
+      logStream.on("error", (err) => {
+        logger.error(
+          deploymentId,
+          `Log stream error: ${err.message}`
+        );
+      });
+    });
 
     runtimeManager.register({
       deploymentId,

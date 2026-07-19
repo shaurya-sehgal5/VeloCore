@@ -82,26 +82,54 @@ class KubectlService {
       `deployment/${name}`,
       "-n",
       namespace,
-      "--timeout=90s",
+      "--timeout=30s",
+    ]);
+  }
+  restart(name, namespace = "default") {
+    return this.execute([
+      "rollout",
+      "restart",
+      `deployment/${name}`,
+      "-n",
+      namespace,
     ]);
   }
 
-  restart(name) {
-    return this.execute(["rollout", "restart", `deployment/${name}`]);
+  rollback(name, namespace = "default") {
+    return this.execute([
+      "rollout",
+      "undo",
+      `deployment/${name}`,
+      "-n",
+      namespace,
+    ]);
   }
 
-  rollback(name) {
-    return this.execute(["rollout", "undo", `deployment/${name}`]);
+  scale(name, replicas, namespace = "default") {
+    return this.execute([
+      "scale",
+      `deployment/${name}`,
+      `--replicas=${replicas}`,
+      "-n",
+      namespace,
+    ]);
   }
   deleteNamespace(namespace) {
     return this.execute(["delete", "namespace", namespace]);
   }
 
-  scale(name, replicas) {
+
+  async waitReady(name, namespace = "default") {
+
     return this.execute([
-      "scale",
-      `deployment/${name}`,
-      `--replicas=${replicas}`,
+      "wait",
+      "--for=condition=Ready",
+      "pod",
+      "-l",
+      `app=${name}`,
+      "-n",
+      namespace,
+      "--timeout=30s"
     ]);
   }
   async getPod(name, namespace = "default") {
@@ -122,7 +150,9 @@ class KubectlService {
       return null;
     }
 
-    return pods[0];
+    return pods.find(
+      p => p.status.phase === "Running"
+    ) || pods[0];
   }
 
   async getService(name, namespace = "default") {
@@ -141,15 +171,34 @@ class KubectlService {
   streamLogs(pod, namespace = "default") {
     return spawn("kubectl", ["logs", "-f", pod, "-n", namespace]);
   }
-  async waitDeletion(name) {
+  async waitDeletion(name, namespace = "default") {
     while (true) {
       try {
-        await this.execute(["get", "deployment", name]);
-
-       await new Promise((r) => setTimeout(r, 300));
+        await this.execute([
+          "get",
+          "deployment",
+          name,
+          "-n",
+          namespace,
+        ]);
+        await new Promise((r) => setTimeout(r, 100));
       } catch {
         return;
       }
+    }
+  }
+  async exists(resource, name, namespace = "default") {
+    try {
+      await this.execute([
+        "get",
+        resource,
+        name,
+        "-n",
+        namespace,
+      ]);
+      return true;
+    } catch {
+      return false;
     }
   }
 }

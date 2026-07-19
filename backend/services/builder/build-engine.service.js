@@ -8,12 +8,20 @@ class BuildEngine {
     const started = Date.now();
 
     await statusService.update(deploymentId, "BUILDING");
-
     logger.deployment(
       deploymentId,
       `🏗 Building ${buildPlan.projectName}...`,
     );
-
+    const exists = await dockerService.imageExists(
+      buildPlan.imageName
+    );
+    if (exists) {
+      logger.deployment(
+        deploymentId,
+        "🐳 Cached image found."
+      );
+      return;
+    }
     await dockerService.buildImage({
       imageName: buildPlan.imageName,
       dockerfile: buildPlan.dockerfile,

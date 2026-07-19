@@ -1,30 +1,49 @@
 const kubectl = require("./kubectl.service");
 
 class KubernetesRuntimeService {
-  restart(deployment) {
-    return kubectl.restart(deployment);
+  restart(deployment, namespace) {
+    return kubectl.restart(
+      deployment,
+      namespace
+    );
   }
 
-  stop(deployment) {
-    return kubectl.scale(deployment, 0);
+  stop(deployment, namespace) {
+    return kubectl.scale(
+      deployment,
+      0,
+      namespace
+    );
+  }
+  start(deployment, namespace) {
+    return kubectl.scale(
+      deployment,
+      1,
+      namespace
+    );
   }
 
-  start(deployment) {
-    return kubectl.scale(deployment, 1);
-  }
+  async destroy(deployment, namespace) {
+    await kubectl.deleteDeployment(
+      deployment,
+      namespace
+    );
 
-  async destroy(deployment) {
-    await kubectl.execute(["delete", "deployment", deployment]);
+    await kubectl.deleteService(
+      deployment,
+      namespace
+    );
+  } F
 
-    await kubectl.execute(["delete", "service", deployment]);
-  }
-
-  logs(pod, follow = false) {
+  logs(pod, namespace, follow = false) {
     if (follow) {
       return kubectl.streamLogs(pod);
     }
-
-    return kubectl.execute(["logs", "--tail=200", pod]);
+    return kubectl.logs(
+      pod,
+      namespace,
+      follow
+    );
   }
 
   stats(pod) {

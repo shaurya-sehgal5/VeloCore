@@ -10,6 +10,7 @@ class DockerService {
         env: {
           ...process.env,
           DOCKER_BUILDKIT: "1",
+          COMPOSE_DOCKER_CLI_BUILD: "1",
         },
       });
       let output = "";
@@ -94,12 +95,17 @@ class DockerService {
       "docker",
       [
         "build",
-        "--rm",
 
+        "--rm",
 
         "--pull=false",
 
+        "--progress=plain",
 
+        "--network=host",
+
+        "--cache-from",
+        imageName,
 
         "--build-arg",
         "BUILDKIT_INLINE_CACHE=1",
@@ -134,10 +140,24 @@ class DockerService {
     network,
     deploymentId,
   }) {
-    const args = ["run", "-d", "--name", containerName];
+    const args = [
+      "run",
+      "-d",
+
+      "--init",
+
+      "--name",
+      containerName,
+
+      "--restart",
+      "unless-stopped",
+    ];
     args.push(
       "--label",
-      "velocore=true",
+      "velocore.build=true",
+
+      "--label",
+      `build.time=${Date.now()}`,
 
       "--label",
       `deploymentId=${deploymentId}`,
@@ -147,6 +167,9 @@ class DockerService {
 
       "--label",
       `slot=${buildPlan.slot}`,
+
+      "--label",
+      `namespace=velocore-${buildPlan.projectName}`,
 
       "--label",
       `framework=${buildPlan.framework}`,
@@ -234,7 +257,21 @@ class DockerService {
       ["stop", name],
     );
   }
-
+  async imageExists(image) {
+    try {
+      await this.executeSilent(
+        "docker",
+        [
+          "image",
+          "inspect",
+          image
+        ]
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
   async removeContainer(name) {
     return this.execute(
       "docker",

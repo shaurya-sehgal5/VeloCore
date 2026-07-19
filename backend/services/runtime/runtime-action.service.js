@@ -9,8 +9,10 @@ class RuntimeActionService {
         ["restart", runtime.container_name]
       );
     }
-
-    return kubernetesService.restart(runtime.deployment);
+    return kubernetesService.restart(
+      runtime.deployment,
+      runtime.namespace
+    );
   }
 
   stop(runtime) {
@@ -21,7 +23,10 @@ class RuntimeActionService {
       );
     }
 
-    return kubernetesService.stop(runtime.deployment);
+    kubernetesService.stop(
+      runtime.deployment,
+      runtime.namespace
+    );
   }
 
   start(runtime) {
@@ -31,8 +36,10 @@ class RuntimeActionService {
         ["start", runtime.container_name]
       );
     }
-
-    return kubernetesService.start(runtime.deployment);
+    kubernetesService.start(
+      runtime.deployment,
+      runtime.namespace
+    );
   }
 
   destroy(runtime) {
@@ -42,27 +49,30 @@ class RuntimeActionService {
         ["rm", "-f", runtime.container_name]
       );
     }
-
-    return kubernetesService.destroy(runtime.deployment);
-  }
-
-  logs(runtime, follow = false) {
-  if (runtime.engine === "docker") {
-    return dockerService.execute(
-      "docker",
-      [
-        "logs",
-        "--tail",
-        "200",
-        runtime.container_name,
-      ]
+    kubernetesService.destroy(
+      runtime.deployment,
+      runtime.namespace
     );
   }
 
-  return kubernetesService.logs(runtime.pod, follow);
+  logs(runtime, follow = false) {
+    if (runtime.engine === "docker") {
+      return dockerService.execute(
+        "docker",
+        [
+          "logs",
+          "--tail",
+          "200",
+          runtime.container_name,
+        ]
+      );
+    }
+    kubernetesService.logs(
+      runtime.pod,
+      runtime.namespace,
+      follow
+    );
 
-
-    return kubernetesService.logs(runtime.pod);
   }
 
   stats(runtime) {
@@ -78,8 +88,10 @@ class RuntimeActionService {
         ]
       );
     }
-
-    return kubernetesService.stats(runtime.pod);
+    kubernetesService.stats(
+      runtime.pod,
+      runtime.namespace
+    );
   }
 }
 

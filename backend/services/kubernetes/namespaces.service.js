@@ -21,13 +21,9 @@ class NamespaceService {
     }
   }
 
-  async ensure(name) {
-    if (await this.exists(name)) {
-      return;
-    }
-
-    await this.create(name);
-  }
+ async ensure(name) {
+  await this.create(name);
+}
 }
 
 module.exports = new NamespaceService();

@@ -16,9 +16,15 @@ class KubernetesDiscoveryService {
     for (const deployment of deployments) {
       const name = deployment.metadata.name;
 
-      const pod = await kubectl.getPod(name);
+      const pod = await kubectl.getPod(
+        name,
+        deployment.metadata.namespace
+      );
 
-      const service = await kubectl.getService(name);
+      const service = await kubectl.getService(
+        name,
+        deployment.metadata.namespace
+      );
 
       runtimeManager.register({
         deploymentId: `recovered-${name}`,
@@ -31,7 +37,7 @@ class KubernetesDiscoveryService {
 
         pod: pod.metadata.name,
 
-        namespace: "default",
+        namespace: deployment.metadata.namespace,
 
         engine: "kubernetes",
 

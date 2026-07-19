@@ -6,7 +6,7 @@ module.exports = ({
   image,
   replicas = 1,
   containerPort,
-  healthCheck = { path: "/" }, 
+  healthCheck = { path: "/" },
   configMap,
   secret,
 }) => ({
@@ -18,11 +18,11 @@ module.exports = ({
   },
   spec: {
     replicas,
-    revisionHistoryLimit: 5,
+    revisionHistoryLimit: 2,
     strategy: {
       type: "RollingUpdate",
       rollingUpdate: {
-        maxUnavailable: 0,
+        maxUnavailable: 1,
         maxSurge: 1,
       },
     },
@@ -38,13 +38,12 @@ module.exports = ({
         },
       },
       spec: {
-        terminationGracePeriodSeconds: 30,
+        terminationGracePeriodSeconds: 5,
         containers: [
           {
             name,
             image,
-            // FIX: Allows Kind to pick up images loaded directly onto nodes locally
-            imagePullPolicy: process.env.NODE_ENV === "production" ? "Always" : "IfNotPresent",
+            imagePullPolicy: "IfNotPresent",
             ports: [
               {
                 containerPort,
@@ -56,22 +55,26 @@ module.exports = ({
                 path: healthCheck.path || "/",
                 port: containerPort,
               },
-              initialDelaySeconds: 15, // Raised slightly to allow slow i3 warm-ups
-              periodSeconds: 5,
+              initialDelaySeconds: 3,
+              periodSeconds: 2,
+              timeoutSeconds: 2,
+              failureThreshold: 3,
+              successThreshold: 1,
             },
             livenessProbe: {
               httpGet: {
                 path: healthCheck.path || "/",
                 port: containerPort,
               },
-              initialDelaySeconds: 30,
-              periodSeconds: 10,
+              initialDelaySeconds: 10,
+              periodSeconds: 5,
+              timeoutSeconds: 2,
             },
             securityContext: {
               allowPrivilegeEscalation: false,
               readOnlyRootFilesystem: false,
             },
-            // Safely inject configurations only if they are provided
+
             envFrom: [
               ...(configMap ? [{ configMapRef: { name: configMap } }] : []),
               ...(secret ? [{ secretRef: { name: secret } }] : [])

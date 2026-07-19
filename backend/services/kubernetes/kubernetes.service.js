@@ -74,9 +74,11 @@ class KubernetesService {
 
     const file = path.join(
       tempDir,
-      `${buildPlan.projectName}-${buildPlan.slot}-${Date.now()}.yaml`,
+      `${buildPlan.projectName}-${buildPlan.slot}.yaml`,
     );
-    await fs.writeFile(file, manifest);
+    await fs.writeFile(file, manifest, {
+      flag: "w",
+    });
 
     return file;
   }

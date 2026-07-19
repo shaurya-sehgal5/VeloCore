@@ -86,7 +86,22 @@ class DeploymentOrchestrator {
         env,
       });
       endStage("Deployment");
-      logger.deployment(deploymentId, `⏱ Deploy: ${Date.now() - started} ms`);
+      logger.success(
+        deploymentId,
+        `
+================================
+
+Clone : ${((stageTimers.Clone - stageTimers.Workspace) / 1000).toFixed(1)}s
+
+Scan : ...
+
+Graph : ...
+
+Deploy : ...
+
+================================
+`
+      );
       /*
             ----------------------------------
             Cleanup Workspace

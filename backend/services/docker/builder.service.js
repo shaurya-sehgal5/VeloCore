@@ -4,12 +4,11 @@ class BuilderService {
   createBuildPlan(project, deploymentId, slot = "blue") {
     const projectName = project.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
-    const imageName = `velocore-${projectName}-${deploymentId}-${slot}`;
-
+    const imageName = `velocore-${projectName}-${slot}`;
     const common = {
       projectName,
       imageName,
-      containerName: `runtime-${deploymentId}-${projectName}-${slot}`,
+      containerName: `runtime-${projectName}-${slot}`,
       containerPort: project.containerPort,
       startCommand: project.startCommand,
       framework: project.framework,
@@ -17,7 +16,7 @@ class BuilderService {
       host: null,
       persistentVolume: false,
       storage: "1Gi",
-      namespace: `velocore-${deploymentId}`,
+     namespace: `velocore-${deploymentId}`,
       customDomain: null,
       enableTLS: true,
     };
