@@ -1,13 +1,23 @@
+const db = require("../../config/db");
 const builderService = require("../builder/builder.service");
 const buildEngine = require("../builder/build-engine.service");
 const deploymentEngine = require("./deployment-engine.service");
 const deploymentSlot = require("../deployment/deployment-slot.service");
 const runtimeGroup = require("../runtime/runtime-group.service");
-const trivyService = require("../security/trivy.service");
+const securityReportService = require("../security/security-report.service");
+const trivyService = require("../security/scanners/trivy.service");
+const securityGate = require("../security/security-gate.service");
 const logger = require("../monitoring/logger.service");
 
 class StackEngine {
-  async deploy({ graph, deploymentId, workspace, repository, env }) {
+  async deploy({
+    graph,
+    deploymentId,
+    workspace,
+    repository,
+    env,
+    securityReport,
+  }) {
     const jobs = [];
 
     /*
@@ -25,7 +35,7 @@ class StackEngine {
           buildPlan: builderService.createBuildPlan(
             node,
             deploymentId,
-            slot,
+            slot
           ),
         });
       }
@@ -45,45 +55,86 @@ class StackEngine {
           deploymentId,
           repository,
           buildPlan: job.buildPlan,
-        }),
-      ),
+        })
+      )
     );
 
     logger.success(
       deploymentId,
-      `Images built in ${((Date.now() - buildStarted) / 1000).toFixed(1)}s`,
+      `Images built in ${(
+        (Date.now() - buildStarted) /
+        1000
+      ).toFixed(1)}s`
     );
 
     /*
     ------------------------------------
-    Phase 2 - Security Scan (Background)
+    Phase 2 - Trivy Image Scan
     ------------------------------------
     */
 
-    Promise.all(
+    await Promise.all(
       jobs.map(async (job) => {
-        try {
-          logger.deployment(
-            deploymentId,
-            `🔍 Security scanning ${job.buildPlan.projectName}...`,
-          );
+        logger.deployment(
+          deploymentId,
+          `🐳 Scanning ${job.buildPlan.projectName}...`
+        );
 
-          await trivyService.scan(job.buildPlan.imageName);
+        await trivyService.scan({
+          deploymentId,
+          image: job.buildPlan.imageName,
+          report: securityReport,
+        });
+      })
+    );
 
-          logger.success(
-            deploymentId,
-            `${job.buildPlan.projectName} security scan passed`,
-          );
-        } catch (err) {
-          logger.warning(
-            deploymentId,
-            `${job.buildPlan.projectName} security scan failed`,
-          );
+    /*
+    ------------------------------------
+    Recalculate Score
+    ------------------------------------
+    */
 
-          logger.error(err.message);
-        }
-      }),
-    );  /*
+    securityReport.score = 100;
+
+    securityReport.score -= securityReport.secrets.length * 20;
+    securityReport.score -= securityReport.critical * 20;
+    securityReport.score -= securityReport.high * 10;
+    securityReport.score -= securityReport.medium * 5;
+    securityReport.score -= securityReport.low;
+
+    securityReport.score = Math.max(
+      securityReport.score,
+      0
+    );
+
+    securityReport.passed =
+      securityReport.secrets.length === 0 &&
+      securityReport.critical === 0;
+
+    /*
+    ------------------------------------
+    Save Security Report
+    ------------------------------------
+    */
+    await securityReportService.save(
+      deploymentId,
+      securityReport
+    );
+
+    logger.success(
+      deploymentId,
+      "🛡 Security report saved."
+    );
+
+    /*
+    ------------------------------------
+    Security Gate
+    ------------------------------------
+    */
+
+    securityGate.validate(securityReport);
+
+    /*
     ------------------------------------
     Phase 3 - Deploy
     ------------------------------------
@@ -92,22 +143,32 @@ class StackEngine {
     const deployments = await Promise.all(
       jobs.map(async (job) => {
         const runtime = await deploymentEngine.deploy({
-          engine: process.env.RUNTIME_ENGINE || "docker",
+          engine:
+            process.env.RUNTIME_ENGINE || "docker",
+
           graph,
+
           deploymentId,
+
           workspace,
+
           repository,
+
           buildPlan: job.buildPlan,
+
           env,
         });
 
-        runtimeGroup.add(deploymentId, runtime);
+        runtimeGroup.add(
+          deploymentId,
+          runtime
+        );
 
         return {
           node: job.node,
           runtime,
         };
-      }),
+      })
     );
 
     deployments.sort((a, b) => {
@@ -117,7 +178,10 @@ class StackEngine {
         frontend: 3,
       };
 
-      return (order[a.runtime.type] || 99) - (order[b.runtime.type] || 99);
+      return (
+        (order[a.runtime.type] || 99) -
+        (order[b.runtime.type] || 99)
+      );
     });
 
     return deployments;

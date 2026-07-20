@@ -18,6 +18,7 @@ const kubernetesRoutes = require("./routes/kubernetes.routes");
 const cleanupScheduler = require("./services/docker/cleanup.scheduler");
 const kubernetesSocket = require("./services/kubernetes/kubernetes-socket.service");
 const eventBootstrap = require("./services/events/bootstrap.service");
+const securityRoutes = require("./routes/security.routes");
 
 require("dotenv").config();
 
@@ -142,6 +143,7 @@ app.use("/api/git", gitRoutes);
 app.use("/visit", require("./routes/visit.routes"));
 app.use("/api/github/webhook", githubWebhookRoutes);
 app.use("/api", kubernetesRoutes);
+app.use("/api/security", securityRoutes);
 
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {

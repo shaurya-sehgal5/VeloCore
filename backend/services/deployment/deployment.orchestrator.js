@@ -7,6 +7,8 @@ const metrics = require("../monitoring/metrics.service");
 const { scanRepository } = require("../git/scanner.service");
 const repositoryGraph = require("../graph/repository-graph.service");
 const stackEngine = require("../engines/stack-engine.service");
+const securityEngine = require("../security/security-engine.service");
+const securityGate = require("../security/security-gate.service");
 
 class DeploymentOrchestrator {
   async deploy({ repoUrl, githubToken, deploymentId, env = {} }) {
@@ -58,6 +60,21 @@ class DeploymentOrchestrator {
       );
       startStage("Dependency Graph");
       const graph = repositoryGraph.build(repository);
+      startStage("Security");
+
+      await statusService.update(
+        deploymentId,
+        "SECURITY_SCANNING"
+      );
+
+      await securityEngine.run({
+        deploymentId,
+        workspace,
+        repository,
+        graph,
+      });
+
+      endStage("Security");
       endStage("Dependency Graph");
       logger.deployment(deploymentId, "📊 Deployment Graph Created");
 
@@ -76,14 +93,11 @@ class DeploymentOrchestrator {
       startStage("Deployment");
       await stackEngine.deploy({
         graph,
-
         deploymentId,
-
         workspace,
-
         repository,
-
         env,
+        securityReport,
       });
       endStage("Deployment");
       logger.success(

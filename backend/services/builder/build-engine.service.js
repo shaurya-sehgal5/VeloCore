@@ -1,5 +1,5 @@
 const dockerService = require("../docker/docker.service");
-const trivyService = require("../security/trivy.service");
+const trivyService = require("../security/scanners/trivy.service");
 const logger = require("../monitoring/logger.service");
 const statusService = require("../monitoring/status.service");
 
