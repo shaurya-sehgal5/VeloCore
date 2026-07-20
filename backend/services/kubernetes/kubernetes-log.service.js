@@ -4,18 +4,29 @@ const socket = require("./kubernetes-socket.service");
 
 class KubernetesLogService {
   stream(pod, deploymentId, namespace = "default") {
-    logger.deployment(
+
+    logger.info(
       deploymentId,
-      `📜 Streaming ${pod} logs...`,
+      "KUBERNETES",
+      `Streaming logs from ${pod}`
     );
 
     const stream = kubectl.streamLogs(pod, namespace);
 
     stream.stdout.on("data", (data) => {
       const line = data.toString().trim();
-
-      logger.deployment(deploymentId, line);
-
+      if (
+        !line ||
+        line.includes("kube-probe")
+      ) {
+        return;
+      }
+      logger.live(
+        deploymentId,
+        "KUBERNETES",
+        "INFO",
+        line
+      );
       socket.broadcast("k8s:logs", {
         deploymentId,
         line,
@@ -24,9 +35,18 @@ class KubernetesLogService {
 
     stream.stderr.on("data", (data) => {
       const line = data.toString().trim();
-
-      logger.deployment(deploymentId, line);
-
+      if (
+        !line ||
+        line.includes("kube-probe")
+      ) {
+        return;
+      }
+      logger.live(
+        deploymentId,
+        "KUBERNETES",
+        "ERROR",
+        line
+      );
       socket.broadcast("k8s:logs", {
         deploymentId,
         line,
@@ -34,9 +54,10 @@ class KubernetesLogService {
     });
 
     stream.on("close", (code) => {
-      logger.deployment(
+      logger.info(
         deploymentId,
-        `📦 Kubernetes log stream ended (${code})`,
+        "KUBERNETES",
+        `Log stream closed (${code})`
       );
     });
 

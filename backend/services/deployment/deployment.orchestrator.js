@@ -15,48 +15,76 @@ class DeploymentOrchestrator {
     let workspace = null;
     const timer = metrics.buildDuration.startTimer();
     try {
-      logger.deployment(deploymentId, "🚀 Starting deployment...");
+      await logger.milestone(
+        deploymentId,
+        "DEPLOYMENT_STARTED",
+        "DEPLOYMENT",
+        "Deployment started."
+      );
       const started = Date.now();
+      const summary = {
+        buildTime: 0,
+        deployTime: 0,
+        totalTime: 0,
+        status: "SUCCESS",
+      };
       const stageTimers = {};
 
       const startStage = (name) => {
         stageTimers[name] = Date.now();
       };
 
-      const endStage = (name) => {
-        logger.success(
+      const endStage = async (name) => {
+        await logger.success(
           deploymentId,
-          `${name} completed in ${(
+          name.toUpperCase(),
+          `Completed in ${(
             (Date.now() - stageTimers[name]) / 1000
-          ).toFixed(2)}s`,
+          ).toFixed(2)}s`
         );
       };
       metrics.deployments.inc();
 
       startStage("Workspace");
       workspace = await workspaceService.create();
-      endStage("Workspace");
-      logger.deployment(deploymentId, `📁 Workspace Created : ${workspace.id}`);
+      await endStage("Workspace");
+
+
+      await logger.milestone(
+        deploymentId,
+        "WORKSPACE_READY",
+        "WORKSPACE",
+        "Workspace created."
+      );
 
 
       startStage("Clone");
       await statusService.update(deploymentId, "CLONING");
-      logger.deployment(deploymentId, `⏱ Clone: ${Date.now() - started} ms`);
+
       const repositoryPath = await gitService.clone(
         repoUrl,
         githubToken,
         workspace.path,
+        "main",
+        deploymentId,
       );
-      endStage("Clone");
-
+      await endStage("Clone");
+      await logger.milestone(
+        deploymentId,
+        "REPOSITORY_CLONED",
+        "WORKSPACE",
+        "Repository cloned."
+      );
       startStage("Repository Scan");
       await statusService.update(deploymentId, "SCANNING");
 
       const repository = scanRepository(repositoryPath);
-      endStage("Repository Scan");
-      logger.deployment(
+      await endStage("Repository Scan");
+      await logger.milestone(
         deploymentId,
-        `🔍 ${repository.projects.length} deployable project(s) detected`,
+        "REPOSITORY_ANALYZED",
+        "ANALYSIS",
+        `${repository.projects.length} project(s) detected`
       );
       startStage("Dependency Graph");
       const graph = repositoryGraph.build(repository);
@@ -64,32 +92,45 @@ class DeploymentOrchestrator {
 
       await statusService.update(
         deploymentId,
-        "SECURITY_SCANNING"
+        "SCANNING"
       );
 
-      await securityEngine.run({
+      const securityReport = await securityEngine.run({
         deploymentId,
         workspace,
         repository,
         graph,
       });
 
-      endStage("Security");
-      endStage("Dependency Graph");
-      logger.deployment(deploymentId, "📊 Deployment Graph Created");
-
-      logger.deployment(
+      await endStage("Security");
+      await endStage("Dependency Graph");
+      await logger.success(
         deploymentId,
-        `Frontend : ${graph.frontend?.name || "None"}`,
+        "ANALYSIS",
+        "Deployment graph created."
       );
 
-      logger.deployment(
+      if (graph.frontend) {
+        await logger.success(
+          deploymentId,
+          "ANALYSIS",
+          `Frontend : ${graph.frontend.name}`
+        );
+      }
+
+      if (graph.backend) {
+        await logger.success(
+          deploymentId,
+          "ANALYSIS",
+          `Backend : ${graph.backend.name}`
+        );
+      }
+
+      await logger.success(
         deploymentId,
-        `Backend : ${graph.backend?.name || "None"}`,
+        "ANALYSIS",
+        `Workers : ${graph.workers.length}`
       );
-
-      logger.deployment(deploymentId, `Workers : ${graph.workers.length}`);
-
       startStage("Deployment");
       await stackEngine.deploy({
         graph,
@@ -99,23 +140,9 @@ class DeploymentOrchestrator {
         env,
         securityReport,
       });
-      endStage("Deployment");
-      logger.success(
-        deploymentId,
-        `
-================================
-
-Clone : ${((stageTimers.Clone - stageTimers.Workspace) / 1000).toFixed(1)}s
-
-Scan : ...
-
-Graph : ...
-
-Deploy : ...
-
-================================
-`
-      );
+      await endStage("Deployment");
+      summary.deployTime =
+        (Date.now() - stageTimers.Deployment) / 1000;
       /*
             ----------------------------------
             Cleanup Workspace
@@ -124,13 +151,24 @@ Deploy : ...
 
       await cleanupService.success(workspace);
 
-      logger.deployment(deploymentId, "🎉 Deployment Finished Successfully.");
+      await logger.milestone(
+        deploymentId,
+        "DEPLOYMENT_COMPLETED",
+        "SUMMARY",
+        "Deployment completed successfully."
+      );
 
       metrics.runningDeployments.inc();
 
       timer();
 
-      logger.deployment(deploymentId, `🏁 Total: ${Date.now() - started} ms`);
+      summary.totalTime =
+        ((Date.now() - started) / 1000).toFixed(1);
+
+      await logger.summary(
+        deploymentId,
+        `Build:${summary.buildTime}s | Deploy:${summary.deployTime}s | Total:${summary.totalTime}s | Status:${summary.status}`
+      );
       return {
         success: true,
 
@@ -141,9 +179,17 @@ Deploy : ...
         url: `http://localhost:8000/visit/${deploymentId}`,
       };
     } catch (error) {
-      logger.error(error.message);
-
-      logger.deployment(deploymentId, `❌ ${error.message}`);
+      await logger.error(
+        deploymentId,
+        "SUMMARY",
+        error.message
+      );
+      await logger.milestone(
+        deploymentId,
+        "DEPLOYMENT_FAILED",
+        "SUMMARY",
+        error.message
+      );
 
       await statusService.update(
         deploymentId,

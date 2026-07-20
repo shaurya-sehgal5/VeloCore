@@ -3,52 +3,135 @@ const events = require("../deployment/deployment-event.service");
 const runtimeStatus = require("../runtime/runtime-status.service");
 
 class LoggerService {
-  log(level, message) {
-    console.log(`[${level}] ${message}`);
+  constructor() {
+    this.dbEvents = new Set([
+      "DEPLOYMENT_STARTED",
+      "WORKSPACE_READY",
+      "REPOSITORY_CLONED",
+      "REPOSITORY_ANALYZED",
+      "SECURITY_STARTED",
+      "SECURITY_COMPLETED",
+      "BUILD_STARTED",
+      "BUILD_COMPLETED",
+      "DEPLOYMENT_STARTED_RUNTIME",
+      "DEPLOYMENT_COMPLETED",
+      "DEPLOYMENT_FAILED",
+      "RUNTIME_STARTED",
+      "RUNTIME_STOPPED",
+      "ROLLBACK_STARTED",
+      "ROLLBACK_COMPLETED",
+    ]);
   }
 
-  info(message) {
-    this.log("INFO", message);
+  timestamp() {
+    return new Date().toLocaleTimeString("en-IN", {
+      hour12: false,
+    });
   }
 
-  success(message) {
-    this.log("SUCCESS", message);
+  create(level, stage, message) {
+    return {
+      timestamp: this.timestamp(),
+      level,
+      stage,
+      message,
+    };
   }
 
-  warning(message) {
-    this.log("WARNING", message);
+  console(log) {
+    console.log(
+      `[${log.timestamp}] [${log.level}] [${log.stage}] ${log.message}`
+    );
   }
 
-  error(message) {
-    this.log("ERROR", message);
-  }
+  async live(deploymentId, stage, level, message) {
+    const log = this.create(level, stage, message);
 
-  deployment(deploymentId, message) {
-    this.info(message);
-    events.create(deploymentId, "LOG", message).catch(() => {});
+    this.console(log);
+
     runtimeStatus.publish(deploymentId, {
       type: "log",
-      message,
-      timestamp: Date.now(),
+      ...log,
     });
+
     try {
       const io = getIO();
+      io.to(deploymentId).emit("live_logs", log);
+    } catch (_) { }
+  }
 
-      io.to(deploymentId).emit("live_logs", message);
-    } catch (_) {
-      // Socket server not initialized
+  async event(deploymentId, event, message) {
+    if (!this.dbEvents.has(event)) {
+      return;
     }
-  }
-  success(deploymentId, message) {
-    this.deployment(deploymentId, `✅ ${message}`);
+
+    await events.create(deploymentId, event, message);
   }
 
-  warning(deploymentId, message) {
-    this.deployment(deploymentId, `⚠ ${message}`);
+  async info(deploymentId, stage, message) {
+    await this.live(deploymentId, stage, "INFO", message);
   }
 
-  failure(deploymentId, message) {
-    this.deployment(deploymentId, `❌ ${message}`);
+  async success(deploymentId, stage, message) {
+    await this.live(deploymentId, stage, "SUCCESS", message);
+  }
+
+  async warning(deploymentId, stage, message) {
+    await this.live(deploymentId, stage, "WARNING", message);
+  }
+
+  async error(deploymentId, stage, message) {
+    await this.live(deploymentId, stage, "ERROR", message);
+  }
+  async section(deploymentId, title) {
+    await this.live(
+      deploymentId,
+      "SECTION",
+      "INFO",
+      title
+    );
+  }
+
+  async repository(
+    deploymentId,
+    repo,
+    branch,
+    commit
+  ) {
+    await this.live(
+      deploymentId,
+      "REPOSITORY",
+      "INFO",
+      `${repo} | ${branch} | ${commit}`
+    );
+  }
+
+  async summary(deploymentId, summary) {
+    await this.live(
+      deploymentId,
+      "SUMMARY",
+      "SUCCESS",
+      summary
+    );
+  }
+  
+  async milestone(
+    deploymentId,
+    event,
+    stage,
+    message
+  ) {
+    await this.event(
+      deploymentId,
+      event,
+      message
+    );
+
+    await this.success(
+      deploymentId,
+      stage,
+      message
+    );
   }
 }
 

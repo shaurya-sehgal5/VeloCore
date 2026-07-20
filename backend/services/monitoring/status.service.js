@@ -25,8 +25,12 @@ class StatusService {
         metrics.failedDeployments.inc();
         break;
     }
-
-    logger.deployment(deploymentId, `Status -> ${status}`);
+    await logger.live(
+      deploymentId,
+      "STATUS",
+      "INFO",
+      `Status → ${status}`
+    );
     try {
       runtimeStatus.publish(deploymentId, {
         type: "status",
@@ -37,7 +41,7 @@ class StatusService {
       io.to(deploymentId).emit("status_update", {
         status,
       });
-    } catch (_) {}
+    } catch (_) { }
   }
 }
 

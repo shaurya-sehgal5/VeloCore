@@ -10,11 +10,12 @@ class SecurityEngine {
         graph,
         image,
     }) {
-        logger.deployment(
+        await logger.milestone(
             deploymentId,
-            "🛡 Starting Security Pipeline..."
+            "SECURITY_STARTED",
+            "SECURITY",
+            "Security pipeline started."
         );
-
         const report = {
             score: 100,
 
@@ -38,11 +39,11 @@ class SecurityEngine {
         ----------------------------------
         */
 
-        logger.deployment(
+        await logger.info(
             deploymentId,
-            "🔍 Running Gitleaks..."
+            "SECURITY",
+            "Running Gitleaks..."
         );
-
         const secretResult = await gitleaks.scan(workspace.path);
 
         report.secrets = secretResult.findings;
@@ -53,11 +54,11 @@ class SecurityEngine {
         });
 
         if (secretResult.findings.length) {
-            logger.warning(
+            await logger.error(
                 deploymentId,
+                "SECURITY",
                 `${secretResult.findings.length} secret(s) detected`
             );
-
             report.findings.push(
                 ...secretResult.findings.map((f) => ({
                     scanner: "Gitleaks",
@@ -68,9 +69,10 @@ class SecurityEngine {
                 }))
             );
         } else {
-            logger.success(
+            await logger.success(
                 deploymentId,
-                "No secrets detected."
+                "SECURITY",
+                "Gitleaks passed."
             );
         }
 
@@ -80,9 +82,10 @@ class SecurityEngine {
         ----------------------------------
         */
 
-        logger.deployment(
+        await logger.info(
             deploymentId,
-            "📦 Running npm audit..."
+            "SECURITY",
+            "Running npm audit..."
         );
 
         for (const node of graph.nodes) {
@@ -97,14 +100,10 @@ class SecurityEngine {
 
             report.scanners.push(audit);
 
-            logger.deployment(
+            await logger.success(
                 deploymentId,
-                `${node.name}
-
-Critical : ${audit.critical}
-High     : ${audit.high}
-Medium   : ${audit.medium}
-Low      : ${audit.low}`
+                "SECURITY",
+                `${node.name} | Critical:${audit.critical} High:${audit.high} Medium:${audit.medium} Low:${audit.low}`
             );
         }
 
@@ -155,23 +154,17 @@ Low      : ${audit.low}`
         ----------------------------------
         */
 
-        logger.deployment(
+        await logger.milestone(
             deploymentId,
-            `
-================ SECURITY REPORT ================
+            "SECURITY_COMPLETED",
+            "SECURITY",
+            `Security Score : ${report.score}/100`
+        );
 
-Secrets  : ${report.secrets.length}
-Critical : ${report.critical}
-High     : ${report.high}
-Medium   : ${report.medium}
-Low      : ${report.low}
-
-Security Score : ${report.score}
-
-Status : ${report.passed ? "PASSED" : "FAILED"}
-
-===============================================
-`
+        await logger.success(
+            deploymentId,
+            "SECURITY",
+            `Secrets:${report.secrets.length} Critical:${report.critical} High:${report.high}`
         );
 
         return report;

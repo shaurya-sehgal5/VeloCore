@@ -15,7 +15,11 @@ class RuntimePipeline {
             workspace,
         } = runtime;
 
-        logger.deployment(deploymentId, "🚀 Runtime created.");
+        await logger.success(
+            deploymentId,
+            "RUNTIME",
+            "Runtime created."
+        );
 
         setImmediate(() => {
             runtimeLogService.stream(runtime, deploymentId);
@@ -32,7 +36,11 @@ class RuntimePipeline {
         }
         await statusService.update(deploymentId, "RUNNING");
 
-        logger.deployment(deploymentId, "✅ Runtime Ready.");
+        await logger.success(
+            deploymentId,
+            "RUNTIME",
+            "Runtime ready."
+        );
     }
 }
 

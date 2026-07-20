@@ -9,11 +9,11 @@ class SemgrepScanner {
         report,
     }) {
 
-        logger.deployment(
+        await logger.info(
             deploymentId,
-            "🔍 Running Semgrep..."
+            "SECURITY",
+            "Running Semgrep..."
         );
-
         for (const node of graph.nodes) {
 
             const findings = await this.scanProject(node);
@@ -67,9 +67,10 @@ class SemgrepScanner {
 
             }
 
-            logger.deployment(
+            await logger.success(
                 deploymentId,
-                `${node.name} : ${findings.length} issue(s)`
+                "SECURITY",
+                `${node.name}: ${findings.length} issue(s)`
             );
 
         }

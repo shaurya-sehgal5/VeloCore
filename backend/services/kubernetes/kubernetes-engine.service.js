@@ -12,16 +12,28 @@ const fs = require("fs/promises");
 
 class KubernetesEngine {
   async deploy(buildPlan, deploymentId) {
-    logger.deployment(deploymentId, "☸ Generating Kubernetes Manifest...");
+    await logger.info(
+      deploymentId,
+      "KUBERNETES",
+      "Generating Kubernetes manifest..."
+    );
 
     const file = await kubernetesService.generate(buildPlan);
 
-    logger.deployment(deploymentId, "☸ Applying Manifest...");
+    await logger.info(
+      deploymentId,
+      "KUBERNETES",
+      "Applying manifest..."
+    );
     await namespaceService.ensure(buildPlan.namespace);
 
     await kubectl.apply(file);
     // await fs.unlink(file).catch(() => { });
-    logger.deployment(deploymentId, "⏳ Waiting for rollout...");
+    await logger.info(
+      deploymentId,
+      "KUBERNETES",
+      "Waiting for rollout..."
+    );
 
     await kubectl.rollout(
       buildPlan.projectName,
@@ -53,8 +65,9 @@ class KubernetesEngine {
       );
 
       logStream.on("error", (err) => {
-        logger.error(
+         logger.error(
           deploymentId,
+          "KUBERNETES",
           `Log stream error: ${err.message}`
         );
       });

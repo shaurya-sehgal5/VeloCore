@@ -1,5 +1,8 @@
 const { spawn } = require("child_process");
 const logger = require("../../monitoring/logger.service");
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
 
 class TrivyScanner {
   async scan({
@@ -7,16 +10,21 @@ class TrivyScanner {
     image,
     report,
   }) {
-    logger.deployment(
+    await logger.info(
       deploymentId,
-      "🐳 Running Trivy Image Scan..."
+      "SECURITY",
+      "Running Trivy image scan..."
     );
 
-    const result = await this.execute(image);
+    const result = await this.execute(
+      image,
+      deploymentId
+    );
 
     if (!result || !Array.isArray(result.Results)) {
-      logger.success(
+      await logger.success(
         deploymentId,
+        "SECURITY",
         "Trivy scan completed. No vulnerabilities found."
       );
       return;
@@ -65,16 +73,28 @@ class TrivyScanner {
       findings: totalFindings,
     });
 
-    logger.deployment(
+    await logger.success(
       deploymentId,
-      `🐳 Trivy completed (${totalFindings} vulnerabilities found)`
+      "SECURITY",
+      `Trivy completed (${totalFindings} vulnerabilities found)`
     );
   }
 
-  execute(image) {
+  execute(image, deploymentId = "default") {
     return new Promise((resolve, reject) => {
+      const cacheDir = path.join(
+        os.tmpdir(),
+        "velocore",
+        "trivy",
+        deploymentId
+      );
+
+      fs.mkdirSync(cacheDir, { recursive: true });
+
       const child = spawn("trivy", [
         "image",
+        "--cache-dir",
+        cacheDir,
         "--format",
         "json",
         "--scanners",

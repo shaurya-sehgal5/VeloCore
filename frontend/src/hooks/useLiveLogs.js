@@ -16,9 +16,12 @@ export default function useLiveLogs(onStatusChange) {
 
     // Keep appending every log line regardless of phase, so build logs flow
     // straight into runtime logs once the app reaches RUNNING.
-    socket.on('live_logs', (payload) => {
-      const text = typeof payload === 'object' && payload !== null ? payload.text : payload;
-      if (text) setLogs((prev) => [...prev, text]);
+    socket.on("live_logs", (payload) => {
+      if (!payload) return;
+
+      const line = `[${payload.timestamp}] [${payload.level}] [${payload.stage}] ${payload.message}`;
+
+      setLogs((prev) => [...prev, line]);
     });
 
     socket.on('status_update', (data) => {

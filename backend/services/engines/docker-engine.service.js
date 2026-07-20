@@ -40,7 +40,7 @@ class DockerEngine {
 
       await this.switchTraffic(deploymentId, buildPlan);
 
-   runtimeLogService.stream(containerName, deploymentId);
+      runtimeLogService.stream(containerName, deploymentId);
 
       await this.registerRuntime(
         deploymentId,
@@ -107,8 +107,11 @@ class DockerEngine {
       deploymentId,
     });
 
-    logger.deployment(deploymentId, "🚀 Container Started");
-
+    await logger.success(
+      deploymentId,
+      "DEPLOYMENT",
+      "Container started."
+    );
     return {
       runtime,
       hostPort,
@@ -123,34 +126,41 @@ class DockerEngine {
       const healthy = await trafficHealth.verify(hostPort);
 
       if (healthy) {
-        logger.deployment(
+        await logger.success(
           deploymentId,
-          `✅ Health Check Passed (${i}/${maxRetries})`,
+          "DEPLOYMENT",
+          "Health check passed."
         );
         return;
       }
 
-      logger.deployment(
+      await logger.info(
         deploymentId,
-        `⏳ Waiting for application... (${i}/${maxRetries})`,
+        "DEPLOYMENT",
+        `Waiting for application (${i}/${maxRetries})`
       );
 
       await new Promise((resolve) => setTimeout(resolve, 600));
     }
 
-    logger.deployment(deploymentId, "❌ Health Check Failed");
-
+    await logger.error(
+      deploymentId,
+      "DEPLOYMENT",
+      "Health check failed."
+    );
     const rollback = await rollbackEngine.rollback(deploymentId);
 
     if (rollback) {
-      logger.deployment(
+      await logger.warning(
         deploymentId,
-        `↩ Rolled back to ${rollback.slot.toUpperCase()}`,
+        "DEPLOYMENT",
+        `Rollback → ${rollback.slot.toUpperCase()}`
       );
     } else {
-      logger.deployment(
+      await logger.warning(
         deploymentId,
-        "⚠ No previous deployment available for rollback.",
+        "DEPLOYMENT",
+        "No rollback target available."
       );
     }
 
@@ -208,19 +218,26 @@ class DockerEngine {
 
     deploymentSlot.set(deploymentId, buildPlan.slot);
 
-    logger.deployment(
+    await logger.success(
       deploymentId,
-      `🚦 Traffic switched to ${buildPlan.slot.toUpperCase()}`,
+      "DEPLOYMENT",
+      `Traffic switched to ${buildPlan.slot.toUpperCase()}`
     );
 
-    logger.deployment(
+    await logger.success(
       deploymentId,
-      `🔄 Active Slot → ${buildPlan.slot.toUpperCase()}`,
+      "DEPLOYMENT",
+      `Active slot ${buildPlan.slot.toUpperCase()}`
     );
   }
   // Finish Deployment
   async finishDeployment(deploymentId, buildPlan, hostPort) {
-    logger.deployment(deploymentId, "🎉 Deployment Completed");
+    await logger.milestone(
+      deploymentId,
+      "DEPLOYMENT_COMPLETED",
+      "DEPLOYMENT",
+      "Application deployed successfully."
+    );
 
     runtimeStatus.publish(deploymentId, {
       type: "deployment",

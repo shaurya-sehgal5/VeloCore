@@ -9,9 +9,10 @@ class RollbackEngine {
     const runtime = rollbackService.get(deploymentId);
 
     if (!runtime) {
-      logger.deployment(
+      await logger.warning(
         deploymentId,
-        "⚠ No previous deployment available for rollback.",
+        "ROLLBACK",
+        "No previous deployment available for rollback."
       );
 
       return null;
@@ -21,10 +22,15 @@ class RollbackEngine {
       type: "rollback",
       slot: runtime.slot,
     });
-    logger.deployment(deploymentId, "✅ Rollback completed successfully.");
-    logger.deployment(
+    await logger.success(
       deploymentId,
-      `↩ Rolled back to ${runtime.slot.toUpperCase()}`,
+      "ROLLBACK",
+      "Rollback completed successfully."
+    );
+    await logger.info(
+      deploymentId,
+      "ROLLBACK",
+      `Rolled back to ${runtime.slot.toUpperCase()}`
     );
 
     return runtime;

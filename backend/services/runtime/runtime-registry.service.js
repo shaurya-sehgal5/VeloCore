@@ -2,23 +2,23 @@ const db = require("../../config/db");
 const logger = require("../monitoring/logger.service");
 
 class RuntimeRegistryService {
-async register({
-  deploymentId,
-  name,
-  type,
-  framework,
-  imageName = null,
-  containerName = null,
-  hostPort = null,
-  containerPort = null,
-  slot,
-  engine = "docker",
-  namespace = "default",
-  deployment = null,
-  service = null,
-  pod = null,
-  host = null,
-}) {
+  async register({
+    deploymentId,
+    name,
+    type,
+    framework,
+    imageName = null,
+    containerName = null,
+    hostPort = null,
+    containerPort = null,
+    slot,
+    engine = "docker",
+    namespace = "default",
+    deployment = null,
+    service = null,
+    pod = null,
+    host = null,
+  }) {
     await db.query(
       `
             DELETE FROM deployment_services
@@ -72,7 +72,11 @@ async register({
       ],
     );
 
-    logger.deployment(deploymentId, `📦 Registered ${name}`);
+    await logger.success(
+      deploymentId,
+      "RUNTIME",
+      `Registered ${name}`
+    );
   }
 }
 

@@ -8,20 +8,23 @@ class BuildEngine {
     const started = Date.now();
 
     await statusService.update(deploymentId, "BUILDING");
-    logger.deployment(
+    await logger.milestone(
       deploymentId,
-      `🏗 Building ${buildPlan.projectName}...`,
+      "BUILD_STARTED",
+      "BUILD",
+      `Building ${buildPlan.projectName}`
     );
-    const exists = await dockerService.imageExists(
-      buildPlan.imageName
-    );
-    if (exists) {
-      logger.deployment(
-        deploymentId,
-        "🐳 Cached image found."
-      );
-      return;
-    }
+    // const exists = await dockerService.imageExists(
+    //   buildPlan.imageName
+    // );
+    // if (exists) {
+    //   await logger.success(
+    //     deploymentId,
+    //     "BUILD",
+    //     "Using cached Docker image."
+    //   );
+    //   return;
+    // }
     await dockerService.buildImage({
       imageName: buildPlan.imageName,
       dockerfile: buildPlan.dockerfile,
@@ -30,20 +33,22 @@ class BuildEngine {
       deploymentId,
     });
 
-    logger.success(
+    await logger.success(
       deploymentId,
-      `${buildPlan.projectName} built in ${(
+      "BUILD",
+      `Docker image built (${(
         (Date.now() - started) /
         1000
-      ).toFixed(2)}s`,
+      ).toFixed(2)}s)`
     );
   }
   async scan({ deploymentId, buildPlan }) {
     const started = Date.now();
 
-    logger.deployment(
+    await logger.info(
       deploymentId,
-      `🔍 Security scanning ${buildPlan.projectName}...`,
+      "SECURITY",
+      `Scanning image ${buildPlan.projectName}`
     );
 
     const report = await trivyService.scan(buildPlan.imageName);
@@ -51,12 +56,10 @@ class BuildEngine {
     const critical = (report.match(/CRITICAL/g) || []).length;
     const high = (report.match(/HIGH/g) || []).length;
 
-    logger.success(
+    await logger.success(
       deploymentId,
-      `${buildPlan.projectName} scan completed (${(
-        (Date.now() - started) /
-        1000
-      ).toFixed(2)}s) HIGH=${high} CRITICAL=${critical}`,
+      "SECURITY",
+      `${buildPlan.projectName} | Critical:${critical} High:${high}`
     );
   }
 }

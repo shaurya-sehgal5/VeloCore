@@ -52,9 +52,10 @@ class RuntimeMonitorService {
     engine,
   }) {
     if (engine === "kubernetes") {
-      logger.deployment(
+      logger.info(
         deploymentId,
-        "☸ Kubernetes runtime monitoring enabled.",
+        "RUNTIME",
+        "Kubernetes runtime monitoring enabled."
       );
       return;
     }
@@ -64,9 +65,10 @@ class RuntimeMonitorService {
     monitor.stdout.on("data", async (data) => {
       const exitCode = parseInt(data.toString().trim());
 
-      logger.deployment(
+      await logger.warning(
         deploymentId,
-        `⚠ Container exited with code ${exitCode}`,
+        "RUNTIME",
+        `Container exited with code ${exitCode}`
       );
 
       runtimeManager.remove(deploymentId, project, slot);
@@ -85,11 +87,19 @@ class RuntimeMonitorService {
     });
 
     monitor.stderr.on("data", (data) => {
-      logger.deployment(deploymentId, data.toString().trim());
+      logger.error(
+        deploymentId,
+        "RUNTIME",
+        data.toString().trim()
+      );
     });
 
     monitor.on("error", (err) => {
-      logger.deployment(deploymentId, err.message);
+      logger.error(
+        deploymentId,
+        "RUNTIME",
+        err.message
+      );
     });
   }
 
@@ -117,23 +127,23 @@ class RuntimeMonitorService {
               metrics:
                 runtime.engine === "docker"
                   ? {
-                      cpu: stats.CPUPerc,
-                      memory: stats.MemUsage,
-                      memoryPercent: stats.MemPerc,
-                      network: stats.NetIO,
-                      blockIO: stats.BlockIO,
-                      pids: stats.PIDs,
-                      uptime: Math.floor(
-                        (Date.now() - runtime.startedAt) / 1000,
-                      ),
-                    }
+                    cpu: stats.CPUPerc,
+                    memory: stats.MemUsage,
+                    memoryPercent: stats.MemPerc,
+                    network: stats.NetIO,
+                    blockIO: stats.BlockIO,
+                    pids: stats.PIDs,
+                    uptime: Math.floor(
+                      (Date.now() - runtime.startedAt) / 1000,
+                    ),
+                  }
                   : {
-                      cpu: stats.cpu,
-                      memory: stats.memory,
-                      uptime: Math.floor(
-                        (Date.now() - runtime.startedAt) / 1000,
-                      ),
-                    },
+                    cpu: stats.cpu,
+                    memory: stats.memory,
+                    uptime: Math.floor(
+                      (Date.now() - runtime.startedAt) / 1000,
+                    ),
+                  },
             },
           );
 
@@ -161,9 +171,10 @@ class RuntimeMonitorService {
               .set(networkToBytes(tx));
           }
         } catch (err) {
-          logger.deployment(
+          logger.error(
             runtime.deploymentId,
-            `Metrics Error: ${err.message}`,
+            "RUNTIME",
+            `Metrics Error: ${err.message}`
           );
         }
       }

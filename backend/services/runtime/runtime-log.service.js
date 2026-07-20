@@ -3,9 +3,10 @@ const logger = require("../monitoring/logger.service");
 
 class RuntimeLogService {
   async stream(runtime, deploymentId) {
-    logger.deployment(
+     logger.info(
       deploymentId,
-      "📜 Streaming runtime logs...",
+      "RUNTIME",
+      "Runtime log streaming started."
     );
 
     const logs = await runtimeAdapter.logs(runtime);
@@ -25,8 +26,12 @@ class RuntimeLogService {
         ) {
           continue;
         }
-
-        logger.deployment(deploymentId, line);
+        logger.live(
+          deploymentId,
+          "RUNTIME",
+          "INFO",
+          line
+        );
       }
     });
 
@@ -46,21 +51,28 @@ class RuntimeLogService {
           continue;
         }
 
-        logger.deployment(deploymentId, line);
+        logger.live(
+          deploymentId,
+          "RUNTIME",
+          "ERROR",
+          line
+        );
       }
     });
 
     logs.on("error", (err) => {
-      logger.deployment(
+      logger.error(
         deploymentId,
-        err.message,
+        "RUNTIME",
+        err.message
       );
     });
 
-    logs.on("close", (code) => {
-      logger.deployment(
+    logs.on("close", async (code) => {
+       logger.info(
         deploymentId,
-        `📦 Log stream ended (exit ${code})`,
+        "RUNTIME",
+        `Runtime log stream closed (${code})`
       );
     });
 

@@ -14,15 +14,20 @@ class ComposeEngine {
   }) {
     await statusService.update(deploymentId, "BUILDING");
 
-    logger.deployment(deploymentId, "📦 Docker Compose project detected.");
+    await logger.info(
+      deploymentId,
+      "COMPOSE",
+      "Docker Compose project detected."
+    );
 
     const compose = composeParser.parse(composeFile);
 
     composeRuntime.register(deploymentId, compose);
 
-    logger.deployment(
+    await logger.success(
       deploymentId,
-      `📦 ${Object.keys(compose.services).length} service(s) detected.`,
+      "COMPOSE",
+      `${Object.keys(compose.services).length} service(s) detected.`
     );
 
     await dockerService.execute(
@@ -35,7 +40,11 @@ class ComposeEngine {
 
     await statusService.update(deploymentId, "RUNNING");
 
-    logger.deployment(deploymentId, "✅ Docker Compose deployment completed.");
+    await logger.success(
+      deploymentId,
+      "COMPOSE",
+      "Docker Compose deployment completed."
+    );
 
     return {
       deploymentId,

@@ -8,11 +8,11 @@ class HealthService {
     retries = 8,
     delay = 500,
   }) {
-    logger.deployment(
+    await logger.info(
       deploymentId,
-      "🏥 Waiting for application health..."
+      "HEALTH",
+      "Waiting for application health..."
     );
-
     const urls = [
       `http://localhost:${hostPort}/health`,
       `http://localhost:${hostPort}/`,
@@ -36,17 +36,19 @@ class HealthService {
       );
 
       if (healthy) {
-        logger.deployment(
+        await logger.success(
           deploymentId,
-          `✅ Health check passed (${attempt}/${retries})`
+          "HEALTH",
+          `Health check passed (${attempt}/${retries})`
         );
 
         return true;
       }
 
-      logger.deployment(
+      await logger.info(
         deploymentId,
-        `⏳ Health check ${attempt}/${retries}`
+        "HEALTH",
+        `Health check ${attempt}/${retries}`
       );
 
       await new Promise((resolve) => setTimeout(resolve, delay));

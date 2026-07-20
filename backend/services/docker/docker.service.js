@@ -31,7 +31,12 @@ class DockerService {
           const parsed = logParser.parse(text);
 
           if (parsed) {
-            logger.deployment(deploymentId, parsed);
+            logger.live(
+              deploymentId,
+              "BUILD",
+              "INFO",
+              parsed
+            );
           }
         }
       };
@@ -89,7 +94,12 @@ class DockerService {
     buildContext,
     deploymentId,
   }) {
-    logger.deployment(deploymentId, "🐳 Building Docker Image...");
+    await logger.milestone(
+      deploymentId,
+      "BUILD_STARTED",
+      "BUILD",
+      "Building Docker image..."
+    );
 
     const logs = await this.execute(
       "docker",
@@ -211,12 +221,17 @@ class DockerService {
       args.push(buildPlan.startCommand);
     }
 
-    logger.deployment(deploymentId, "🚀 Starting Container...");
-
-    logger.deployment(
+    await logger.milestone(
       deploymentId,
+      "RUNTIME_STARTED",
+      "RUNTIME",
+      "Starting container..."
+    );
 
-      `🌱 Injecting ${Object.keys(env || {}).length} environment variable(s).`,
+    await logger.info(
+      deploymentId,
+      "RUNTIME",
+      `Injecting ${Object.keys(env || {}).length} environment variable(s).`
     );
 
     return new Promise((resolve, reject) => {
@@ -226,11 +241,21 @@ class DockerService {
 
       process.stdout.on("data", (data) => {
         output += data.toString();
-        logger.deployment(deploymentId, data.toString().trim());
+        logger.live(
+          deploymentId,
+          "RUNTIME",
+          "INFO",
+          data.toString().trim()
+        );
       });
 
       process.stderr.on("data", (data) => {
-        logger.deployment(deploymentId, data.toString().trim());
+        logger.live(
+          deploymentId,
+          "RUNTIME",
+          "ERROR",
+          data.toString().trim()
+        );
       });
 
       process.on("close", async (code) => {
@@ -238,7 +263,12 @@ class DockerService {
           return reject(new Error("Failed to start container."));
         }
         const containerId = output.trim();
-
+        await logger.milestone(
+          deploymentId,
+          "DEPLOYMENT_COMPLETED",
+          "RUNTIME",
+          "Container started successfully."
+        );
         resolve({
           containerId,
           containerName,

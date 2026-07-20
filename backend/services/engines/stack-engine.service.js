@@ -59,11 +59,12 @@ class StackEngine {
       )
     );
 
-    logger.success(
+    await logger.milestone(
       deploymentId,
-      `Images built in ${(
-        (Date.now() - buildStarted) /
-        1000
+      "BUILD_COMPLETED",
+      "BUILD",
+      `Docker image built in ${(
+        (Date.now() - buildStarted) / 1000
       ).toFixed(1)}s`
     );
 
@@ -75,9 +76,10 @@ class StackEngine {
 
     await Promise.all(
       jobs.map(async (job) => {
-        logger.deployment(
+        await logger.info(
           deploymentId,
-          `🐳 Scanning ${job.buildPlan.projectName}...`
+          "SECURITY",
+          `Scanning ${job.buildPlan.projectName}`
         );
 
         await trivyService.scan({
@@ -121,9 +123,10 @@ class StackEngine {
       securityReport
     );
 
-    logger.success(
+    await logger.success(
       deploymentId,
-      "🛡 Security report saved."
+      "SECURITY",
+      "Security report saved."
     );
 
     /*

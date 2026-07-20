@@ -3,8 +3,12 @@ const fs = require("fs-extra");
 const logger = require("../monitoring/logger.service");
 
 class GitService {
-  async clone(repoUrl, githubToken, workspaceDir, targetBranch = "main") {
-    logger.info(`Preparing clean staging deployment workspace at: ${workspaceDir}`);
+  async clone(repoUrl, githubToken, workspaceDir, targetBranch = "main", deploymentId) {
+    await logger.info(
+      "SYSTEM",
+      "WORKSPACE",
+      "Preparing deployment workspace."
+    );
     await fs.emptyDir(workspaceDir);
 
     let authenticatedUrl = repoUrl;
@@ -15,10 +19,14 @@ class GitService {
       );
     }
 
-    logger.info(`Initiating rapid repository clone for branch: [${targetBranch}]...`);
+    await logger.info(
+      "SYSTEM",
+      "WORKSPACE",
+      `Cloning branch ${targetBranch}`
+    );
 
     await simpleGit().clone(authenticatedUrl, workspaceDir, [
-      `--branch=${targetBranch}`, 
+      `--branch=${targetBranch}`,
       "--depth=1",
       "--single-branch",
       "--no-tags",
@@ -26,7 +34,11 @@ class GitService {
       "--quiet",
     ]);
 
-    logger.success("Target repository successfully cloned into staging workspace area.");
+    await logger.success(
+      "SYSTEM",
+      "WORKSPACE",
+      "Repository cloned successfully."
+    );
     return workspaceDir;
   }
 }

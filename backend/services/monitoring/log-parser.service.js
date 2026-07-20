@@ -18,20 +18,20 @@ class LogParser {
     }
 
     // Docker build stages
-    if (/RUN npm install/i.test(text))
+    if (/RUN (npm|pnpm|yarn) install/i.test(text))
       return "📦 Installing dependencies...";
 
-    if (/RUN npm run build/i.test(text))
+    if (/RUN (npm|pnpm|yarn).*(build)/i.test(text))
       return "⚙ Building application...";
 
-    if (/COPY/i.test(text))
+    if (/COPY|ADD/i.test(text))
       return "📁 Copying project files...";
 
     if (/Successfully built/i.test(text))
-      return "✅ Docker image built successfully.";
+      return null;
 
     if (/Successfully tagged/i.test(text))
-      return "🏷 Docker image tagged.";
+      return null;
 
     // npm
     if (/added \d+ packages/i.test(text))
@@ -65,6 +65,8 @@ class LogParser {
     // Ignore empty
     if (text.length < 2)
       return null;
+
+    if (text.length < 5) return null;
 
     return text;
   }
