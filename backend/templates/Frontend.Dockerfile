@@ -1,10 +1,8 @@
 FROM node:22-alpine AS compiler
 
-ARG BUILD_CONTEXT=.
-
 WORKDIR /app
 
-COPY ${BUILD_CONTEXT}/package*.json ./
+COPY package*.json ./
 
 RUN --mount=type=cache,target=/root/.npm \
     npm ci \
@@ -12,7 +10,7 @@ RUN --mount=type=cache,target=/root/.npm \
     --no-audit \
     --ignore-scripts
 
-COPY ${BUILD_CONTEXT}/ .
+COPY . .
 
 RUN npm run build
 

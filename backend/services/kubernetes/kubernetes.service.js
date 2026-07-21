@@ -4,7 +4,6 @@ const yaml = require("js-yaml");
 const hpaTemplate = require("../../templates/hpa.template");
 const deploymentTemplate = require("../../templates/deployment.template");
 const serviceTemplate = require("../../templates/service.template");
-
 const configMapTemplate = require("../../templates/configmap.template");
 const secretTemplate = require("../../templates/secret.template");
 const namespaceTemplate = require("../../templates/namespace.template");

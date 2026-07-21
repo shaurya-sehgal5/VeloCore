@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const logger = require("../monitoring/logger.service");
 const logParser = require("../monitoring/log-parser.service");
+const metrics = require("../monitoring/metrics.service");
 
 class DockerService {
   execute(command, args, deploymentId) {
@@ -112,16 +113,11 @@ class DockerService {
 
         "--progress=plain",
 
-        "--network=host",
-
         "--cache-from",
         imageName,
 
         "--build-arg",
         "BUILDKIT_INLINE_CACHE=1",
-
-        "--build-arg",
-        `BUILD_CONTEXT=${buildContext}`,
 
         "--label",
         "velocore.build=true",
@@ -235,6 +231,8 @@ class DockerService {
     );
 
     return new Promise((resolve, reject) => {
+
+      const started = Date.now();
       const process = spawn("docker", args);
 
       let output = "";
@@ -268,6 +266,9 @@ class DockerService {
           "DEPLOYMENT_COMPLETED",
           "RUNTIME",
           "Container started successfully."
+        );
+        metrics.runtimeStartupDuration.observe(
+          (Date.now() - started) / 1000
         );
         resolve({
           containerId,

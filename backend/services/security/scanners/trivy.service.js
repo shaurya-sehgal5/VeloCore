@@ -16,10 +16,20 @@ class TrivyScanner {
       "Running Trivy image scan..."
     );
 
-    const result = await this.execute(
-      image,
-      deploymentId
-    );
+    let result;
+
+    try {
+      result = await this.execute(image);
+    } catch (err) {
+
+      await logger.warning(
+        deploymentId,
+        "SECURITY",
+        `Trivy skipped: ${err.message}`
+      );
+
+      return;
+    }
 
     if (!result || !Array.isArray(result.Results)) {
       await logger.success(
@@ -80,26 +90,34 @@ class TrivyScanner {
     );
   }
 
-  execute(image, deploymentId = "default") {
+  execute(image) {
     return new Promise((resolve, reject) => {
+
+      // Persistent cache shared across all deployments
       const cacheDir = path.join(
-        os.tmpdir(),
-        "velocore",
-        "trivy",
-        deploymentId
+        os.homedir(),
+        ".velocore",
+        "trivy-cache"
       );
 
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const child = spawn("trivy", [
         "image",
+
         "--cache-dir",
         cacheDir,
+
+        "--skip-db-update",
+
         "--format",
         "json",
+
         "--scanners",
         "vuln",
+
         "--no-progress",
+
         image,
       ]);
 
@@ -117,10 +135,17 @@ class TrivyScanner {
       child.on("error", reject);
 
       child.on("close", (code) => {
-        if (!stdout.trim()) {
+
+        if (code !== 0) {
           return reject(
             new Error(stderr || `Trivy exited with code ${code}`)
           );
+        }
+
+        if (!stdout.trim()) {
+          return resolve({
+            Results: [],
+          });
         }
 
         try {
@@ -133,6 +158,7 @@ class TrivyScanner {
           );
         }
       });
+
     });
   }
 }

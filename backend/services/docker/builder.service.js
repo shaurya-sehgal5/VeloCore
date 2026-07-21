@@ -16,7 +16,7 @@ class BuilderService {
       host: null,
       persistentVolume: false,
       storage: "1Gi",
-     namespace: `velocore-${deploymentId}`,
+      namespace: `velocore-${deploymentId}`,
       customDomain: null,
       enableTLS: true,
     };
@@ -47,47 +47,62 @@ class BuilderService {
     Framework Templates
     ------------------------------------
     */
-
     switch (project.framework) {
       case "vite-react":
         return {
           ...common,
-
           type: "frontend",
-
           dockerfile: path.join(
             __dirname,
-            "../../templates/Frontend.Dockerfile",
+            "../../templates/Frontend.Dockerfile"
           ),
+          buildContext: path.relative(project.repositoryRoot, project.path),
+        };
 
+      case "nextjs":
+        return {
+          ...common,
+          type: "frontend",
+          containerPort: 3000,
+          dockerfile: path.join(
+            __dirname,
+            "../../templates/Nextjs.Dockerfile"
+          ),
           buildContext: path.relative(project.repositoryRoot, project.path),
         };
 
       case "express":
+      case "nestjs":
         return {
           ...common,
-
           type: "backend",
-
           dockerfile: path.join(
             __dirname,
-            "../../templates/Backend.Dockerfile",
+            "../../templates/Backend.Dockerfile"
           ),
+          buildContext: path.relative(project.repositoryRoot, project.path),
+        };
 
+      case "python":
+        return {
+          ...common,
+          type: "backend",
+          containerPort: 8000,
+          dockerfile: path.join(
+            __dirname,
+            "../../templates/Python.Dockerfile"
+          ),
           buildContext: path.relative(project.repositoryRoot, project.path),
         };
 
       case "bullmq":
         return {
           ...common,
-
           type: "worker",
-
           dockerfile: path.join(
             __dirname,
-            "../../templates/Backend.Dockerfile",
+            "../../templates/Backend.Dockerfile"
           ),
-
           buildContext: path.relative(project.repositoryRoot, project.path),
         };
 

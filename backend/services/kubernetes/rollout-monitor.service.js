@@ -10,7 +10,7 @@ class RolloutMonitor {
         `deployment/${name}`,
         "-n",
         namespace,
-        "--timeout=90s"
+        "--timeout=60s"
       ]);
     } catch (error) {
       // Rollout failed or timed out -> Run Automated Failure Diagnosis

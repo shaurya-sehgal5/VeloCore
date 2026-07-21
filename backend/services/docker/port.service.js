@@ -5,32 +5,26 @@ class PortService {
 
     constructor() {
 
-        this.startPort = 9000;
-        this.endPort = 9999;
+        this.startPort = 50000;
+        this.endPort = 60000;
 
     }
 
     async isPortAvailable(port) {
 
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
 
             const server = net.createServer();
 
             server.once("error", () => {
-
                 resolve(false);
-
             });
 
             server.once("listening", () => {
-
-                server.close();
-
-                resolve(true);
-
+                server.close(() => resolve(true));
             });
 
-            server.listen(port);
+            server.listen(port, "127.0.0.1");
 
         });
 
@@ -39,13 +33,15 @@ class PortService {
     async allocate() {
 
         const result = await db.query(`
-            SELECT host_port
-            FROM deployments
-            WHERE status = 'RUNNING'
-            AND host_port IS NOT NULL
-        `);
+        SELECT host_port
+        FROM deployment_services
+        WHERE status = 'RUNNING'
+        AND host_port IS NOT NULL
+    `);
 
-        const usedPorts = result.rows.map(r => r.host_port);
+        const usedPorts = result.rows.map(r => Number(r.host_port));
+
+        console.log("Used Ports:", usedPorts);
 
         for (let port = this.startPort; port <= this.endPort; port++) {
 
@@ -56,15 +52,12 @@ class PortService {
             const free = await this.isPortAvailable(port);
 
             if (free) {
-
+                console.log(`Allocated Port: ${port}`);
                 return port;
-
             }
-
         }
 
         throw new Error("No free ports available.");
-
     }
 
 }

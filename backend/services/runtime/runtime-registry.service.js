@@ -1,5 +1,6 @@
 const db = require("../../config/db");
 const logger = require("../monitoring/logger.service");
+const metrics = require("../monitoring/metrics.service");
 
 class RuntimeRegistryService {
   async register({
@@ -28,7 +29,7 @@ class RuntimeRegistryService {
 
       [deploymentId, name],
     );
-
+   
     await db.query(
       `
     INSERT INTO deployment_services(
@@ -77,6 +78,9 @@ class RuntimeRegistryService {
       "RUNTIME",
       `Registered ${name}`
     );
+    metrics.runtimeEvents.inc({
+      action: "START"
+    });
   }
 }
 

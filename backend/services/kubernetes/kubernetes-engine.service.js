@@ -9,6 +9,8 @@ const namespaceService = require("./namespaces.service");
 const bus = require("../events/event-bus.service");
 const events = require("../events/runtime-events");
 const fs = require("fs/promises");
+const metrics = require("../monitoring/metrics.service");
+const portForwardService = require("./port-forward.service");
 
 class KubernetesEngine {
   async deploy(buildPlan, deploymentId) {
@@ -35,10 +37,20 @@ class KubernetesEngine {
       "Waiting for rollout..."
     );
 
-    await kubectl.rollout(
-      buildPlan.projectName,
-      buildPlan.namespace
-    );
+    const rolloutStart = Date.now();
+    try {
+
+      await kubectl.rollout(
+        buildPlan.projectName,
+        buildPlan.namespace
+      );
+    }
+    finally {
+      metrics.rolloutDuration.observe(
+        (Date.now() - rolloutStart) / 1000
+      );
+    }
+
     const [pod, service] = await Promise.all([
       kubectl.getPod(
         buildPlan.projectName,
@@ -49,14 +61,23 @@ class KubernetesEngine {
         buildPlan.namespace
       ),
     ]);
+    const localPort = await portForwardService.start(
+      buildPlan.projectName,
+      buildPlan.namespace,
+      buildPlan.containerPort
+    );
 
+    await logger.success(
+      deploymentId,
+      "KUBERNETES",
+      `Port forwarding started on localhost:${localPort}`
+    );
     if (!pod) {
       throw new Error(
         `No running pod found for ${buildPlan.projectName}`
       );
     }
     const url = `http://localhost:8000/visit/${deploymentId}`;
-    const nodePort = service.spec.ports[0].nodePort;
     setImmediate(() => {
       const logStream = kubernetesLogs.stream(
         pod.metadata.name,
@@ -65,7 +86,7 @@ class KubernetesEngine {
       );
 
       logStream.on("error", (err) => {
-         logger.error(
+        logger.error(
           deploymentId,
           "KUBERNETES",
           `Log stream error: ${err.message}`
@@ -90,7 +111,7 @@ class KubernetesEngine {
       service: buildPlan.projectName,
 
       pod: pod.metadata.name,
-      hostPort: nodePort,
+      hostPort: localPort,
     });
     await runtimeRegistry.register({
       deploymentId,
@@ -112,7 +133,7 @@ class KubernetesEngine {
 
       tls: buildPlan.enableTLS,
 
-      hostPort: nodePort,
+      hostPort: localPort,
       containerPort: service.spec.ports[0].port,
 
       slot: buildPlan.slot,
@@ -120,7 +141,9 @@ class KubernetesEngine {
       engine: "kubernetes",
     });
     await statusService.update(deploymentId, "RUNNING");
-
+    metrics.runtimeStartupDuration.observe(
+      process.uptime()
+    );
     bus.publish(events.DEPLOYMENT_READY, {
       deploymentId,
       project: buildPlan.projectName,

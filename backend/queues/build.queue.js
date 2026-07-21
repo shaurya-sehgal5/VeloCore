@@ -14,15 +14,21 @@ const buildQueue = new Queue("production-build-queue", {
 });
 
 buildQueue.on("waiting", async () => {
-  metrics.queueJobs.set(await buildQueue.getWaitingCount());
+  metrics.queueWaiting.set(
+    await buildQueue.getWaitingCount()
+  );
 });
 
 buildQueue.on("completed", async () => {
-  metrics.queueJobs.set(await buildQueue.getWaitingCount());
+  metrics.queueActive.set(
+    await buildQueue.getActiveCount()
+  );
 });
 
 buildQueue.on("failed", async () => {
-  metrics.queueJobs.set(await buildQueue.getWaitingCount());
+  metrics.queueDelayed.set(
+    await buildQueue.getDelayedCount()
+  );
 });
 
 const buildWorker = new Worker(
@@ -43,7 +49,11 @@ const buildWorker = new Worker(
 
     console.log(`🚀 Processing Deployment ${deploymentId}`);
 
-    metrics.deployments.inc();
+    metrics.deployments.inc({
+      status: "STARTED",
+      runtime: "kubernetes",
+      framework: "unknown",
+    });
 
     const timeout = new Promise((_, reject) =>
       setTimeout(
@@ -53,7 +63,7 @@ const buildWorker = new Worker(
     );
 
     const MAX_RETRIES = 2;
-
+    let lastError;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
 

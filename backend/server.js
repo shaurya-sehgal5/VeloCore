@@ -19,6 +19,8 @@ const cleanupScheduler = require("./services/docker/cleanup.scheduler");
 const kubernetesSocket = require("./services/kubernetes/kubernetes-socket.service");
 const eventBootstrap = require("./services/events/bootstrap.service");
 const securityRoutes = require("./routes/security.routes");
+const containerMonitor =
+  require("./services/runtime/container-monitor.service");
 
 require("dotenv").config();
 
@@ -37,7 +39,7 @@ eventBootstrap.start();
 // Expose io instance to the global Express app instance before mounting routes
 app.set("io", io);
 cleanupScheduler.start();
-
+containerMonitor.start();
 // --- 1. GLOBAL MIDDLEWARES ---
 app.use(
   "/api/github/webhook",

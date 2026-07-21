@@ -17,12 +17,23 @@ class StatusService {
       [status, deploymentId],
     );
     switch (status) {
-      case "RUNNING":
-        metrics.runningDeployments.inc();
-        break;
+     case "RUNNING": {
+  const { rows } = await db.query(`
+    SELECT COUNT(*)::int AS count
+    FROM deployments
+    WHERE status = 'RUNNING'
+  `);
+
+  metrics.runningDeployments.set(rows[0].count);
+  break;
+}
 
       case "FAILED":
-        metrics.failedDeployments.inc();
+        metrics.deployments.inc({
+          status: "FAILED",
+          runtime: process.env.RUNTIME_ENGINE || "docker",
+          framework: "mixed",
+        });
         break;
     }
     await logger.live(

@@ -13,7 +13,7 @@ const securityGate = require("../security/security-gate.service");
 class DeploymentOrchestrator {
   async deploy({ repoUrl, githubToken, deploymentId, env = {} }) {
     let workspace = null;
-    const timer = metrics.buildDuration.startTimer();
+    const timer = metrics.deploymentDuration.startTimer();
     try {
       await logger.milestone(
         deploymentId,
@@ -35,15 +35,24 @@ class DeploymentOrchestrator {
       };
 
       const endStage = async (name) => {
+        const duration =
+          (Date.now() - stageTimers[name]) / 1000;
+
+        metrics.stageDuration
+          .labels(name.toLowerCase())
+          .observe(duration);
+
         await logger.success(
           deploymentId,
           name.toUpperCase(),
-          `Completed in ${(
-            (Date.now() - stageTimers[name]) / 1000
-          ).toFixed(2)}s`
+          `Completed in ${duration.toFixed(2)}s`
         );
       };
-      metrics.deployments.inc();
+      metrics.deployments.inc({
+        status: "STARTED",
+        runtime: process.env.RUNTIME_ENGINE || "docker",
+        framework: "mixed",
+      });
 
       startStage("Workspace");
       workspace = await workspaceService.create();
@@ -140,6 +149,10 @@ class DeploymentOrchestrator {
         env,
         securityReport,
       });
+      summary.buildTime =
+        ((stageTimers.Build ?? stageTimers.Deployment)
+          ? (Date.now() - stageTimers.Deployment) / 1000
+          : 0);
       await endStage("Deployment");
       summary.deployTime =
         (Date.now() - stageTimers.Deployment) / 1000;
@@ -160,8 +173,9 @@ class DeploymentOrchestrator {
 
       metrics.runningDeployments.inc();
 
-      timer();
-
+      timer({
+        status: "SUCCESS",
+      });
       summary.totalTime =
         ((Date.now() - started) / 1000).toFixed(1);
 
@@ -203,9 +217,15 @@ class DeploymentOrchestrator {
           deploymentId,
         });
       }
-      metrics.failedDeployments.inc();
+      metrics.deployments.inc({
+        status: "FAILED",
+        runtime: process.env.RUNTIME_ENGINE || "docker",
+        framework: "mixed", 
+      });
 
-      timer();
+      timer({
+        status: "FAILED",
+      });
       throw error;
     }
   }
