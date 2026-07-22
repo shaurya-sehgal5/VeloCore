@@ -10,7 +10,7 @@ export const SERVICES_BASE = `${API_ROOT}/api/deployments`; // GET /:id/runtime 
 export const REDEPLOY_BASE = `${API_ROOT}/api/deploy/redeploy`; // confirmed real (seen in backend logs)
 // UNCONFIRMED — restart/stop follow the same /api/deploy/<verb>/:id shape as the
 // confirmed redeploy route above. Point this at the real routes once confirmed.
-export const ACTION_BASE = `${API_ROOT}/api/deploy`;
+export const ACTION_BASE = `${API_ROOT}/api/deployments`;
 export const SOCKET_URL = API_ROOT;
 
 // Grafana link is intentionally configurable and never embedded in the page.

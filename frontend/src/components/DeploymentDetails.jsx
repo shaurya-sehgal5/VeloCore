@@ -44,12 +44,13 @@ export default function DeploymentDetails({ deployment, onBack, onDeleted, onRef
       await saveEnv(rows);
       const res = await fetch(`${REDEPLOY_BASE}/${deployment.id}`, { method: 'POST', credentials: 'include' });
       const data = res.ok ? await res.json() : {};
-      if (data.deploymentId && data.deploymentId !== deployment.id) {
-        console.warn('[Redeploy] backend returned a different deploymentId than requested:', { requested: deployment.id, returned: data.deploymentId });
-      }
-      // Redeploy should update this same deployment in place — always follow the
-      // original id, never whatever (possibly different) id the backend returns.
-      startWatchingLogs(deployment.id);
+
+const targetDeploymentId =
+  data.deploymentId || deployment.id;
+
+startWatchingLogs(targetDeploymentId);
+await onRefreshDeployments();
+setTab("logs");
       setTab('logs');
     } catch (err) {
       console.error('[Redeploy Error]:', err.message);
@@ -64,7 +65,13 @@ export default function DeploymentDetails({ deployment, onBack, onDeleted, onRef
   const handleRuntimeAction = async (action) => {
     setActionInProgress(action);
     try {
-      const res = await fetch(`${ACTION_BASE}/${action}/${deployment.id}`, { method: 'POST', credentials: 'include' });
+     const res = await fetch(
+  `${ACTION_BASE}/${deployment.id}/${action}`,
+  {
+    method: "POST",
+    credentials: "include",
+  }
+);
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       await onRefreshDeployments();
     } catch (err) {

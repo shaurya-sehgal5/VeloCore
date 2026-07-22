@@ -1,6 +1,8 @@
 const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
 const db = require("../../config/db");
+const portForwardService = require("../kubernetes/port-forward.service");
+
 
 class StopService {
   async stop(deploymentId) {
@@ -9,7 +11,9 @@ class StopService {
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
-
+    portForwardService.stop(
+      runtime.service
+    );
     await runtimeAction.stop(runtime);
 
     await db.query(

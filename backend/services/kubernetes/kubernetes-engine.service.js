@@ -94,6 +94,7 @@ class KubernetesEngine {
       });
     });
 
+
     runtimeManager.register({
       deploymentId,
       project: buildPlan.projectName,
@@ -113,6 +114,8 @@ class KubernetesEngine {
       pod: pod.metadata.name,
       hostPort: localPort,
     });
+
+
     await runtimeRegistry.register({
       deploymentId,
 
@@ -139,7 +142,15 @@ class KubernetesEngine {
       slot: buildPlan.slot,
 
       engine: "kubernetes",
+
+      deployment: buildPlan.projectName,
+
+      service: buildPlan.projectName,
+
+      pod: pod.metadata.name,
     });
+
+
     await statusService.update(deploymentId, "RUNNING");
     metrics.runtimeStartupDuration.observe(
       process.uptime()

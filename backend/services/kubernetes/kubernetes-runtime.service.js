@@ -23,6 +23,12 @@ class KubernetesRuntimeService {
     );
   }
 
+  rollout(deployment, namespace) {
+    return kubectl.rollout(
+      deployment,
+      namespace
+    );
+  }
   async destroy(deployment, namespace) {
     await kubectl.deleteDeployment(
       deployment,
