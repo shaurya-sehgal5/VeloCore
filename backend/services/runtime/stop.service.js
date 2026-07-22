@@ -24,7 +24,13 @@ class StopService {
       `,
       [deploymentId]
     );
-
+    metrics.deploymentStatus
+      .labels(
+        runtime.deploymentId,
+        runtime.project,
+        runtime.namespace
+      )
+      .set(0);
     return runtime;
   }
 }

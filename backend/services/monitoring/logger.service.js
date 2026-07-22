@@ -65,7 +65,11 @@ class LoggerService {
       return;
     }
 
-    await events.create(deploymentId, event, message);
+    await events.emit({
+      deploymentId,
+      event,
+      message,
+    });
   }
 
   async info(deploymentId, stage, message) {
@@ -114,7 +118,7 @@ class LoggerService {
       summary
     );
   }
-  
+
   async milestone(
     deploymentId,
     event,

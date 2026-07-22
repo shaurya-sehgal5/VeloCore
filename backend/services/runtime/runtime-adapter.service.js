@@ -16,7 +16,11 @@ class RuntimeAdapter {
       return dockerMetrics.get(runtime.containerName);
     }
 
-    return kubernetesMetrics.get(runtime.pod);
+    return kubernetesMetrics.get(
+      runtime.pod,
+      runtime.namespace,
+      runtime.deployment
+    );
   }
 
   /*
@@ -71,19 +75,19 @@ class RuntimeAdapter {
   */
 
   logs(runtime) {
-  if (runtime.engine === "docker") {
-    const { spawn } = require("child_process");
+    if (runtime.engine === "docker") {
+      const { spawn } = require("child_process");
 
-    return spawn("docker", [
-      "logs",
-      "-f",
-      runtime.containerName,
-    ]);
+      return spawn("docker", [
+        "logs",
+        "-f",
+        runtime.containerName,
+      ]);
+    }
+
+    return require("../kubernetes/kubectl.service")
+      .streamLogs(runtime.pod, runtime.namespace);
   }
-
-  return require("../kubernetes/kubectl.service")
-    .streamLogs(runtime.pod, runtime.namespace);
-}
 
   /*
   -------------------------

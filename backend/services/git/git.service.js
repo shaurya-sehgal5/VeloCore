@@ -39,7 +39,21 @@ class GitService {
       "WORKSPACE",
       "Repository cloned successfully."
     );
-    return workspaceDir;
+
+    const git = simpleGit(workspaceDir);
+
+    const branch = (
+      await git.revparse(["--abbrev-ref", "HEAD"])
+    ).trim();
+
+    const commit = (
+      await git.revparse(["HEAD"])
+    ).trim();
+    return {
+      workspace: workspaceDir,
+      branch,
+      commit,
+    };
   }
 }
 

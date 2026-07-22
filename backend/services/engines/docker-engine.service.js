@@ -212,7 +212,6 @@ class DockerEngine {
       hostPort,
     });
   }
-  //
   async switchTraffic(deploymentId, buildPlan) {
     await trafficSwitch.switch(deploymentId, buildPlan.slot);
 

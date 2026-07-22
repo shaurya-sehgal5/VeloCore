@@ -8,6 +8,7 @@ const securityReportService = require("../security/security-report.service");
 const trivyService = require("../security/scanners/trivy.service");
 const securityGate = require("../security/security-gate.service");
 const logger = require("../monitoring/logger.service");
+const deploymentEvents = require("../deployment/deployment-event.service");
 
 class StackEngine {
   async deploy({
@@ -48,7 +49,11 @@ class StackEngine {
     */
 
     const buildStarted = Date.now();
-
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "BUILD_PHASE_STARTED",
+      message: "Docker image build phase started"
+    });
     await Promise.all(
       jobs.map((job) =>
         buildEngine.build({
@@ -67,7 +72,11 @@ class StackEngine {
         (Date.now() - buildStarted) / 1000
       ).toFixed(1)}s`
     );
-
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "BUILD_PHASE_COMPLETED",
+      message: "All Docker images built"
+    });
     /*
     ------------------------------------
     Phase 2 - Trivy Image Scan
@@ -81,7 +90,11 @@ class StackEngine {
           "SECURITY",
           `Scanning ${job.buildPlan.projectName}`
         );
-
+        await deploymentEvents.emit({
+          deploymentId,
+          event: "SECURITY_SCAN_STARTED",
+          message: "Image security scan started"
+        });
         await trivyService.scan({
           deploymentId,
           image: job.buildPlan.imageName,
@@ -128,12 +141,11 @@ class StackEngine {
       "SECURITY",
       "Security report saved."
     );
-
-    /*
-    ------------------------------------
-    Security Gate
-    ------------------------------------
-    */
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "SECURITY_SCAN_COMPLETED",
+      message: "Security scan completed"
+    });
 
     securityGate.validate(securityReport);
 
@@ -142,7 +154,11 @@ class StackEngine {
     Phase 3 - Deploy
     ------------------------------------
     */
-
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "DEPLOYMENT_STARTED",
+      message: "Deploying workloads"
+    });
     const deployments = await Promise.all(
       jobs.map(async (job) => {
         const runtime = await deploymentEngine.deploy({
@@ -186,7 +202,11 @@ class StackEngine {
         (order[b.runtime.type] || 99)
       );
     });
-
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "RUNTIME_RUNNING",
+      message: "Application is now running"
+    });
     return deployments;
   }
 }

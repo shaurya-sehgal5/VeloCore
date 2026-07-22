@@ -6,7 +6,16 @@ exports.rollback = async (req, res) => {
       req.params.deploymentId
     );
 
-    res.json(runtime);
+    if (!runtime) {
+      return res.status(404).json({
+        error: "No rollback target found",
+      });
+    }
+
+    res.json({
+      success: true,
+      runtime,
+    });
   } catch (err) {
     res.status(500).json({
       error: err.message,

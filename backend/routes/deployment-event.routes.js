@@ -7,4 +7,9 @@ router.get(
   controller.list
 );
 
+router.get(
+  "/:deploymentId/timeline",
+  controller.list
+);
+
 module.exports = router;

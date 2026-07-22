@@ -3,6 +3,7 @@ const logger = require("../../monitoring/logger.service");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
+const securityMetrics = require("../../monitoring/security-metadata.service");
 
 class TrivyScanner {
   async scan({
@@ -39,7 +40,29 @@ class TrivyScanner {
       );
       return;
     }
+    securityMetrics.securityInfo
+      .labels(
+        deploymentId,
+        image,
+        new Date().toISOString()
+      )
+      .set(1);
 
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "CRITICAL")
+      .set(report.critical);
+
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "HIGH")
+      .set(report.high);
+
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "MEDIUM")
+      .set(report.medium);
+
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "LOW")
+      .set(report.low);
     let totalFindings = 0;
 
     for (const target of result.Results) {

@@ -30,7 +30,54 @@ router.get('/analytics-list', secureShield, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+router.get("/deployment-history/:projectId", async (req, res) => {
+  try {
+    const result = await db.query(
+      `
+      SELECT
+        id,
+        status,
+        created_at,
+        deploy_url,
+        active_slot,
+        commit_sha,
+        branch
+      FROM deployments
+      WHERE project_id=$1
+      ORDER BY created_at DESC
+      `,
+      [req.params.projectId]
+    );
 
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+});
+router.get("/deployment/:deploymentId/timeline", async (req, res) => {
+  try {
+    const result = await db.query(
+      `
+      SELECT
+        event,
+        message,
+        created_at
+      FROM deployment_events
+      WHERE deployment_id=$1
+      ORDER BY created_at ASC
+      `,
+      [req.params.deploymentId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+});
 // 1. 📁 FETCH ALL USER DEPLOYMENTS (Fallback parameterized route)
 router.get('/deployments/:userId', async (req, res) => {
   const { userId } = req.params;

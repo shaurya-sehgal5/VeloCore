@@ -4,10 +4,10 @@ const logger = require("../monitoring/logger.service");
 const statusService = require("../monitoring/status.service");
 const cleanupService = require("../docker/cleanup.service");
 const runtimeManager = require("./runtime-manager.service");
-// const dockerMetrics = require("../monitoring/docker-metrics.service");
 const metrics = require("../monitoring/metrics.service");
-// const kubernetesMetrics = require("../monitoring/kubernetes-metrics.service");
 const runtimeAdapter = require("./runtime-adapter.service");
+const deploymentMetrics = require("../monitoring/deployment-metadata.service");
+
 
 function memoryToBytes(memory) {
   const value = memory.split("/")[0].trim();
@@ -77,7 +77,13 @@ class RuntimeMonitorService {
         exitCode,
       });
       await statusService.update(deploymentId, "FAILED");
-
+      metrics.deploymentStatus
+        .labels(
+          deploymentId,
+          project,
+          runtime.namespace || "docker"
+        )
+        .set(0);
       await cleanupService.failed({
         workspace,
         containerName,
@@ -169,6 +175,106 @@ class RuntimeMonitorService {
             metrics.containerNetworkTx
               .labels(runtime.deploymentId, runtime.project)
               .set(networkToBytes(tx));
+            metrics.deploymentStatus
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace || "docker"
+              )
+              .set(1);
+
+            metrics.deploymentUptime
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace || "docker"
+              )
+              .set(
+                Math.floor(
+                  (Date.now() - runtime.startedAt) / 1000
+                )
+              );
+
+            metrics.deploymentRestarts
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace || "docker"
+              )
+              .set(runtime.restartCount || 0);
+          }
+          if (runtime.engine === "kubernetes") {
+            metrics.containerCpu
+              .labels(runtime.deploymentId, runtime.project)
+              .set(stats.cpu);
+
+            metrics.containerMemory
+              .labels(runtime.deploymentId, runtime.project)
+              .set(stats.memory);
+
+            metrics.deploymentStatus
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace
+              )
+              .set(stats.status === "Running" ? 1 : 0);
+
+            metrics.deploymentRestarts
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace
+              )
+              .set(stats.restarts);
+
+            metrics.deploymentUptime
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace
+              )
+              .set(
+                Math.floor(
+                  (Date.now() - runtime.startedAt) / 1000
+                )
+              );
+
+            deploymentMetrics.deploymentInfo
+              .labels(
+                runtime.deploymentId,
+                runtime.project,
+                runtime.namespace,
+                stats.pod,
+                stats.node,
+                runtime.service,
+                stats.image,
+                runtime.engine,
+                runtime.framework || "unknown",
+                runtime.branch || "main"
+              )
+              .set(1);
+
+            deploymentMetrics.deploymentReplicas
+              .labels(
+                runtime.deploymentId,
+                runtime.namespace
+              )
+              .set(stats.replicas);
+
+            deploymentMetrics.deploymentReadyReplicas
+              .labels(
+                runtime.deploymentId,
+                runtime.namespace
+              )
+              .set(stats.readyReplicas);
+
+            deploymentMetrics.deploymentContainerStatus
+              .labels(
+                runtime.deploymentId,
+                runtime.namespace
+              )
+              .set(stats.ready ? 1 : 0);
           }
         } catch (err) {
           logger.error(

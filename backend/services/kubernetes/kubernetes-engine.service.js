@@ -108,10 +108,10 @@ class KubernetesEngine {
       namespace: buildPlan.namespace,
 
       deployment: buildPlan.projectName,
-
       service: buildPlan.projectName,
-
       pod: pod.metadata.name,
+      branch: buildPlan.branch,
+
       hostPort: localPort,
     });
 
@@ -135,7 +135,7 @@ class KubernetesEngine {
       customDomain: buildPlan.customDomain,
 
       tls: buildPlan.enableTLS,
-
+      branch: buildPlan.branch,
       hostPort: localPort,
       containerPort: service.spec.ports[0].port,
 

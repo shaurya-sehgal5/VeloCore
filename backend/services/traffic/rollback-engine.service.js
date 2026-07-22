@@ -3,6 +3,7 @@ const dockerService = require("../docker/docker.service");
 const trafficSwitch = require("./traffic-switch.service");
 const logger = require("../monitoring/logger.service");
 const runtimeStatus = require("../runtime/runtime-status.service");
+const deploymentEvents = require("../deployment/deployment-event.service");
 
 class RollbackEngine {
   async rollback(deploymentId) {
@@ -18,6 +19,11 @@ class RollbackEngine {
       return null;
     }
     await trafficSwitch.switch(deploymentId, runtime.slot);
+    await deploymentEvents.emit({
+  deploymentId,
+  event: "ROLLBACK_STARTED",
+  message: "Rollback initiated",
+});
     runtimeStatus.publish(deploymentId, {
       type: "rollback",
       slot: runtime.slot,
@@ -27,6 +33,11 @@ class RollbackEngine {
       "ROLLBACK",
       "Rollback completed successfully."
     );
+    await deploymentEvents.emit({
+  deploymentId,
+  event: "ROLLBACK_COMPLETED",
+  message: `Rolled back to ${runtime.slot}`,
+});
     await logger.info(
       deploymentId,
       "ROLLBACK",

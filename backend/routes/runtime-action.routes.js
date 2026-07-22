@@ -10,10 +10,4 @@ router.post("/:deploymentId/stop", controller.stop);
 
 router.delete("/:deploymentId", controller.destroy);
 
-router.get("/:deploymentId/logs", controller.logs);
-
-router.get("/:deploymentId/stats", controller.stats);
-
-// router.get("/:deploymentId/describe", controller.describe);
-
 module.exports = router;

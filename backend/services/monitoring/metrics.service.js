@@ -28,6 +28,24 @@ const queueJobs = new client.Counter({
   labelNames: ["status"],
 });
 
+const deploymentStatus = new client.Gauge({
+  name: "velocore_deployment_status",
+  help: "Deployment status (1=running, 0=stopped)",
+  labelNames: ["deployment", "project", "namespace"],
+});
+
+const deploymentUptime = new client.Gauge({
+  name: "velocore_deployment_uptime_seconds",
+  help: "Deployment uptime in seconds",
+  labelNames: ["deployment", "project", "namespace"],
+});
+
+const deploymentRestarts = new client.Gauge({
+  name: "velocore_deployment_restarts_total",
+  help: "Deployment restart count",
+  labelNames: ["deployment", "project", "namespace"],
+});
+
 const runtimeCount = new client.Gauge({
   name: "velocore_running_runtimes",
   help: "Running runtime containers",
@@ -189,6 +207,12 @@ module.exports = {
   securityLow,
 
   buildDuration,
+
+  deploymentStatus,
+  
+  deploymentUptime,
+
+  deploymentRestarts,
 
   securityDuration,
 

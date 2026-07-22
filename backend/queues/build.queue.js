@@ -37,13 +37,9 @@ const buildWorker = new Worker(
   async (job) => {
     const {
       deploymentId,
-
       cloneUrl,
-
       githubToken,
-
       io,
-
       env = {},
     } = job.data;
 
