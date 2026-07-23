@@ -1,8 +1,8 @@
 const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
-const db = require("../../config/db");
 const portForwardService = require("../kubernetes/port-forward.service");
-
+const db = require("../../config/db");
+const metrics = require("../monitoring/metrics.service"); // <-- use your actual metrics module
 
 class StopService {
   async stop(deploymentId) {
@@ -11,9 +11,9 @@ class StopService {
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
-    portForwardService.stop(
-      runtime.service
-    );
+
+    await portForwardService.stop(runtime.service);
+
     await runtimeAction.stop(runtime);
 
     await db.query(
@@ -24,6 +24,7 @@ class StopService {
       `,
       [deploymentId]
     );
+
     metrics.deploymentStatus
       .labels(
         runtime.deploymentId,
@@ -31,7 +32,12 @@ class StopService {
         runtime.namespace
       )
       .set(0);
-    return runtime;
+
+    return {
+      success: true,
+      deploymentId,
+      status: "STOPPED",
+    };
   }
 }
 

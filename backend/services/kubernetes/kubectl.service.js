@@ -3,9 +3,16 @@ const { spawn } = require("child_process");
 class KubectlService {
   execute(args) {
     return new Promise((resolve, reject) => {
-      const process = spawn("kubectl", args);
+      const process = spawn("kubectl", args, {
+        windowsHide: true
+      });
 
       let output = "";
+      const timeout = setTimeout(() => {
+
+        process.kill("SIGTERM");
+
+      }, 120000);
 
       process.stdout.on("data", (d) => {
         output += d.toString();
@@ -21,7 +28,7 @@ class KubectlService {
         if (code !== 0) {
           return reject(new Error(output));
         }
-
+clearTimeout(timeout);
         resolve(output);
       });
     });

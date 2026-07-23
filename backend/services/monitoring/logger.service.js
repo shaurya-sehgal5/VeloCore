@@ -1,6 +1,7 @@
 const { getIO } = require("../../config/socket");
 const events = require("../deployment/deployment-event.service");
 const runtimeStatus = require("../runtime/runtime-status.service");
+const loki = require("./loki/loki.service");
 
 class LoggerService {
   constructor() {
@@ -53,7 +54,12 @@ class LoggerService {
       type: "log",
       ...log,
     });
-
+    await loki.push({
+      deploymentId,
+      stage,
+      level,
+      message,
+    });
     try {
       const io = getIO();
       io.to(deploymentId).emit("live_logs", log);

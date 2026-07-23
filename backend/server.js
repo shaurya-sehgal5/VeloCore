@@ -19,9 +19,10 @@ const cleanupScheduler = require("./services/docker/cleanup.scheduler");
 const kubernetesSocket = require("./services/kubernetes/kubernetes-socket.service");
 const eventBootstrap = require("./services/events/bootstrap.service");
 const securityRoutes = require("./routes/security.routes");
-const containerMonitor =
-  require("./services/runtime/container-monitor.service");
+const containerMonitor =  require("./services/runtime/container-monitor.service");
 const rollbackRoutes = require("./routes/rollback.routes")
+const requestLogger = require("./middleware/request-logger");
+const logsRoutes = require("./routes/logs.routes");
 require("dotenv").config();
 
 // THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
@@ -49,7 +50,7 @@ app.use(
 );
 
 app.use(express.json());
-
+app.use(requestLogger);
 app.use(cookieParser());
 app.use(
   cors({
@@ -147,6 +148,8 @@ app.use("/api/github/webhook", githubWebhookRoutes);
 app.use("/api", kubernetesRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/rollback", rollbackRoutes);
+app.use("/api/logs", logsRoutes);
+
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {
   console.log(

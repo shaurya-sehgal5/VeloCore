@@ -12,12 +12,12 @@ const securityGate = require("../security/security-gate.service");
 const deploymentEvents = require("../deployment/deployment-event.service");
 
 class DeploymentOrchestrator {
- async deploy({
+  async deploy({
     repoUrl,
     githubToken,
     deploymentId,
     env = {},
-}) {
+  }) {
     let workspace = null;
     const timer = metrics.deploymentDuration.startTimer();
     try {
@@ -27,11 +27,7 @@ class DeploymentOrchestrator {
         "DEPLOYMENT",
         "Deployment started."
       );
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "DEPLOYMENT_STARTED",
-        message: "Deployment initiated"
-      });
+
       const started = Date.now();
       const summary = {
         buildTime: 0,
@@ -80,11 +76,7 @@ class DeploymentOrchestrator {
 
       startStage("Clone");
       await statusService.update(deploymentId, "CLONING");
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "CLONING_STARTED",
-        message: "Repository cloning started"
-      });
+
       const gitResult = await gitService.clone(
         repoUrl,
         githubToken,
@@ -101,18 +93,10 @@ class DeploymentOrchestrator {
         "WORKSPACE",
         "Repository cloned."
       );
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "REPOSITORY_CLONED",
-        message: "Repository cloned successfully"
-      });
+
       startStage("Repository Scan");
       await statusService.update(deploymentId, "SCANNING");
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "SCAN_STARTED",
-        message: "Repository scanning started"
-      });
+
       const repository = scanRepository(repositoryPath);
       repository.branch = gitResult.branch;
       repository.commit = gitResult.commit;
@@ -140,17 +124,18 @@ class DeploymentOrchestrator {
       });
 
       await endStage("Security");
+      await logger.milestone(
+        deploymentId,
+        "SECURITY_COMPLETED",
+        "SECURITY",
+        "Security scan completed."
+      );
       await endStage("Dependency Graph");
       await logger.success(
         deploymentId,
         "ANALYSIS",
         "Deployment graph created."
       );
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "GRAPH_CREATED",
-        message: "Deployment graph generated"
-      });
       if (graph.frontend) {
         await logger.success(
           deploymentId,
@@ -186,6 +171,12 @@ class DeploymentOrchestrator {
           ? (Date.now() - stageTimers.Deployment) / 1000
           : 0);
       await endStage("Deployment");
+      await logger.milestone(
+        deploymentId,
+        "BUILD_COMPLETED",
+        "BUILD",
+        "Application build completed."
+      );
       summary.deployTime =
         (Date.now() - stageTimers.Deployment) / 1000;
       /*
@@ -202,11 +193,7 @@ class DeploymentOrchestrator {
         "SUMMARY",
         "Deployment completed successfully."
       );
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "DEPLOYMENT_COMPLETED",
-        message: "Deployment completed successfully"
-      });
+
       metrics.runningDeployments.inc();
 
       timer({
@@ -261,11 +248,6 @@ class DeploymentOrchestrator {
 
       timer({
         status: "FAILED",
-      });
-      await deploymentEvents.emit({
-        deploymentId,
-        event: "DEPLOYMENT_FAILED",
-        message: error.message
       });
       throw error;
     }

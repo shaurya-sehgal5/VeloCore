@@ -35,6 +35,12 @@ export default function Dashboard({ githubUser, userId, repos, onDeploy, loading
   const isBusy = isBusyStatus(status);
   const activeCount = deployments.filter((d) => d.status === 'RUNNING').length;
 
+  const handleGoToLogs = (deploymentId) => {
+    startWatching(deploymentId);
+    setViewingDeployment(null);
+    setActiveTab('logs');
+  };
+
   // ---------- deploy modal (project name + env vars) ----------
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showLimitPopup, setShowLimitPopup] = useState(false);
@@ -64,9 +70,7 @@ export default function Dashboard({ githubUser, userId, repos, onDeploy, loading
         body: JSON.stringify(rowsToObject(modalEnvRows)),
       });
       setShowDeployModal(false);
-      setViewingDeployment(null);
-      startWatching(buildData.deploymentId);
-      setActiveTab('logs');
+      handleGoToLogs(buildData.deploymentId);
     } catch (err) {
       console.error('[Deploy Error]:', err.message);
       alert(`Failed to start deployment: ${err.message}`);
@@ -175,8 +179,7 @@ export default function Dashboard({ githubUser, userId, repos, onDeploy, loading
           onBack={() => setViewingDeployment(null)}
           onDeleted={deleteDeployment}
           onRefreshDeployments={fetchDeployments}
-          logsState={{ activeDeploymentId, logs, status }}
-          startWatchingLogs={startWatching}
+          onGoToLogs={handleGoToLogs}
         />
       )}
 

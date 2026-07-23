@@ -33,8 +33,6 @@ export default function useEnvVars(deploymentId, { autoLoad = false } = {}) {
     if (autoLoad && deploymentId && !loaded) load();
   }, [autoLoad, deploymentId, loaded, load]);
 
-  // Loads on demand if an action needs the current env vars before the
-  // Environment Variables section was ever opened (e.g. Redeploy from elsewhere).
   const ensureLoaded = useCallback(async () => (loaded ? rows : load()), [loaded, rows, load]);
 
   const save = useCallback(

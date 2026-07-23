@@ -14,6 +14,39 @@ services:
 
     restart: unless-stopped
 
+  loki:
+    image: grafana/loki:3.0.0
+
+    container_name: velocore-loki
+
+    command: -config.file=/etc/loki/config.yaml
+
+    ports:
+      - "3100:3100"
+
+    restart: unless-stopped
+
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml
+
+  promtail:
+    image: grafana/promtail:3.0.0
+
+    container_name: velocore-promtail
+
+    command: -config.file=/etc/promtail/config.yaml
+
+    depends_on:
+      - loki
+
+    restart: unless-stopped
+
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log:/var/log
+
   grafana:
     image: grafana/grafana-oss
 
@@ -26,6 +59,7 @@ services:
 
     depends_on:
       - prometheus
+      - loki
 
     volumes:
       - grafana-storage:/var/lib/grafana

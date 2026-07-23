@@ -1,10 +1,8 @@
 const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
-
 const kubectl = require("../kubernetes/kubectl.service");
 const portForwardService =
-require("../kubernetes/port-forward.service");
-
+  require("../kubernetes/port-forward.service");
 const db = require("../../config/db");
 
 class RestartService {
@@ -44,7 +42,8 @@ class RestartService {
     await portForwardService.start(
       runtime.service,
       runtime.namespace,
-      runtime.container_port
+      runtime.container_port,
+      runtime.host_port
     );
 
     await db.query(
@@ -63,4 +62,4 @@ WHERE deployment_id=$1
 }
 
 module.exports =
-new RestartService();
+  new RestartService();

@@ -14,8 +14,6 @@ export default function useLiveLogs(onStatusChange) {
 
     socket.on('connect', () => socket.emit('join-deployment-stream', activeDeploymentId));
 
-    // Keep appending every log line regardless of phase, so build logs flow
-    // straight into runtime logs once the app reaches RUNNING.
     socket.on("live_logs", (payload) => {
       if (!payload) return;
 

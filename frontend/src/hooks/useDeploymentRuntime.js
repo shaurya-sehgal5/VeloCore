@@ -5,8 +5,8 @@ export default function useDeploymentRuntime(deploymentId, { poll = false } = {}
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState(null);
-  const [runtimeEngine, setRuntimeEngine] = useState('docker'); // confirmed default per backend startup logs
-  const [metrics, setMetrics] = useState(null); // only populated if your /runtime response includes a metrics object
+  const [runtimeEngine, setRuntimeEngine] = useState('docker'); 
+  const [metrics, setMetrics] = useState(null); 
 
   const fetchRuntime = useCallback(async () => {
     if (!deploymentId) return;

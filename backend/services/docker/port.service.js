@@ -33,11 +33,10 @@ class PortService {
     async allocate() {
 
         const result = await db.query(`
-        SELECT host_port
-        FROM deployment_services
-        WHERE status = 'RUNNING'
-        AND host_port IS NOT NULL
-    `);
+SELECT DISTINCT host_port
+FROM deployment_services
+WHERE host_port IS NOT NULL
+`);
 
         const usedPorts = result.rows.map(r => Number(r.host_port));
 

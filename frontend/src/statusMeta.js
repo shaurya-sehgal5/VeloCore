@@ -1,6 +1,3 @@
-// Single source of truth for every deployment status the app can show.
-// `busy`     -> shows the pulsing dot / disables re-deploy while true
-// `terminal` -> no more logs expected, safe to close the log socket
 export const STATUS_META = {
   QUEUED: { fg: '#a1a1aa', bg: 'rgba(161,161,170,0.12)', border: 'rgba(161,161,170,0.3)', busy: true },
   CLONING: { fg: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.35)', busy: true },
