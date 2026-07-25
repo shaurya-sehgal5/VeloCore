@@ -1,8 +1,7 @@
 const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
-const portForwardService = require("../kubernetes/port-forward.service");
 const db = require("../../config/db");
-const metrics = require("../monitoring/metrics.service"); // <-- use your actual metrics module
+const metrics = require("../monitoring/metrics.service");
 
 class StopService {
   async stop(deploymentId) {
@@ -11,8 +10,6 @@ class StopService {
     if (!runtime) {
       throw new Error("Runtime not found.");
     }
-
-    await portForwardService.stop(runtime.service);
 
     await runtimeAction.stop(runtime);
 

@@ -25,10 +25,9 @@ class RuntimeManager {
       namespace: runtime.namespace || "default",
       status: "RUNNING",
       health: "UNKNOWN",
-
       host: runtime.host,
       namespace: runtime.namespace || "default",
-
+     route: runtime.route,
       startedAt: Date.now(),
       metrics: {
         cpu: "0%",

@@ -1,5 +1,7 @@
 class LogParser {
+
   parse(line) {
+
     if (!line) return null;
 
     const text = line.trim();
@@ -12,64 +14,68 @@ class LogParser {
       text.includes("writing image") ||
       text.includes("exporting layers") ||
       text.includes("exporting manifest") ||
-      text.includes("naming to")
+      text.includes("exporting config") ||
+      text.includes("exporting attestation") ||
+      text.includes("naming to") ||
+      text.includes("DONE") ||
+      text.includes("CACHED")
     ) {
       return null;
     }
 
-    // Docker build stages
-    if (/RUN (npm|pnpm|yarn) install/i.test(text))
-      return "📦 Installing dependencies...";
+    // Dependency install
+    if (
+      /npm install/i.test(text) ||
+      /pnpm install/i.test(text) ||
+      /yarn install/i.test(text)
+    ) {
+      return "Installing dependencies...";
+    }
 
-    if (/RUN (npm|pnpm|yarn).*(build)/i.test(text))
-      return "⚙ Building application...";
+    // Application build
+    if (
+      /npm run build/i.test(text) ||
+      /pnpm build/i.test(text) ||
+      /yarn build/i.test(text)
+    ) {
+      return "Building application...";
+    }
 
-    if (/COPY|ADD/i.test(text))
-      return "📁 Copying project files...";
-
-    if (/Successfully built/i.test(text))
-      return null;
-
-    if (/Successfully tagged/i.test(text))
-      return null;
-
-    // npm
-    if (/added \d+ packages/i.test(text))
-      return "📦 Dependencies installed.";
-
-    if (/audited/i.test(text))
-      return null;
-
-    if (/npm notice/i.test(text))
-      return null;
-
-    if (/found 0 vulnerabilities/i.test(text))
-      return null;
+    // Copy files
+    if (/COPY|ADD/i.test(text)) {
+      return "Preparing application files...";
+    }
 
     // Vite
-    if (/vite v/i.test(text))
-      return "⚡ Building Vite project...";
+    if (/vite v/i.test(text)) {
+      return "Compiling frontend...";
+    }
 
-    if (/built in/i.test(text))
-      return "✅ Frontend build completed.";
+    // Next.js
+    if (/Creating an optimized production build/i.test(text)) {
+      return "Optimizing Next.js application...";
+    }
 
-    // Generic errors
+    // Python
+    if (/Collecting/i.test(text)) {
+      return "Installing Python dependencies...";
+    }
+
+    // Fatal errors only
     if (
       /ERR!/i.test(text) ||
       /Error:/i.test(text) ||
       /failed/i.test(text)
     ) {
-      return `❌ ${text}`;
+      return text;
     }
 
-    // Ignore empty
-    if (text.length < 2)
-      return null;
+    return null;
 
-    if (text.length < 5) return null;
-
-    return text;
   }
+
 }
+
+
 
 module.exports = new LogParser();

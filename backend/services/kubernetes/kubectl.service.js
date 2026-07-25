@@ -71,26 +71,44 @@ class KubectlService {
     return this.execute(["delete", "pod", name, "-n", namespace]);
   }
 
-  deleteDeployment(name, namespace = "default") {
-    return this.execute(["delete", "deployment", name, "-n", namespace]);
-  }
-
-  deleteService(name, namespace = "default") {
-    return this.execute(["delete", "service", name, "-n", namespace]);
-  }
+ 
   async pods() {
     return this.execute(["get", "pods", "-o", "json"]);
   }
 
-  rollout(name, namespace = "default") {
-    return this.execute([
+  async rollout(name, namespace = "default", deploymentId) {
+
+    if (deploymentId) {
+
+      await logger.info(
+        deploymentId,
+        "ROLLOUT",
+        "Waiting for Kubernetes rollout..."
+      );
+
+    }
+
+    const result = await this.execute([
       "rollout",
       "status",
       `deployment/${name}`,
       "-n",
       namespace,
-      "--timeout=60s",
+      "--timeout=60s"
     ]);
+
+    if (deploymentId) {
+
+      await logger.success(
+        deploymentId,
+        "ROLLOUT",
+        "Deployment is available."
+      );
+
+    }
+
+    return result;
+
   }
   restart(name, namespace = "default") {
     return this.execute([
@@ -120,9 +138,6 @@ class KubectlService {
       "-n",
       namespace,
     ]);
-  }
-  deleteNamespace(namespace) {
-    return this.execute(["delete", "namespace", namespace]);
   }
 
 
@@ -235,7 +250,19 @@ class KubectlService {
       "--wait=true",
     ]);
   }
+  async getIngress(name, namespace) {
 
+    return this.execute([
+      "get",
+      "ingress",
+      name,
+      "-n",
+      namespace,
+      "-o",
+      "json"
+    ]);
+
+  }
   async exists(resource, name, namespace = "default") {
     try {
       await this.execute([

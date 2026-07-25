@@ -12,6 +12,7 @@ class RuntimeQueryService {
     status,
     engine,
     host_port,
+    route,
     container_port,
     image_name,
     container_name,
@@ -26,7 +27,9 @@ ORDER BY created_at ASC
 
     return rows.map((runtime) => ({
       ...runtime,
-      url: `http://localhost:${runtime.host_port}`,
+      url: runtime.route
+        ? `http://localhost${runtime.route}`
+        : null,
     }));
   }
   async latest(deploymentId) {
@@ -80,28 +83,30 @@ LIMIT 1
   async group(deploymentId) {
     const { rows } = await db.query(
       `
-      SELECT
-        id,
-        name,
-        type,
-        framework,
-        status,
-        slot,
-        host_port,
-        container_port,
-        image_name,
-        container_name,
-        created_at
-      FROM deployment_services
-      WHERE deployment_id = $1
-      ORDER BY created_at ASC
+     SELECT
+id,
+name,
+type,
+framework,
+status,
+slot,
+route,
+container_port,
+image_name,
+container_name,
+created_at
+FROM deployment_services
+WHERE deployment_id = $1
+ORDER BY created_at ASC
       `,
       [deploymentId],
     );
 
     return rows.map((runtime) => ({
       ...runtime,
-      url: `http://localhost:${runtime.host_port}`,
+      url: runtime.route
+        ? `http://localhost${runtime.route}`
+        : null,
     }));
   }
   async previousRuntime(deploymentId) {

@@ -1,102 +1,74 @@
 import { useEffect, useState } from "react";
-import { SOCKET_URL } from "../config";
+import { SOCKET_URL, MONO } from "../config";
+
+const sectionLabelStyle = {
+  margin: "0 0 12px 0",
+  fontSize: "11px",
+  fontFamily: MONO,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: "#a1a1aa",
+  fontWeight: 500,
+};
+
+const mutedTextStyle = { color: "#52525b", fontSize: "13.5px", fontFamily: MONO };
+
+const cardStyle = {
+  padding: "14px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.06)",
+  backgroundColor: "rgba(255,255,255,0.02)",
+  marginBottom: "10px",
+};
+
+const revisionBadgeStyle = {
+  display: "inline-block",
+  fontFamily: MONO,
+  fontSize: "10.5px",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  color: "#38bdf8",
+  backgroundColor: "rgba(56,189,248,0.1)",
+  border: "1px solid rgba(56,189,248,0.35)",
+  padding: "3px 9px",
+  borderRadius: "9999px",
+  marginBottom: "8px",
+};
 
 export default function HistoryTab({ deploymentId }) {
   const [rows, setRows] = useState([]);
+  const historyUrl = (id) => `${SOCKET_URL}/api/deployments/${id}/history`;
 
   useEffect(() => {
-    fetch(`${SOCKET_URL}/api/deployments/${deploymentId}/history`, {
+    fetch(historyUrl(deploymentId), {
       credentials: "include",
     })
       .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
         return r.json();
       })
       .then(setRows)
       .catch(console.error);
   }, [deploymentId]);
 
-  if (!rows.length) {
-    return <div className="text-zinc-400">No deployment history found.</div>;
-  }
-
   return (
-    <div className="space-y-4">
-      {rows.map((r) => (
-        <div
-          key={r.revision}
-          className="rounded-xl border border-zinc-800 bg-zinc-900 p-5"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Revision #{r.revision}</h3>
+    <div>
+      <div style={sectionLabelStyle}>
+        Deployment History <span style={{ color: "#3ecf8e" }}>({rows.length})</span>
+      </div>
 
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                r.status === "RUNNING"
-                  ? "bg-green-500/20 text-green-400"
-                  : "bg-yellow-500/20 text-yellow-400"
-              }`}
-            >
-              {r.status}
-            </span>
+      {rows.length === 0 ? (
+        <p style={mutedTextStyle}>$ no revision history reported yet.</p>
+      ) : (
+        rows.map((r) => (
+          <div key={r.revision} style={cardStyle}>
+            <span style={revisionBadgeStyle}>Revision {r.revision}</span>
+            <p style={{ fontSize: "13px", color: "#d4d4d8", margin: 0, lineHeight: 1.5 }}>{r.changeCause}</p>
           </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-zinc-500">Commit</p>
-              <p className="font-mono">{r.commitSha?.slice(0, 8)}</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500">Branch</p>
-              <p>{r.branch}</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500">Author</p>
-              <p>{r.commitAuthor}</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500">Deployed</p>
-              <p>
-                {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
-              </p>
-            </div>
-
-            <div className="col-span-2">
-              <p className="text-zinc-500">Message</p>
-              <p>{r.commitMessage}</p>
-            </div>
-
-            <div className="col-span-2">
-              <p className="text-zinc-500">Kubernetes Change Cause</p>
-              <p>{r.changeCause}</p>
-            </div>
-            <button
-              className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-              onClick={async () => {
-                const res = await fetch(
-                  `${SOCKET_URL}/api/deployments/${deploymentId}/rollback/${r.revision}`,
-                  {
-                    method: "POST",
-                    credentials: "include",
-                  },
-                );
-
-                if (!res.ok) {
-                  alert("Rollback failed");
-                  return;
-                }
-
-                alert(`Rolled back to revision ${r.revision}`);
-              }}
-            >
-              Rollback to Revision {r.revision}
-            </button>
-          </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

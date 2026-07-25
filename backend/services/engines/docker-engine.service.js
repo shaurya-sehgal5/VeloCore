@@ -197,6 +197,7 @@ class DockerEngine {
       deploymentId,
       name: buildPlan.projectName,
       engine: "docker",
+      route: runtime.route,
       type: buildPlan.type,
       framework: buildPlan.framework,
       imageName: runtime.imageName,

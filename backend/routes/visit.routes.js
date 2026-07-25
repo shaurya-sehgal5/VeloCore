@@ -6,7 +6,7 @@ const proxy = httpProxy.createProxyServer({
   changeOrigin: true,
 });
 
-async function getHostPort(deploymentId) {
+async function getroute(deploymentId) {
   const deployment = await db.query(
     `
     SELECT active_slot
@@ -24,7 +24,7 @@ async function getHostPort(deploymentId) {
 
   let runtime = await db.query(
     `
-    SELECT host_port
+    SELECT route
     FROM deployment_services
     WHERE deployment_id=$1
     AND slot=$2
@@ -37,7 +37,7 @@ async function getHostPort(deploymentId) {
   if (!runtime.rows.length) {
     runtime = await db.query(
       `
-      SELECT host_port
+      SELECT route
       FROM deployment_services
       WHERE deployment_id=$1
       AND slot=$2
@@ -52,14 +52,14 @@ async function getHostPort(deploymentId) {
     return null;
   }
 
-  return runtime.rows[0].host_port;
+  return runtime.rows[0].route;
 }
 
 router.use("/:deploymentId", async (req, res) => {
   try {
     const deploymentId = req.params.deploymentId;
 
-    const port = await getHostPort(deploymentId);
+    const port = await getroute(deploymentId);
 
     if (!port) {
       return res.status(404).send("Deployment not found");
@@ -72,7 +72,7 @@ router.use("/:deploymentId", async (req, res) => {
     }
 
     proxy.web(req, res, {
-      target: `http://localhost:${port}`,
+      target: `http://localhost:${route}`,
     });
   } catch (err) {
     console.error(err);

@@ -17,7 +17,7 @@ class DeploymentQueryService {
 
                 status,
 
-                host_port,
+                route,
 
                 container_port,
 
@@ -25,11 +25,11 @@ class DeploymentQueryService {
 
                 container_name
 
-            FROM deployment_services
+                FROM deployment_services
 
-            WHERE deployment_id = $1
+                WHERE deployment_id = $1
 
-            ORDER BY created_at
+                ORDER BY created_at
             `,
 
             [deploymentId]

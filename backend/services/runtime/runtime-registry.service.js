@@ -10,7 +10,7 @@ class RuntimeRegistryService {
     framework,
     imageName = null,
     containerName = null,
-    hostPort = null,
+    route = null,
     containerPort = null,
     slot,
     engine = "docker",
@@ -29,17 +29,16 @@ class RuntimeRegistryService {
 
       [deploymentId, name],
     );
-   
-    await db.query(
-      `
-    INSERT INTO deployment_services(
+await db.query(
+  `
+INSERT INTO deployment_services (
     deployment_id,
     name,
     type,
     framework,
     image_name,
     container_name,
-    host_port,
+    route,
     container_port,
     status,
     slot,
@@ -48,30 +47,30 @@ class RuntimeRegistryService {
     deployment_name,
     service_name,
     host
-    )
-    VALUES(
+)
+VALUES (
     $1,$2,$3,$4,$5,$6,$7,$8,
     'RUNNING',
     $9,$10,$11,$12,$13,$14
 )
 `,
-      [
-        deploymentId,
-        name,
-        type,
-        framework,
-        imageName,
-        containerName || pod,
-        hostPort,
-        containerPort,
-        slot,
-        engine,
-        namespace,
-        deployment,
-        service,
-        host,
-      ],
-    );
+  [
+    deploymentId,
+    name,
+    type,
+    framework,
+    imageName,
+    containerName || pod,
+    route,
+    containerPort,
+    slot,
+    engine,
+    namespace,
+    deployment,
+    service,
+    host,
+  ]
+);
 
     await logger.success(
       deploymentId,

@@ -1,8 +1,6 @@
 const runtimeResolver = require("./runtime-resolver.service");
 const runtimeAction = require("./runtime-action.service");
 const kubectl = require("../kubernetes/kubectl.service");
-const portForwardService =
-  require("../kubernetes/port-forward.service");
 const db = require("../../config/db");
 
 class RestartService {
@@ -32,19 +30,13 @@ class RestartService {
 
     await kubectl.rollout(
       runtime.deployment,
-      runtime.namespace
-    );
-
-    portForwardService.stop(
-      runtime.service
-    );
-
-    await portForwardService.start(
-      runtime.service,
       runtime.namespace,
-      runtime.container_port,
-      runtime.host_port
+         deploymentId
     );
+
+  
+
+   
 
     await db.query(
       `

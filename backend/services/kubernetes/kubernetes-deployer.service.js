@@ -3,145 +3,237 @@ const logger = require("../monitoring/logger.service");
 const kubernetesLogs = require("./kubernetes-log.service");
 const namespaceService = require("./namespaces.service");
 const metrics = require("../monitoring/metrics.service");
-const portForwardService = require("./port-forward.service");
-const fs = require("fs/promises");
+const helm = require("../helm/helm.service");
+const analyzer = require("./failure-analyzer.service");
 
 class KubernetesDeployer {
     async deploy({
         deploymentId,
         buildPlan,
-        manifest,
         rollback = false,
     }) {
-        await logger.info(
-            deploymentId,
-            "KUBERNETES",
-            "Applying manifest..."
-        );
-
-        await namespaceService.ensure(buildPlan.namespace);
-
-        await kubectl.apply(manifest);
-
-        await fs.unlink(manifest).catch(() => { });
-
-        await logger.info(
-            deploymentId,
-            "KUBERNETES",
-            "Waiting for rollout..."
-        );
-
-        const rolloutStart = Date.now();
 
         try {
+
+            await logger.info(
+                deploymentId,
+                "HELM",
+                "Deploying Helm release..."
+            );
+
+            await namespaceService.ensure(buildPlan.namespace);
+
             try {
-                await kubectl.rollout(
+
+                await helm.install({
+                    deploymentId,
+                    buildPlan
+                });
+
+                await kubectl.waitForDeployment(
                     buildPlan.projectName,
                     buildPlan.namespace
                 );
-            } catch (err) {
-                if (rollback) {
-                    throw new Error(
-                        `Rollback deployment failed: ${err.message}`
-                    );
-                }
-                throw err;
-            }
-        } finally {
-            metrics.rolloutDuration.observe(
-                (Date.now() - rolloutStart) / 1000
-            );
-        }
 
-        const [pod, service] = await Promise.all([
-            kubectl.getPod(
-                buildPlan.projectName,
-                buildPlan.namespace
-            ),
-            kubectl.getService(
-                buildPlan.projectName,
-                buildPlan.namespace
-            ),
-        ]);
+            } catch (error) {
 
-        if (!pod) {
-            throw new Error(
-                `No READY pod found for ${buildPlan.projectName}`
-            );
-        }
-
-        const localPort = await portForwardService.start(
-            buildPlan.projectName,
-            buildPlan.namespace,
-            buildPlan.containerPort
-        );
-
-        await logger.success(
-            deploymentId,
-            "KUBERNETES",
-            `Port forwarding started on localhost:${localPort}`
-        );
-
-        setImmediate(() => {
-            const logStream = kubernetesLogs.stream(
-                pod.metadata.name,
-                deploymentId,
-                buildPlan.namespace
-            );
-
-            logStream.on("error", (err) => {
-                logger.error(
+                await logger.error(
                     deploymentId,
-                    "KUBERNETES",
-                    `Log stream error: ${err.message}`
+                    "ROLLBACK",
+                    "Deployment failed. Rolling back..."
                 );
-            });
-        });
 
-        return {
-            deploymentId,
+                try {
 
-            project: buildPlan.projectName,
+                    await helm.rollbackPrevious(
+                        deploymentId,
+                        buildPlan.namespace
+                    );
 
-            engine: "kubernetes",
+                    await logger.info(
+                        deploymentId,
+                        "ROLLBACK",
+                        "Rollback completed."
+                    );
 
-            url: `http://localhost:8000/visit/${deploymentId}`,
+                } catch (rollbackError) {
 
-            runtime: {
+                    await logger.error(
+                        deploymentId,
+                        "ROLLBACK",
+                        rollbackError.message
+                    );
+
+                }
+
+                throw error;
+            }
+
+            await logger.info(
                 deploymentId,
+                "KUBERNETES",
+                "Waiting for rollout..."
+            );
 
-                name: buildPlan.projectName,
+            const rolloutStart = Date.now();
+
+            try {
+
+                try {
+
+                    await kubectl.rollout(
+                        buildPlan.projectName,
+                        buildPlan.namespace,
+                        deploymentId,
+                    );
+
+                } catch (err) {
+
+                    if (rollback) {
+
+                        throw new Error(
+                            `Rollback deployment failed: ${err.message}`
+                        );
+
+                    }
+
+                    throw err;
+
+                }
+
+            } finally {
+
+                metrics.rolloutDuration.observe(
+                    (Date.now() - rolloutStart) / 1000
+                );
+
+            }
+
+            const [pod, service] = await Promise.all([
+                kubectl.getPod(
+                    buildPlan.projectName,
+                    buildPlan.namespace
+                ),
+                kubectl.getService(
+                    buildPlan.projectName,
+                    buildPlan.namespace
+                ),
+            ]);
+
+            await logger.success(
+                deploymentId,
+                "HEALTH",
+                "Application passed health checks."
+            );
+
+            if (!pod) {
+
+                throw new Error(
+                    `No READY pod found for ${buildPlan.projectName}`
+                );
+
+            }
+
+            setImmediate(() => {
+
+                const logStream = kubernetesLogs.stream(
+                    pod.metadata.name,
+                    deploymentId,
+                    buildPlan.namespace
+                );
+
+                logStream.on("error", (err) => {
+
+                    logger.error(
+                        deploymentId,
+                        "KUBERNETES",
+                        `Log stream error: ${err.message}`
+                    );
+
+                });
+
+            });
+
+            return {
+
+                deploymentId,
 
                 project: buildPlan.projectName,
 
-                type: buildPlan.type,
-
-                framework: buildPlan.framework,
-
-                imageName: buildPlan.imageName,
-
-                containerName: pod.metadata.name,
-
-                namespace: buildPlan.namespace,
-
-                deployment: buildPlan.projectName,
-
-                service: buildPlan.projectName,
-
-                pod: pod.metadata.name,
-
-                branch: buildPlan.branch,
-
-                hostPort: localPort,
-
-                containerPort:
-                    service.spec.ports[0].port,
-
-                slot: buildPlan.slot,
-
                 engine: "kubernetes",
-            },
-        };
+
+                url: `http://localhost/apps/${deploymentId}`,
+
+                runtime: {
+
+                    deploymentId,
+
+                    name: buildPlan.projectName,
+
+                    project: buildPlan.projectName,
+
+                    type: buildPlan.type,
+
+                    route: `/apps/${deploymentId}`,
+
+                    framework: buildPlan.framework,
+
+                    imageName: buildPlan.imageName,
+
+                    containerName: pod.metadata.name,
+
+                    namespace: buildPlan.namespace,
+
+                    deployment: buildPlan.projectName,
+
+                    service: buildPlan.projectName,
+
+                    pod: pod.metadata.name,
+
+                    branch: buildPlan.branch,
+
+                    containerPort: service.spec.ports[0].port,
+
+                    slot: buildPlan.slot,
+
+                    engine: "kubernetes",
+
+                },
+
+            };
+
+        } catch (error) {
+
+            const failure = analyzer.analyze(error.message);
+
+            if (failure) {
+
+                await logger.error(
+                    deploymentId,
+                    "FAILURE",
+                    `${failure.code}: ${failure.reason}`
+                );
+
+                await logger.warning(
+                    deploymentId,
+                    "SUGGESTION",
+                    failure.suggestion
+                );
+
+            } else {
+
+                await logger.error(
+                    deploymentId,
+                    "FAILURE",
+                    error.message
+                );
+
+            }
+
+            throw error;
+
+        }
+
     }
 }
 

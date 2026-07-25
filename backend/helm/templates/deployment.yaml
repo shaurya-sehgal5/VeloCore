@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ .Values.deploymentId }}-{{ .Values.slot }}
+  namespace: {{ .Values.namespace }}
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: {{ .Values.deploymentId }}
+      slot: {{ .Values.slot }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.deploymentId }}
+        slot: {{ .Values.slot }}
+
+    spec:
+      containers:
+        - name: app
+
+          image: {{ .Values.image.repository | quote }}
+
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: {{ .Values.container.port }}
+
+          resources:
+{{ toYaml .Values.resources | indent 12 }}

@@ -5,6 +5,13 @@ const loki = require("./loki/loki.service");
 
 class LoggerService {
   constructor() {
+    this.hiddenStages = new Set([
+      "DOCKER",
+      "HELM_STDOUT",
+      "KUBECTL_STDOUT",
+      "NPM",
+      "GIT"
+    ]);
     this.dbEvents = new Set([
       "DEPLOYMENT_STARTED",
       "WORKSPACE_READY",
@@ -50,10 +57,19 @@ class LoggerService {
 
     this.console(log);
 
-    runtimeStatus.publish(deploymentId, {
-      type: "log",
-      ...log,
-    });
+    if (!this.hiddenStages.has(stage)) {
+
+      runtimeStatus.publish(deploymentId, {
+        type: "log",
+        ...log
+      });
+
+      try {
+        const io = getIO();
+        io.to(deploymentId).emit("live_logs", log);
+      } catch (_) { }
+
+    }
     await loki.push({
       deploymentId,
       stage,

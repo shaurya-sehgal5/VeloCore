@@ -1,0 +1,21 @@
+
+deploymentId: cbbf6541-8f2b-48c4-8188-8956c395667e
+
+namespace: velocore-696738c0-61ff-42a0-bfdc-da9e8c9fd370
+
+image:
+  repository: velocore-cbbf6541-8f2b-48c4-8188-8956c395667e:696738c0-green
+
+container:
+  port: 8000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /apps/696738c0-61ff-42a0-bfdc-da9e8c9fd370
+
+resources: {}

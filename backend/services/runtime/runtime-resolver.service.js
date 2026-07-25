@@ -11,7 +11,7 @@ type,
 framework,
 image_name,
 container_name,
-host_port,
+route,
 container_port,
 status,
 

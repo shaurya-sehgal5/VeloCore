@@ -5,19 +5,30 @@ const socket = require("./kubernetes-socket.service");
 class KubernetesLogService {
   stream(pod, deploymentId, namespace = "default") {
 
-    logger.info(
-      deploymentId,
-      "KUBERNETES",
-      `Streaming logs from ${pod}`
-    );
-
     const stream = kubectl.streamLogs(pod, namespace);
 
     stream.stdout.on("data", (data) => {
       const line = data.toString().trim();
       if (
         !line ||
-        line.includes("kube-probe")
+
+        line.includes("kube-probe") ||
+
+        line.includes("GET /health") ||
+
+        line.includes("GET /ready") ||
+
+        line.includes("GET /live") ||
+
+        line.includes("127.0.0.1") ||
+
+        line.includes("Listening on") ||
+
+        line.includes("Server started") ||
+
+        line.includes("Application started") ||
+
+        line.includes("Ready in")
       ) {
         return;
       }
@@ -54,11 +65,7 @@ class KubernetesLogService {
     });
 
     stream.on("close", (code) => {
-      logger.info(
-        deploymentId,
-        "KUBERNETES",
-        `Log stream closed (${code})`
-      );
+     
     });
 
     return stream;

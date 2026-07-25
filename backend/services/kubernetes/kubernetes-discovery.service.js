@@ -41,7 +41,7 @@ class KubernetesDiscoveryService {
 
         engine: "kubernetes",
 
-        hostPort: service.spec.ports[0].nodePort,
+        route: `/apps/${deploymentId}`,
 
         containerPort: service.spec.ports[0].port,
 

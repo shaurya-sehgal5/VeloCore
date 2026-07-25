@@ -4,6 +4,9 @@ const logParser = require("../monitoring/log-parser.service");
 const metrics = require("../monitoring/metrics.service");
 
 class DockerService {
+  constructor() {
+    this.lastMessage = new Map();
+  }
   execute(command, args, deploymentId) {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
@@ -31,17 +34,31 @@ class DockerService {
           if (text.startsWith("=>")) continue;
           const parsed = logParser.parse(text);
 
-          if (parsed) {
+          if (!parsed) continue;
+
+          if (parsed && this.lastMessage.get(deploymentId) !== parsed) {
+
+            this.lastMessage.set(
+              deploymentId,
+              parsed
+            );
+
             logger.live(
               deploymentId,
               "BUILD",
               "INFO",
               parsed
             );
+
           }
         }
       };
-
+      await logger.milestone(
+        deploymentId,
+        "BUILD_COMPLETED",
+        "BUILD",
+        "Docker image built successfully."
+      );
       child.stdout.on("data", stream);
 
       child.stderr.on("data", stream);
@@ -224,9 +241,8 @@ class DockerService {
     await logger.info(
       deploymentId,
       "RUNTIME",
-      `Injecting ${Object.keys(env || {}).length} environment variable(s).`
+      "Preparing runtime environment..."
     );
-
     return new Promise((resolve, reject) => {
 
       const started = Date.now();
@@ -236,33 +252,29 @@ class DockerService {
 
       process.stdout.on("data", (data) => {
         output += data.toString();
-        logger.live(
-          deploymentId,
-          "RUNTIME",
-          "INFO",
-          data.toString().trim()
-        );
       });
+      let stderr = "";
 
       process.stderr.on("data", (data) => {
-        logger.live(
-          deploymentId,
-          "RUNTIME",
-          "ERROR",
-          data.toString().trim()
-        );
+        stderr += data.toString();
       });
-
       process.on("close", async (code) => {
         if (code !== 0) {
-          return reject(new Error("Failed to start container."));
+
+          await logger.error(
+            deploymentId,
+            "RUNTIME",
+            stderr || "Failed to start container."
+          );
+
+          return reject(new Error(stderr));
         }
         const containerId = output.trim();
         await logger.milestone(
           deploymentId,
           "DEPLOYMENT_COMPLETED",
           "RUNTIME",
-          "Container started successfully."
+          "Application is now running."
         );
         metrics.runtimeStartupDuration.observe(
           (Date.now() - started) / 1000
