@@ -28,7 +28,7 @@ class KubectlService {
         if (code !== 0) {
           return reject(new Error(output));
         }
-clearTimeout(timeout);
+        clearTimeout(timeout);
         resolve(output);
       });
     });
@@ -101,16 +101,16 @@ clearTimeout(timeout);
       namespace,
     ]);
   }
-
-  rollback(name, namespace = "default") {
+  deleteIngress(name, namespace = "default") {
     return this.execute([
-      "rollout",
-      "undo",
-      `deployment/${name}`,
+      "delete",
+      "ingress",
+      name,
       "-n",
       namespace,
     ]);
   }
+
 
   scale(name, replicas, namespace = "default") {
     return this.execute([
@@ -157,11 +157,42 @@ clearTimeout(timeout);
       return null;
     }
 
-    return pods.find(
-      p => p.status.phase === "Running"
-    ) || pods[0];
+    return (
+      pods.find(
+        (pod) =>
+          pod.status.phase === "Running" &&
+          pod.status.conditions?.some(
+            (condition) =>
+              condition.type === "Ready" &&
+              condition.status === "True"
+          )
+      ) || null
+    );
   }
+  async deleteDeployment(name, namespace) {
 
+    return this.execute([
+      "delete",
+      "deployment",
+      name,
+      "-n",
+      namespace,
+      "--ignore-not-found"
+    ]);
+
+  }
+  async deleteService(name, namespace) {
+
+    return this.execute([
+      "delete",
+      "service",
+      name,
+      "-n",
+      namespace,
+      "--ignore-not-found"
+    ]);
+
+  }
   async getService(name, namespace = "default") {
     const output = await this.execute([
       "get",
@@ -194,6 +225,17 @@ clearTimeout(timeout);
       }
     }
   }
+
+  async deleteNamespace(namespace) {
+    return this.execute([
+      "delete",
+      "namespace",
+      namespace,
+      "--ignore-not-found=true",
+      "--wait=true",
+    ]);
+  }
+
   async exists(resource, name, namespace = "default") {
     try {
       await this.execute([

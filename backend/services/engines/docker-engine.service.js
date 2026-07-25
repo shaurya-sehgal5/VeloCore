@@ -187,6 +187,7 @@ class DockerEngine {
       type: buildPlan.type,
       framework: buildPlan.framework,
       imageName: runtime.imageName,
+      engine: "docker",
       containerName,
       hostPort,
       containerPort: runtime.containerPort,
@@ -195,6 +196,7 @@ class DockerEngine {
     await runtimeRegistry.register({
       deploymentId,
       name: buildPlan.projectName,
+      engine: "docker",
       type: buildPlan.type,
       framework: buildPlan.framework,
       imageName: runtime.imageName,
@@ -246,7 +248,10 @@ class DockerEngine {
       hostPort,
     });
 
-    await statusService.update(deploymentId, "RUNNING");
+    await statusService.update(
+      deploymentId,
+      "SUCCESS"
+    );
   }
 }
 module.exports = new DockerEngine();

@@ -4,6 +4,7 @@ import OverviewTab from "./OverviewTab";
 import LogsTab from "./LogsTab";
 import MonitoringTab from "./MonitoringTab";
 import Modal from "./Modal";
+import HistoryTab from "./HistoryTab"
 import useDeploymentRuntime from "../hooks/useDeploymentRuntime";
 import useEnvVars from "../hooks/useEnvVars";
 import { REDEPLOY_BASE, ACTION_BASE, SOCKET_URL, MONO } from "../config";
@@ -870,6 +871,12 @@ export default function DeploymentDetails({
           Events
         </button>
         <button
+          onClick={() => setTab("history")}
+          style={tabBtnStyle(tab === "history")}
+        >
+          History
+        </button>
+        <button
           onClick={() => setTab("rollback")}
           style={tabBtnStyle(tab === "rollback")}
         >
@@ -906,6 +913,8 @@ export default function DeploymentDetails({
       {tab === "monitoring" && <MonitoringTab metrics={metrics} />}
 
       {tab === "timeline" && <TimelineTab deploymentId={deployment.id} />}
+
+      {tab === "history" && <HistoryTab deploymentId={deployment.id} />}
 
       {tab === "events" && <EventsTab deploymentId={deployment.id} />}
 

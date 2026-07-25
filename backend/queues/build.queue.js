@@ -53,44 +53,21 @@ const buildWorker = new Worker(
 
     const timeout = new Promise((_, reject) =>
       setTimeout(
-        () => reject(new Error("Deployment exceeded 10 minute timeout.")),
-        600000
+        () => reject(new Error("Deployment exceeded 5 minute timeout.")),
+        300000
       )
     );
+    return await Promise.race([
+      deploymentOrchestrator.deploy({
+        repoUrl: cloneUrl,
+        githubToken,
+        deploymentId,
+        io,
+        env,
+      }),
+      timeout,
+    ]);
 
-    const MAX_RETRIES = 2;
-    let lastError;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-
-        return await Promise.race([
-          deploymentOrchestrator.deploy({
-            repoUrl: cloneUrl,
-            githubToken,
-            deploymentId,
-            io,
-            env,
-          }),
-          timeout,
-        ]);
-      } catch (err) {
-        lastError = err;
-
-        console.log(
-          `❌ Attempt ${attempt} Failed: ${err.message}`
-        );
-
-        if (attempt < MAX_RETRIES) {
-          console.log("🔄 Retrying in 5 seconds...");
-
-          await new Promise((resolve) =>
-            setTimeout(resolve, 5000)
-          );
-        }
-      }
-    }
-
-    throw lastError;
   },
 
   {

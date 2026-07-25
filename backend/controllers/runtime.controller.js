@@ -11,12 +11,13 @@ Deployment Runtime (Database)
 exports.list = async (req, res) => {
   try {
     const services = await runtimeQueryService.getByDeployment(
-      req.params.deploymentId,
+      req.params.deploymentId
     );
 
     res.json({
       deploymentId: req.params.deploymentId,
       services,
+      engine: services[0]?.engine ?? "docker",
     });
   } catch (error) {
     res.status(500).json({

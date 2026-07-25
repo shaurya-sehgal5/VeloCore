@@ -101,34 +101,6 @@ class BuildEngine {
       .labels(buildPlan.projectName)
       .observe(duration);
   }
-  // async scan({ deploymentId, buildPlan }) {
-  //   const started = Date.now();
-
-  //   await logger.info(
-  //     deploymentId,
-  //     "SECURITY",
-  //     `Scanning image ${buildPlan.projectName}`
-  //   );
-
-  //   const report = await trivyService.scan(buildPlan.imageName);
-  //   const duration = (Date.now() - started) / 1000;
-  //   const critical = (report.match(/CRITICAL/g) || []).length;
-  //   const high = (report.match(/HIGH/g) || []).length;
-
-  //   metrics.securityCritical
-  //     .labels(buildPlan.projectName)
-  //     .set(critical);
-
-  //   metrics.securityHigh
-  //     .labels(buildPlan.projectName)
-  //     .set(high);
-
-  //   await logger.success(
-  //     deploymentId,
-  //     "SECURITY",
-  //     `${buildPlan.projectName} | Critical:${critical} High:${high}`
-  //   );
-  // }
 }
 
 module.exports = new BuildEngine();

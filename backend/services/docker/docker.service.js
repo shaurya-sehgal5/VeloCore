@@ -113,9 +113,6 @@ class DockerService {
 
         "--progress=plain",
 
-        "--cache-from",
-        imageName,
-
         "--build-arg",
         "BUILDKIT_INLINE_CACHE=1",
 

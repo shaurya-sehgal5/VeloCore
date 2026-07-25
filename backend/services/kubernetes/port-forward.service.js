@@ -41,7 +41,7 @@ class PortForwardService {
             )
           );
         }
-      }, 10000);
+      }, 30000);
 
       child.stdout.on("data", (data) => {
         const text = data.toString();

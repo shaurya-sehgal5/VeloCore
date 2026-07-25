@@ -70,6 +70,14 @@ module.exports = ({
               periodSeconds: 5,
               timeoutSeconds: 2,
             },
+            startupProbe: {
+              httpGet: {
+                path: healthCheck.path || "/",
+                port: containerPort,
+              },
+              failureThreshold: 30,
+              periodSeconds: 5,
+            },
             securityContext: {
               allowPrivilegeEscalation: false,
               readOnlyRootFilesystem: false,

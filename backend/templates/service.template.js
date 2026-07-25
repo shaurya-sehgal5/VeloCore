@@ -8,13 +8,13 @@ module.exports = ({
 
   kind: "Service",
 
- metadata: {
+  metadata: {
     name,
     namespace,
-},
+  },
 
   spec: {
-    type: "NodePort",
+    type: "ClusterIP",
 
     selector: {
       app: name,
@@ -28,7 +28,6 @@ module.exports = ({
 
         targetPort,
 
-        // Let Kubernetes choose the NodePort
       },
     ],
   },

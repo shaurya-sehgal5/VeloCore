@@ -10,6 +10,7 @@ const stackEngine = require("../engines/stack-engine.service");
 const securityEngine = require("../security/security-engine.service");
 const securityGate = require("../security/security-gate.service");
 const deploymentEvents = require("../deployment/deployment-event.service");
+const db = require("../../config/db");
 
 class DeploymentOrchestrator {
   async deploy({
@@ -84,7 +85,25 @@ class DeploymentOrchestrator {
         "main",
         deploymentId,
       );
-
+      await db.query(
+        `
+  UPDATE deployments
+  SET
+      branch = $1,
+      commit_sha = $2,
+      commit_message = $3,
+      commit_author = $4,
+      updated_at = NOW()
+  WHERE id = $5
+  `,
+        [
+          gitResult.branch,
+          gitResult.commit,
+          gitResult.commitMessage,
+          gitResult.commitAuthor,
+          deploymentId,
+        ]
+      );
       const repositoryPath = gitResult.workspace;
       await endStage("Clone");
       await logger.milestone(
@@ -100,6 +119,10 @@ class DeploymentOrchestrator {
       const repository = scanRepository(repositoryPath);
       repository.branch = gitResult.branch;
       repository.commit = gitResult.commit;
+      repository.commitMessage = gitResult.commitMessage;
+      repository.commitAuthor = gitResult.commitAuthor;
+      repository.commitEmail = gitResult.commitEmail;
+      repository.commitDate = gitResult.commitDate;
       await endStage("Repository Scan");
       await logger.milestone(
         deploymentId,

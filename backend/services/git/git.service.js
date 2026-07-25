@@ -49,10 +49,20 @@ class GitService {
     const commit = (
       await git.revparse(["HEAD"])
     ).trim();
+
+    const log = await git.log({ maxCount: 1 });
+
+    const latest = log.latest;
+
     return {
       workspace: workspaceDir,
       branch,
       commit,
+
+      commitMessage: latest.message,
+      commitAuthor: latest.author_name,
+      commitEmail: latest.author_email,
+      commitDate: latest.date,
     };
   }
 }

@@ -7,6 +7,7 @@ const serviceTemplate = require("../../templates/service.template");
 const configMapTemplate = require("../../templates/configmap.template");
 const secretTemplate = require("../../templates/secret.template");
 const namespaceTemplate = require("../../templates/namespace.template");
+const ingressTemplate = require("../../templates/ingress.template");
 
 class KubernetesService {
   async generate(buildPlan) {
@@ -54,14 +55,30 @@ class KubernetesService {
 
       cpu: buildPlan.scaling.cpu,
     });
+    const ingress = ingressTemplate({
+      name: buildPlan.projectName,
+      namespace: buildPlan.namespace,
 
-    const manifest = [
+      host:
+        buildPlan.customDomain ||
+        `${buildPlan.projectName}.velocore.local`,
+
+      port: buildPlan.containerPort,
+    });
+    const documents = [
       configMap,
       secret,
       deployment,
       service,
-      hpa,
-    ]
+    ];
+
+    if (buildPlan.useIngress) {
+      documents.push(ingress);
+    }
+
+    documents.push(hpa);
+
+    const manifest = documents
       .map((doc) => yaml.dump(doc).trim())
       .join("\n---\n");
 

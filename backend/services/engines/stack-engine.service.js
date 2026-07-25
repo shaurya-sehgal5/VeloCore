@@ -9,6 +9,9 @@ const trivyService = require("../security/scanners/trivy.service");
 const securityGate = require("../security/security-gate.service");
 const logger = require("../monitoring/logger.service");
 const deploymentEvents = require("../deployment/deployment-event.service");
+const statusService = require("../monitoring/status.service")
+const runtimeRegistry = require("../runtime/runtime-registry.service");
+const runtimeManager = require("../runtime/runtime-manager.service");
 
 class StackEngine {
   async deploy({
@@ -159,38 +162,9 @@ class StackEngine {
       event: "DEPLOYMENT_STARTED",
       message: "Deploying workloads"
     });
-    const deployments = await Promise.all(
-      jobs.map(async (job) => {
-        const runtime = await deploymentEngine.deploy({
-          engine:
-            process.env.RUNTIME_ENGINE || "docker",
+    const deployments = [];
 
-          graph,
-
-          deploymentId,
-
-          workspace,
-
-          repository,
-
-          buildPlan: job.buildPlan,
-
-          env,
-        });
-
-        runtimeGroup.add(
-          deploymentId,
-          runtime
-        );
-
-        return {
-          node: job.node,
-          runtime,
-        };
-      })
-    );
-
-    deployments.sort((a, b) => {
+    jobs.sort((a, b) => {
       const order = {
         backend: 1,
         worker: 2,
@@ -198,15 +172,85 @@ class StackEngine {
       };
 
       return (
-        (order[a.runtime.type] || 99) -
-        (order[b.runtime.type] || 99)
+        (order[a.buildPlan.type] || 99) -
+        (order[b.buildPlan.type] || 99)
       );
     });
+
+    for (const job of jobs) {
+      await logger.info(
+        deploymentId,
+        "DEPLOYMENT",
+        `Deploying ${job.buildPlan.projectName}`
+      );
+
+      const runtime = await deploymentEngine.deploy({
+        engine:
+          process.env.RUNTIME_ENGINE || "docker",
+
+        graph,
+
+        deploymentId,
+
+        workspace,
+
+        repository,
+
+        buildPlan: job.buildPlan,
+
+        env,
+      });
+
+      deployments.push({
+        node: job.node,
+        runtime,
+      });
+    }
+    /*
+------------------------------------
+Register All Runtimes
+------------------------------------
+*/
+
+    for (const deployment of deployments) {
+
+      runtimeGroup.add(
+        deploymentId,
+        deployment.runtime
+      );
+
+      runtimeManager.register(
+        deployment.runtime.runtime
+      );
+
+      await runtimeRegistry.register(
+        deployment.runtime.runtime
+      );
+
+      await logger.success(
+        deploymentId,
+        "RUNTIME",
+        `Registered ${deployment.runtime.runtime.project}`
+      );
+    }
+
+    /*
+    ------------------------------------
+    Deployment Completed
+    ------------------------------------
+    */
+
+    await statusService.update(
+      deploymentId,
+      "SUCCESS"
+    );
+
     await deploymentEvents.emit({
       deploymentId,
       event: "RUNTIME_RUNNING",
-      message: "Application is now running"
+      message: "Application is now running",
     });
+
     return deployments;
   }
 }

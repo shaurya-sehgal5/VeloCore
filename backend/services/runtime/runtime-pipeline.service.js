@@ -34,7 +34,7 @@ class RuntimePipeline {
                 engine: runtime.engine,
             });
         }
-        await statusService.update(deploymentId, "RUNNING");
+        await statusService.update(deploymentId, "SUCCESS");
 
         await logger.success(
             deploymentId,

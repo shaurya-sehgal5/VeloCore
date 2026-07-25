@@ -34,7 +34,10 @@ class KubernetesRuntimeService {
       deployment,
       namespace
     );
-
+    await kubectl.deleteIngress(
+      deployment,
+      namespace
+    );
     await kubectl.deleteService(
       deployment,
       namespace

@@ -12,7 +12,9 @@ class RuntimeManager {
   */
 
   register(runtime) {
-    const key = `${runtime.deploymentId}:${runtime.project}:${runtime.slot}`;
+    const project = runtime.project || runtime.name;
+
+    const key = `${runtime.deploymentId}:${project}:${runtime.slot}`;
 
     this.runtimes.set(key, {
       ...runtime,
@@ -46,7 +48,9 @@ class RuntimeManager {
   */
 
   get(deploymentId, project, slot) {
-    return this.runtimes.get(`${deploymentId}:${project}:${slot}`);
+    return this.runtimes.get(
+      `${deploymentId}:${project}:${slot}`
+    );
   }
 
   /*

@@ -38,7 +38,7 @@ class ComposeEngine {
       deploymentId,
     );
 
-    await statusService.update(deploymentId, "RUNNING");
+    await statusService.update(deploymentId, "SUCCESS");
 
     await logger.success(
       deploymentId,

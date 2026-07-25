@@ -4,7 +4,9 @@ class BuilderService {
   createBuildPlan(project, deploymentId, slot = "blue") {
     const projectName = project.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
-    const imageName = `velocore-${projectName}-${slot}`;
+    const imageTag = deploymentId.substring(0, 8);
+
+    const imageName = `velocore-${projectName}:${imageTag}-${slot}`;
     const common = {
       projectName,
       imageName,
@@ -109,6 +111,33 @@ class BuilderService {
       default:
         throw new Error(`Unsupported framework: ${project.framework}`);
     }
+  }
+  createRollbackPlan(runtime) {
+    return {
+      projectName: runtime.name,
+      imageName: runtime.image_name,
+      namespace: runtime.namespace,
+      framework: runtime.framework,
+      type: runtime.type,
+      slot: runtime.slot,
+      containerPort: runtime.container_port,
+
+      healthCheck: "/health",
+
+      secrets: {},
+
+      customDomain: null,
+
+      enableTLS: true,
+
+      scaling: {
+        min: 1,
+        max: 2,
+        cpu: 80,
+      },
+
+      useIngress: false,
+    };
   }
 }
 
