@@ -19,11 +19,12 @@ const cleanupScheduler = require("./services/docker/cleanup.scheduler");
 const kubernetesSocket = require("./services/kubernetes/kubernetes-socket.service");
 const eventBootstrap = require("./services/events/bootstrap.service");
 const securityRoutes = require("./routes/security.routes");
-const containerMonitor =  require("./services/runtime/container-monitor.service");
+const containerMonitor = require("./services/runtime/container-monitor.service");
 const rollbackRoutes = require("./routes/rollback.routes")
 const requestLogger = require("./middleware/request-logger");
 const logsRoutes = require("./routes/logs.routes");
 require("dotenv").config();
+const config = require("./config/env");
 
 // THE CORRECT ISOLATED SERVICE: Import the explicit Docker orchestration engine
 const {
@@ -54,11 +55,7 @@ app.use(requestLogger);
 app.use(cookieParser());
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:8080",
-    ],
+    origin: config.FRONTEND_URL,
     credentials: true,
   }),
 );
@@ -150,6 +147,16 @@ app.use("/api/security", securityRoutes);
 app.use("/api/rollback", rollbackRoutes);
 app.use("/api/logs", logsRoutes);
 
+
+// Health check BEFORE the 404 handler
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "velocore-backend",
+    uptime: process.uptime(),
+  });
+});
+
 // --- 5. ⚠️ CATCH-ALL 404 HANDLER ---
 app.use((req, res) => {
   console.log(
@@ -179,7 +186,7 @@ process.on("SIGTERM", async () => {
 });
 
 // --- 6. SERVER START ---
-const PORT = 8080;
+const PORT = config.PORT;
 server.listen(PORT, () => {
   console.log(
     `🚀 VeloCore Control Plane running smoothly on unified port ${PORT}`,

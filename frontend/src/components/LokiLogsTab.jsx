@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { MONO } from "../config";
+import CONFIG from "../config";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
-
+const API = CONFIG.API_ROOT;
 const LEVEL_COLOR = {
   ALL: "#a1a1aa",
   INFO: "#60a5fa",

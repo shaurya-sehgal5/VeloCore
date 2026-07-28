@@ -2,7 +2,7 @@ const { spawn } = require("child_process");
 
 class GitleaksService {
   scan(source) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const args = [
         "detect",
         "--source",
@@ -11,20 +11,36 @@ class GitleaksService {
         "json",
       ];
 
-      const process = spawn("gitleaks", args);
+      const child = spawn("gitleaks", args);
 
       let stdout = "";
       let stderr = "";
 
-      process.stdout.on("data", (d) => {
+      child.stdout.on("data", (d) => {
         stdout += d.toString();
       });
 
-      process.stderr.on("data", (d) => {
+      child.stderr.on("data", (d) => {
         stderr += d.toString();
       });
 
-      process.on("close", () => {
+      child.on("error", (err) => {
+        if (err.code === "ENOENT") {
+          return resolve({
+            skipped: true,
+            findings: [],
+            stderr: "Gitleaks not installed.",
+          });
+        }
+
+        resolve({
+          skipped: true,
+          findings: [],
+          stderr: err.message,
+        });
+      });
+
+      child.on("close", () => {
         let findings = [];
 
         try {
@@ -34,12 +50,11 @@ class GitleaksService {
         } catch {}
 
         resolve({
+          skipped: false,
           findings,
           stderr,
         });
       });
-
-      process.on("error", reject);
     });
   }
 }

@@ -1,8 +1,9 @@
 const crypto = require('crypto');
 require('dotenv').config();
+const config = require("../config/env")
 
 const ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; 
+const ENCRYPTION_KEY = config.ENCRYPTION_KEY; 
 
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
   throw new Error('❌ Critical Security Defect: ENCRYPTION_KEY must be a valid 32-byte hex string (64 characters long).');

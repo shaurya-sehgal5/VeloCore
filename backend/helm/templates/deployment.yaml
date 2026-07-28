@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: {{ .Values.deploymentId }}-{{ .Values.slot }}
+  name: {{ .Values.deploymentId }}
   namespace: {{ .Values.namespace }}
 
 spec:

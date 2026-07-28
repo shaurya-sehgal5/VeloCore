@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const secureShield = require('../middleware/auth.middleware');
+const config = require("../config/env");
 
-// 🔥 NEW: Dynamic authenticated analytics list lookup (No hardcoded IDs needed)
+//  NEW: Dynamic authenticated analytics list lookup (No hardcoded IDs needed)
 router.get('/analytics-list', secureShield, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -116,7 +117,7 @@ router.post('/deploy', async (req, res) => {
     const newDeploy = await db.query(
       `INSERT INTO deployments (id, project_id, user_id, repo_name, status, deploy_url, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
-      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', deploy_url || `http://localhost:8000/visit/${deploymentId}`]
+      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', deploy_url || `${config.PUBLIC_URL}/apps/${deploymentId}`]
     );
 
     res.json({ message: "Build initiated successfully", deployment: newDeploy.rows[0] });

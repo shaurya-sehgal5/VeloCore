@@ -3,6 +3,7 @@ const { getIO } = require("../../config/socket");
 const runtimeStatus = require("../runtime/runtime-status.service");
 const logger = require("./logger.service");
 const metrics = require("./metrics.service");
+const config = require("../../config/env")
 
 class StatusService {
   async update(deploymentId, status) {
@@ -31,7 +32,7 @@ class StatusService {
       case "FAILED":
         metrics.deployments.inc({
           status: "FAILED",
-          runtime: process.env.RUNTIME_ENGINE || "docker",
+          runtime: config.RUNTIME_ENGINE || "docker",
           framework: "mixed",
         });
         break;

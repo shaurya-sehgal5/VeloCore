@@ -8,9 +8,8 @@ const { scanRepository } = require("../git/scanner.service");
 const repositoryGraph = require("../graph/repository-graph.service");
 const stackEngine = require("../engines/stack-engine.service");
 const securityEngine = require("../security/security-engine.service");
-const securityGate = require("../security/security-gate.service");
-const deploymentEvents = require("../deployment/deployment-event.service");
 const db = require("../../config/db");
+const config = require("../../config/env")
 
 class DeploymentOrchestrator {
   async deploy({
@@ -58,7 +57,7 @@ class DeploymentOrchestrator {
       };
       metrics.deployments.inc({
         status: "STARTED",
-        runtime: process.env.RUNTIME_ENGINE || "docker",
+        runtime: config.RUNTIME_ENGINE || "docker",
         framework: "mixed",
       });
 
@@ -131,7 +130,11 @@ class DeploymentOrchestrator {
         `${repository.projects.length} project(s) detected`
       );
       startStage("Dependency Graph");
+
       const graph = repositoryGraph.build(repository);
+
+      await endStage("Dependency Graph");
+
       startStage("Security");
 
       await statusService.update(
@@ -189,10 +192,8 @@ class DeploymentOrchestrator {
         env,
         securityReport,
       });
-      summary.buildTime =
-        ((stageTimers.Build ?? stageTimers.Deployment)
-          ? (Date.now() - stageTimers.Deployment) / 1000
-          : 0);
+      summary.buildTime = (Date.now() - stageTimers.Deployment) / 1000;
+
       await endStage("Deployment");
       await logger.milestone(
         deploymentId,
@@ -208,7 +209,15 @@ class DeploymentOrchestrator {
             ----------------------------------
             */
 
-      await cleanupService.success(workspace);
+      try {
+        await cleanupService.success(workspace);
+      } catch (err) {
+        await logger.warning(
+          deploymentId,
+          "CLEANUP",
+          err.message
+        );
+      }
 
       await logger.milestone(
         deploymentId,
@@ -236,7 +245,7 @@ class DeploymentOrchestrator {
 
         graph,
 
-        url: `http://localhost:8000/visit/${deploymentId}`,
+        url: `${config.PUBLIC_URL}/visit/${deploymentId}`,
       };
     } catch (error) {
       await logger.error(
@@ -265,7 +274,7 @@ class DeploymentOrchestrator {
       }
       metrics.deployments.inc({
         status: "FAILED",
-        runtime: process.env.RUNTIME_ENGINE || "docker",
+        runtime: config.RUNTIME_ENGINE || "docker",
         framework: "mixed",
       });
 

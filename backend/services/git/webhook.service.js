@@ -2,7 +2,7 @@ const axios = require("axios");
 const db = require("../../config/db");
 const { decrypt } = require("../../utils/crypto");
 const signatureService = require("./signature.service");
-
+const config = require("../../config/env")
 
 class WebhookService {
   async create(projectId) {
@@ -63,7 +63,7 @@ class WebhookService {
           events: ["push"],
 
           config: {
-            url: `${process.env.PUBLIC_URL}/api/github/webhook`,
+            url: `${config.PUBLIC_URL}/api/github/webhook`,
             content_type: "json",
 
             secret,

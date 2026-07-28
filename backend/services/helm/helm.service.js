@@ -66,10 +66,10 @@ resources: {}
             "-n",
             buildPlan.namespace,
             "--create-namespace"
-        ]);
+        ], deploymentId);
     }
 
-    execute(args) {
+    execute(args, deploymentId) {
 
         return new Promise((resolve, reject) => {
 
@@ -96,7 +96,7 @@ resources: {}
 
                 if (stdout.trim()) {
 
-                    await logger.success(
+                    logger.success(
                         deploymentId,
                         "HELM",
                         "Helm release installed."

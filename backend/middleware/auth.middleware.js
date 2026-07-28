@@ -1,9 +1,7 @@
 const jwt = require('jsonwebtoken');
+const config = require("../config/env")
 
-/**
- * 🔐 SECURITY AUTHENTICATION MIDDLEWARE:
- * Verifies your user session against your system JWT secret key
- */
+
 const requireAuth = (req, res, next) => {
   const token = req.cookies?.veloplatform_session;
 
@@ -12,7 +10,7 @@ const requireAuth = (req, res, next) => {
   }
 
   try {
-    const verifiedUser = jwt.verify(token, process.env.JWT_SECRET);
+    const verifiedUser = jwt.verify(token, config.JWT_SECRET);
     req.user = verifiedUser; // Inject verified user payload (contains userId, githubToken, etc.)
     next();
   } catch (err) {

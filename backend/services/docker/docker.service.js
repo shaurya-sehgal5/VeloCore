@@ -53,12 +53,7 @@ class DockerService {
           }
         }
       };
-      await logger.milestone(
-        deploymentId,
-        "BUILD_COMPLETED",
-        "BUILD",
-        "Docker image built successfully."
-      );
+
       child.stdout.on("data", stream);
 
       child.stderr.on("data", stream);
@@ -72,6 +67,7 @@ class DockerService {
 
         resolve(output);
       });
+
     });
   }
   executeSilent(command, args) {
@@ -100,7 +96,6 @@ class DockerService {
         if (code !== 0) {
           return reject(new Error(output));
         }
-
         resolve(output);
       });
     });
@@ -112,7 +107,7 @@ class DockerService {
     buildContext,
     deploymentId,
   }) {
-    await logger.milestone(
+    logger.milestone(
       deploymentId,
       "BUILD_STARTED",
       "BUILD",
@@ -246,19 +241,19 @@ class DockerService {
     return new Promise((resolve, reject) => {
 
       const started = Date.now();
-      const process = spawn("docker", args);
+      const child = spawn("docker", args);
 
       let output = "";
 
-      process.stdout.on("data", (data) => {
+      child.stdout.on("data", (data) => {
         output += data.toString();
       });
       let stderr = "";
 
-      process.stderr.on("data", (data) => {
+      child.stderr.on("data", (data) => {
         stderr += data.toString();
       });
-      process.on("close", async (code) => {
+      child.on("close", async (code) => {
         if (code !== 0) {
 
           await logger.error(
@@ -270,7 +265,7 @@ class DockerService {
           return reject(new Error(stderr));
         }
         const containerId = output.trim();
-        await logger.milestone(
+        logger.milestone(
           deploymentId,
           "DEPLOYMENT_COMPLETED",
           "RUNTIME",

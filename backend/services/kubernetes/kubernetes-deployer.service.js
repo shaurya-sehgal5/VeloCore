@@ -5,6 +5,7 @@ const namespaceService = require("./namespaces.service");
 const metrics = require("../monitoring/metrics.service");
 const helm = require("../helm/helm.service");
 const analyzer = require("./failure-analyzer.service");
+const config = require("../../config/env")
 
 class KubernetesDeployer {
     async deploy({
@@ -12,63 +13,43 @@ class KubernetesDeployer {
         buildPlan,
         rollback = false,
     }) {
-
         try {
-
             await logger.info(
                 deploymentId,
                 "HELM",
                 "Deploying Helm release..."
             );
-
             await namespaceService.ensure(buildPlan.namespace);
-
             try {
-
                 await helm.install({
                     deploymentId,
                     buildPlan
                 });
-
-                await kubectl.waitForDeployment(
-                    buildPlan.projectName,
-                    buildPlan.namespace
-                );
-
             } catch (error) {
-
                 await logger.error(
                     deploymentId,
                     "ROLLBACK",
                     "Deployment failed. Rolling back..."
                 );
-
                 try {
-
                     await helm.rollbackPrevious(
                         deploymentId,
                         buildPlan.namespace
                     );
-
                     await logger.info(
                         deploymentId,
                         "ROLLBACK",
                         "Rollback completed."
                     );
-
                 } catch (rollbackError) {
-
                     await logger.error(
                         deploymentId,
                         "ROLLBACK",
                         rollbackError.message
                     );
-
                 }
-
                 throw error;
             }
-
             await logger.info(
                 deploymentId,
                 "KUBERNETES",
@@ -135,23 +116,27 @@ class KubernetesDeployer {
             }
 
             setImmediate(() => {
-
-                const logStream = kubernetesLogs.stream(
-                    pod.metadata.name,
-                    deploymentId,
-                    buildPlan.namespace
-                );
-
-                logStream.on("error", (err) => {
-
-                    logger.error(
+                try {
+                    const logStream = kubernetesLogs.stream(
+                        pod.metadata.name,
                         deploymentId,
-                        "KUBERNETES",
-                        `Log stream error: ${err.message}`
+                        buildPlan.namespace
                     );
 
-                });
-
+                    logStream.on("error", (err) => {
+                        logger.error(
+                            deploymentId,
+                            "KUBERNETES",
+                            err.message
+                        );
+                    });
+                } catch (err) {
+                    logger.warning(
+                        deploymentId,
+                        "KUBERNETES",
+                        `Unable to stream logs: ${err.message}`
+                    );
+                }
             });
 
             return {
@@ -162,7 +147,7 @@ class KubernetesDeployer {
 
                 engine: "kubernetes",
 
-                url: `http://localhost/apps/${deploymentId}`,
+                url: `${config.PUBLIC_URL}/apps/${deploymentId}`,
 
                 runtime: {
 

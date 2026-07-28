@@ -2,13 +2,13 @@ const { Queue, Worker } = require("bullmq");
 const IORedis = require("ioredis");
 const metrics = require("../services/monitoring/metrics.service");
 const deploymentOrchestrator = require("../services/deployment/deployment.orchestrator");
+const config = require("../config/env")
 
 const redisConnection = new IORedis({
-  host: "127.0.0.1",
-  port: 6379,
+  host: config.REDIS_HOST,
+  port: config.REDIS_PORT,
   maxRetriesPerRequest: null,
 });
-
 const buildQueue = new Queue("production-build-queue", {
   connection: redisConnection,
 });

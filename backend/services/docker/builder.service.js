@@ -15,6 +15,7 @@ class BuilderService {
       startCommand: project.startCommand,
       framework: project.framework,
       slot,
+      deploymentId,
       host: null,
       persistentVolume: false,
       storage: "1Gi",

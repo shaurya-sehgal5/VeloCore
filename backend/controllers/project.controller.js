@@ -1,5 +1,5 @@
 const db = require("../config/db");
-
+const config = require("../config/env")
 const { v4: uuidv4 } = require("uuid");
 const axios = require("axios");
 const path = require("path");
@@ -52,7 +52,7 @@ exports.deployProject = async (req, res) => {
     }
 
     const deploymentId = uuidv4();
-    const deploymentUrl = `http://localhost:8000/visit/${deploymentId}`;
+    const deploymentUrl = `${config.PUBLIC_URL}/visit/${deploymentId}`;
 
     let finalProjectId = projectId;
 

@@ -1,10 +1,12 @@
+const config = require("../../config/env")
+
 class SecurityGate {
   validate(report) {
     const blockSecrets =
-      process.env.BLOCK_ON_SECRETS === "true";
+      config.BLOCK_ON_SECRETS === "true";
 
     const blockCritical =
-      process.env.BLOCK_ON_CRITICAL === "true";
+      config.BLOCK_ON_CRITICAL === "true";
 
     if (blockSecrets && report.secrets.length) {
       throw new Error(

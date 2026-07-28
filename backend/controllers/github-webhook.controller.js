@@ -3,6 +3,7 @@ const { buildQueue } = require("../queues/build.queue");
 const signatureService = require("../services/git/signature.service");
 const { decrypt } = require("../utils/crypto");
 const { v4: uuidv4 } = require("uuid");
+const config = require("../config/env")
 
 exports.receive = async (req, res) => {
   try {
@@ -71,8 +72,8 @@ exports.receive = async (req, res) => {
     Step 3: Branch Optimization Check
     ---------------------------------------------------------
     */
-    // Fallback default to 'main' or 'master' if no specific production branch is declared in schema
-    const targetBranch = project.production_branch || "main"; 
+
+    const targetBranch = project.production_branch || "main";
     if (branchName !== targetBranch) {
       console.log(`ℹ Skinned deployment: Push to branch '${branchName}' does not match tracking target '${targetBranch}'.`);
       return res.sendStatus(200);
@@ -88,7 +89,7 @@ exports.receive = async (req, res) => {
     Step 4: Atomic Queue Purge & Commit Update
     ---------------------------------------------------------
     */
-    // Clear out any stale, waiting builds for this specific project to pick up the newer commit changes
+
     await buildQueue.removeJobs(`project-${project.id}`);
 
     const githubToken = decrypt(project.github_token);
@@ -109,7 +110,7 @@ exports.receive = async (req, res) => {
     ---------------------------------------------------------
     */
     const deploymentId = uuidv4();
-    const deploymentUrl = `http://localhost:8000/visit/${deploymentId}`;
+    const deploymentUrl = `${config.PUBLIC_URL}/visit/${deploymentId}`;
 
     await db.query(
       `
@@ -125,8 +126,8 @@ exports.receive = async (req, res) => {
         deploymentId,
         cloneUrl: project.repo_url,
         githubToken,
-        targetBranch, // Explicitly pass down the targeted branch reference
-        env: project.environment_variables || {}, 
+        targetBranch, 
+        env: project.environment_variables || {},
       },
       {
         jobId: `project-${project.id}`,

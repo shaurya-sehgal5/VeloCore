@@ -1,0 +1,168 @@
+name: velocore
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: velocore-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - velocore-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: velocore-redis
+
+    restart: unless-stopped
+
+    command: redis-server --appendonly yes
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - velocore-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    image: velocore-backend:latest
+    container_name: velocore-backend
+
+    restart: unless-stopped
+
+    env_file:
+      - ./backend/.env
+
+    environment:
+      KUBECONFIG: /root/.kube/config
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${USERPROFILE}/.kube/config:/root/.kube/config:ro
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:8080/api/health',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - velocore-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080
+        VITE_GITHUB_CLIENT_ID: ${VITE_GITHUB_CLIENT_ID}
+        VITE_GRAFANA_URL: http://localhost:3002
+
+    image: velocore-frontend:latest
+    container_name: velocore-frontend
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    ports:
+      - "3000:80"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "http://localhost/"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - velocore-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  velocore-network:
+    driver: bridge

@@ -44,15 +44,20 @@ class RuntimeDiscoveryService {
       });
     }
 
+
+
     /*
-    ------------------------------------
-    Kubernetes
-    ------------------------------------
-    */
+ ------------------------------------
+ Kubernetes
+ ------------------------------------
+ */
 
-    console.log("🔄 Recovering Kubernetes runtimes...");
-
-    await kubernetesDiscovery.recover();
+    if (process.env.SKIP_K8S_RECOVERY === "true") {
+      console.log("⏭️ Skipping Kubernetes runtime recovery...");
+    } else {
+      console.log("🔄 Recovering Kubernetes runtimes...");
+      await kubernetesDiscovery.recover();
+    }
 
     /*
     ------------------------------------

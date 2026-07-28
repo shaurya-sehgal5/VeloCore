@@ -1,12 +1,13 @@
 const db = require("../../config/db");
 const { v4: uuidv4 } = require("uuid");
 const { buildQueue } = require("../../queues/build.queue");
+const config = require("../../config/env")
 
 class RedeployService {
   async redeploy(deploymentId, user) {
-      console.log("SERVICE START");
-  console.log("Deployment:", deploymentId);
-  console.log("User:", user);
+    console.log("SERVICE START");
+    console.log("Deployment:", deploymentId);
+    console.log("User:", user);
     const { rows } = await db.query(
       `
       SELECT
@@ -30,8 +31,7 @@ class RedeployService {
 
     const newDeploymentId = uuidv4();
 
-    const deploymentUrl =
-      `http://localhost:8000/visit/${newDeploymentId}`;
+    const deploymentUrl = `${config.PUBLIC_URL}/visit/${deploymentId}`;
 
     await db.query(
       `
@@ -65,7 +65,7 @@ class RedeployService {
         deploymentUrl,
       ]
     );
-console.log("REDEPLOY: Adding build job");
+    console.log("REDEPLOY: Adding build job");
     await buildQueue.add(
       "deployment",
       {
@@ -75,7 +75,7 @@ console.log("REDEPLOY: Adding build job");
         env: {},
       }
     );
-console.log("REDEPLOY: Build job added");
+    console.log("REDEPLOY: Build job added");
     return {
       success: true,
       deploymentId: newDeploymentId,

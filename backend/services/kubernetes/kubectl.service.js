@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const logger = require("../monitoring/logger.service");
 
 class KubectlService {
   execute(args) {
@@ -12,6 +13,10 @@ class KubectlService {
 
         process.kill("SIGTERM");
 
+        reject(
+          new Error("kubectl command timed out after 120 seconds.")
+        );
+
       }, 120000);
 
       process.stdout.on("data", (d) => {
@@ -22,13 +27,25 @@ class KubectlService {
         output += d.toString();
       });
 
-      process.on("error", reject);
+      process.on("error", (err) => {
+        if (err.code === "ENOENT") {
+          return reject(
+            new Error(
+              "kubectl is not installed inside the backend container."
+            )
+          );
+        }
+
+        reject(err);
+      });
 
       process.on("close", (code) => {
+        clearTimeout(timeout);
+
         if (code !== 0) {
           return reject(new Error(output));
         }
-        clearTimeout(timeout);
+
         resolve(output);
       });
     });
@@ -71,7 +88,7 @@ class KubectlService {
     return this.execute(["delete", "pod", name, "-n", namespace]);
   }
 
- 
+
   async pods() {
     return this.execute(["get", "pods", "-o", "json"]);
   }
@@ -225,7 +242,10 @@ class KubectlService {
     return spawn("kubectl", ["logs", "-f", pod, "-n", namespace]);
   }
   async waitDeletion(name, namespace = "default") {
-    while (true) {
+    const timeout = 30000;
+    const started = Date.now();
+
+    while (Date.now() - started < timeout) {
       try {
         await this.execute([
           "get",
@@ -234,11 +254,16 @@ class KubectlService {
           "-n",
           namespace,
         ]);
-        await new Promise((r) => setTimeout(r, 100));
+
+        await new Promise((r) => setTimeout(r, 500));
       } catch {
-        return;
+        return true;
       }
     }
+
+    throw new Error(
+      `Timed out waiting for deployment '${name}' to be deleted.`
+    );
   }
 
   async deleteNamespace(namespace) {

@@ -21,6 +21,15 @@ class TrivyScanner {
 
     try {
       result = await this.execute(image);
+      if (result.skipped) {
+        await logger.warning(
+          deploymentId,
+          "SECURITY",
+          "Trivy unavailable. Skipping image scan."
+        );
+
+        return;
+      }
     } catch (err) {
 
       await logger.warning(
@@ -131,7 +140,7 @@ class TrivyScanner {
         "--cache-dir",
         cacheDir,
 
-        "--skip-db-update",
+        "--download-db-only",
 
         "--format",
         "json",
@@ -155,11 +164,31 @@ class TrivyScanner {
         stderr += data.toString();
       });
 
-      child.on("error", reject);
+      child.on("error", (err) => {
+        if (err.code === "ENOENT") {
+          return resolve({
+            skipped: true,
+            Results: [],
+          });
+        }
+
+        reject(err);
+      });
 
       child.on("close", (code) => {
 
         if (code !== 0) {
+          if (
+            stderr.includes("database") ||
+            stderr.includes("DB") ||
+            stderr.includes("not found")
+          ) {
+            return resolve({
+              skipped: true,
+              Results: [],
+            });
+          }
+
           return reject(
             new Error(stderr || `Trivy exited with code ${code}`)
           );

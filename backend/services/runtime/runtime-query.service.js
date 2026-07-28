@@ -1,4 +1,5 @@
 const db = require("../../config/db");
+const config = require("../../config/env")
 
 class RuntimeQueryService {
   async getByDeployment(deploymentId) {
@@ -28,7 +29,7 @@ ORDER BY created_at ASC
     return rows.map((runtime) => ({
       ...runtime,
       url: runtime.route
-        ? `http://localhost${runtime.route}`
+        ? `${config.PUBLIC_URL}${runtime.route}`
         : null,
     }));
   }
@@ -105,7 +106,7 @@ ORDER BY created_at ASC
     return rows.map((runtime) => ({
       ...runtime,
       url: runtime.route
-        ? `http://localhost${runtime.route}`
+        ? `${config.PUBLIC_URL}${runtime.route}`
         : null,
     }));
   }

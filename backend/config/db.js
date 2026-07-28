@@ -1,13 +1,15 @@
+const config = require("./env")
 const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT || 5000,
+  user: config.DATABASE.USER,
+  host: config.DATABASE.HOST,
+  database: config.DATABASE.NAME,
+  password: config.DATABASE.PASSWORD,
+  port: Number(config.DATABASE.PORT) || 5000
 });
+
 
 // Explicit event validation listeners to track the pool integrity
 pool.on('connect', () => {

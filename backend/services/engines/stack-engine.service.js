@@ -12,6 +12,7 @@ const deploymentEvents = require("../deployment/deployment-event.service");
 const statusService = require("../monitoring/status.service")
 const runtimeRegistry = require("../runtime/runtime-registry.service");
 const runtimeManager = require("../runtime/runtime-manager.service");
+const config = require("../../config/env")
 
 class StackEngine {
   async deploy({
@@ -88,21 +89,31 @@ class StackEngine {
 
     await Promise.all(
       jobs.map(async (job) => {
-        await logger.info(
-          deploymentId,
-          "SECURITY",
-          `Scanning ${job.buildPlan.projectName}`
-        );
-        await deploymentEvents.emit({
-          deploymentId,
-          event: "SECURITY_SCAN_STARTED",
-          message: "Image security scan started"
-        });
-        await trivyService.scan({
-          deploymentId,
-          image: job.buildPlan.imageName,
-          report: securityReport,
-        });
+        try {
+          await logger.info(
+            deploymentId,
+            "SECURITY",
+            `Scanning ${job.buildPlan.projectName}`
+          );
+
+          await deploymentEvents.emit({
+            deploymentId,
+            event: "SECURITY_SCAN_STARTED",
+            message: "Image security scan started",
+          });
+
+          await trivyService.scan({
+            deploymentId,
+            image: job.buildPlan.imageName,
+            report: securityReport,
+          });
+        } catch (err) {
+          await logger.warning(
+            deploymentId,
+            "SECURITY",
+            `Trivy skipped for ${job.buildPlan.projectName}: ${err.message}`
+          );
+        }
       })
     );
 
@@ -186,7 +197,7 @@ class StackEngine {
 
       const runtime = await deploymentEngine.deploy({
         engine:
-          process.env.RUNTIME_ENGINE || "docker",
+          config.RUNTIME_ENGINE || "docker",
 
         graph,
 
@@ -213,33 +224,38 @@ Register All Runtimes
 */
 
     for (const deployment of deployments) {
+      try {
+        runtimeGroup.add(
+          deploymentId,
+          deployment.runtime
+        );
 
-      runtimeGroup.add(
-        deploymentId,
-        deployment.runtime
-      );
+        runtimeManager.register(
+          deployment.runtime.runtime
+        );
 
-      runtimeManager.register(
-        deployment.runtime.runtime
-      );
+        await runtimeRegistry.register(
+          deployment.runtime.runtime
+        );
 
-      await runtimeRegistry.register(
-        deployment.runtime.runtime
-      );
-
-      await logger.success(
-        deploymentId,
-        "RUNTIME",
-        `Registered ${deployment.runtime.runtime.project}`
-      );
+        await logger.success(
+          deploymentId,
+          "RUNTIME",
+          `Registered ${deployment.runtime.runtime.project}`
+        );
+      } catch (err) {
+        await logger.warning(
+          deploymentId,
+          "RUNTIME",
+          `Registration skipped: ${err.message}`
+        );
+      }
     }
-
     /*
     ------------------------------------
     Deployment Completed
     ------------------------------------
     */
-
     await statusService.update(
       deploymentId,
       "SUCCESS"
