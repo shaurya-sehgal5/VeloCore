@@ -1,7 +1,5 @@
 name: velocore
 
-version: "3.9"
-
 services:
   postgres:
     image: postgres:17-alpine
@@ -26,12 +24,6 @@ services:
       timeout: 5s
       retries: 5
 
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
     networks:
       - velocore-network
 
@@ -55,22 +47,11 @@ services:
       timeout: 5s
       retries: 5
 
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
     networks:
       - velocore-network
 
   backend:
     image: shauryasehgal/velocore-backend:latest
-      dockerfile: Dockerfile
-      args:
-        BUILDKIT_INLINE_CACHE: 1
-
-    image: velocore-backend:latest
 
     container_name: velocore-backend
 
@@ -79,15 +60,11 @@ services:
     env_file:
       - ./backend/.env
 
-    environment:
-      KUBECONFIG: /root/.kube/config
-
     ports:
       - "8080:8080"
 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${USERPROFILE}/.kube/config:/root/.kube/config:ro
 
     depends_on:
       postgres:
@@ -101,32 +78,18 @@ services:
           "CMD",
           "node",
           "-e",
-          "require('http').get('http://localhost:8080/api/health',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+          "require('http').get('http://localhost:8080/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
         ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 20s
 
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
     networks:
       - velocore-network
 
   frontend:
     image: shauryasehgal/velocore-frontend:latest
-      dockerfile: Dockerfile
-      args:
-        BUILDKIT_INLINE_CACHE: 1
-        VITE_API_URL: http://localhost:8080
-        VITE_GITHUB_CLIENT_ID: ${VITE_GITHUB_CLIENT_ID}
-        VITE_GRAFANA_URL: http://localhost:3002
-
-    image: velocore-frontend:latest
 
     container_name: velocore-frontend
 
@@ -152,12 +115,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
-
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
 
     networks:
       - velocore-network
