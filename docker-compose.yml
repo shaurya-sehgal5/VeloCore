@@ -65,11 +65,13 @@ services:
       - velocore-network
 
   backend:
-    build:
-      context: ./backend
+    image: shauryasehgal/velocore-backend:latest
       dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
 
     image: velocore-backend:latest
+
     container_name: velocore-backend
 
     restart: unless-stopped
@@ -116,22 +118,23 @@ services:
       - velocore-network
 
   frontend:
-    build:
-      context: ./frontend
+    image: shauryasehgal/velocore-frontend:latest
       dockerfile: Dockerfile
       args:
+        BUILDKIT_INLINE_CACHE: 1
         VITE_API_URL: http://localhost:8080
         VITE_GITHUB_CLIENT_ID: ${VITE_GITHUB_CLIENT_ID}
         VITE_GRAFANA_URL: http://localhost:3002
 
     image: velocore-frontend:latest
+
     container_name: velocore-frontend
+
+    restart: unless-stopped
 
     depends_on:
       backend:
         condition: service_healthy
-
-    restart: unless-stopped
 
     ports:
       - "3000:80"
