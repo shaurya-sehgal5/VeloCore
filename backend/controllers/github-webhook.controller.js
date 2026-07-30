@@ -110,7 +110,7 @@ exports.receive = async (req, res) => {
     ---------------------------------------------------------
     */
     const deploymentId = uuidv4();
-    const deploymentUrl = `${config.PUBLIC_URL}/visit/${deploymentId}`;
+    const deploymentUrl = `${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
     await db.query(
       `

@@ -29,7 +29,7 @@ ORDER BY created_at ASC
     return rows.map((runtime) => ({
       ...runtime,
       url: runtime.route
-        ? `${config.PUBLIC_URL}${runtime.route}`
+        ? `${runtime.route}`
         : null,
     }));
   }
@@ -106,7 +106,7 @@ ORDER BY created_at ASC
     return rows.map((runtime) => ({
       ...runtime,
       url: runtime.route
-        ? `${config.PUBLIC_URL}${runtime.route}`
+        ? `${runtime.route}`
         : null,
     }));
   }

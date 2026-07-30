@@ -31,7 +31,7 @@ class RedeployService {
 
     const newDeploymentId = uuidv4();
 
-    const deploymentUrl = `${config.PUBLIC_URL}/visit/${deploymentId}`;
+    const deploymentUrl = `${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
     await db.query(
       `
