@@ -18,9 +18,9 @@ class PlatformRollbackService {
             "Deleting failed namespace"
         );
 
-        await kubectl.deleteNamespace(
-            `velocore-${deploymentId}`
-        );
+        // await kubectl.deleteNamespace(
+        //     `velocore-${deploymentId}`
+        // );
         const previous = await runtimeQuery.previousSuccessful(deploymentId);
 
         if (!previous) {
