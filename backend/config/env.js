@@ -40,4 +40,6 @@ module.exports = {
 
   // Monitoring
   LOKI_URL: process.env.LOKI_URL || "http://localhost:3100",
+
+  APP_DOMAIN: process.env.APP_DOMAIN,
 };

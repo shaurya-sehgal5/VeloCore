@@ -41,8 +41,8 @@ service:
 
 ingress:
   enabled: true
-  className: nginx
-  path: /apps/${deploymentId}
+  className: traefik
+  host: ${buildPlan.projectName}.${config.APP_DOMAIN}
 
 resources: {}
 
