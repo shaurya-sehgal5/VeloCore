@@ -106,7 +106,7 @@ jobs:
             ${{ env.FRONTEND_IMAGE }}:main
 
           build-args: |
-            VITE_API_URL=http://13.233.131.175:8080
+            VITE_API_URL=http://15.206.203.121:8080
             VITE_GITHUB_CLIENT_ID=${{ secrets.VITE_GITHUB_CLIENT_ID }}
             VITE_GRAFANA_URL=http://localhost:3002
 
