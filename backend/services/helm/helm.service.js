@@ -42,7 +42,7 @@ service:
 ingress:
   enabled: true
   className: traefik
-  host: ${buildPlan.projectName}.${config.APP_DOMAIN}
+  host: ${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}
 
 resources: {}
 

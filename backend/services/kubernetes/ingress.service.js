@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const os = require("os");
 const pathModule = require("path");
 const { randomUUID } = require("crypto");
-
+const config = require("../../config/env")
 class IngressService {
 
     async generate({
@@ -10,7 +10,7 @@ class IngressService {
         buildPlan
     }) {
 
-       const ingressPath = `/apps/${deploymentId}`;
+       const ingressHost = `${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
         const yaml = `
 apiVersion: networking.k8s.io/v1

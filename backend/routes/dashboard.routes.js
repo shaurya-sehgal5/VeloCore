@@ -113,11 +113,12 @@ router.post('/deploy', async (req, res) => {
         error: "Free-tier limit reached! You can only have 2 live deployments active."
       });
     }
-
+    const shortDeploymentId = deploymentId.split("-")[0];
     const newDeploy = await db.query(
       `INSERT INTO deployments (id, project_id, user_id, repo_name, status, deploy_url, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
-      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', deploy_url || `${config.PUBLIC_URL}/apps/${deploymentId}`]
+      [deploymentId, projectId || null, userId, repoName || 'Unknown Repo', 'BUILDING', deploy_url || deploy_url || `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`]
+
     );
 
     res.json({ message: "Build initiated successfully", deployment: newDeploy.rows[0] });

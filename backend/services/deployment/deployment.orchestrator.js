@@ -245,7 +245,7 @@ class DeploymentOrchestrator {
 
         graph,
 
-        url: `http://${deploymentId}.${config.APP_DOMAIN}`,
+        url: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
       };
     } catch (error) {
       await logger.error(

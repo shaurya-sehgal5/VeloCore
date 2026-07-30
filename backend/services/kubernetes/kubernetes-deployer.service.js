@@ -147,7 +147,7 @@ class KubernetesDeployer {
 
                 engine: "kubernetes",
 
-                url: `${config.PUBLIC_URL}/apps/${deploymentId}`,
+               url: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
 
                 runtime: {
 
@@ -159,7 +159,7 @@ class KubernetesDeployer {
 
                     type: buildPlan.type,
 
-                    route: `/apps/${deploymentId}`,
+                    route: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
 
                     framework: buildPlan.framework,
 
