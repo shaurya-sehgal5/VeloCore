@@ -141,6 +141,7 @@ class DockerService {
       ],
       deploymentId,
     );
+    await this.importImageToK3s(imageName, deploymentId);
 
     return logs;
   }
@@ -306,6 +307,53 @@ class DockerService {
     } catch {
       return false;
     }
+  }
+
+  async importImageToK3s(imageName, deploymentId) {
+    await logger.info(
+      deploymentId,
+      "BUILD",
+      "Importing image into k3s..."
+    );
+
+    return new Promise((resolve, reject) => {
+      const child = spawn(
+        "sh",
+        [
+          "-c",
+          `docker save ${imageName} | k3s ctr images import -`
+        ],
+        {
+          shell: false,
+        }
+      );
+
+      let output = "";
+
+      child.stdout.on("data", (d) => {
+        output += d.toString();
+      });
+
+      child.stderr.on("data", (d) => {
+        output += d.toString();
+      });
+
+      child.on("close", async (code) => {
+        if (code !== 0) {
+          return reject(new Error(output));
+        }
+
+        await logger.success(
+          deploymentId,
+          "BUILD",
+          "Image imported into k3s."
+        );
+
+        resolve();
+      });
+
+      child.on("error", reject);
+    });
   }
   async removeContainer(name) {
     return this.execute(
