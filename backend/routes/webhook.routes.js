@@ -1,8 +1,10 @@
-import { Router } from "express";
-import { githubWebhook } from "../controllers/webhook.controller";
+const express = require("express");
+const router = express.Router();
 
-const router = Router();
+const {
+  githubWebhook,
+} = require("../controllers/webhook.controller");
 
 router.post("/github", githubWebhook);
 
-export default router;
+module.exports = router;
