@@ -1,0 +1,9 @@
+key_name = "velocore"
+
+public_key_path = ""
+
+github_username = "YOUR_GITHUB_USERNAME"
+
+github_repo = ""
+
+github_branch = "main"

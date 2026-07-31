@@ -1,0 +1,158 @@
+#!/bin/bash
+set -euxo pipefail
+
+exec > >(tee /var/log/velocore-bootstrap.log | logger -t userdata -s 2>/dev/console) 2>&1
+
+export DEBIAN_FRONTEND=noninteractive
+
+echo "========== Updating System =========="
+
+apt-get update -y
+
+echo "========== Installing Dependencies =========="
+
+apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release \
+    git \
+    unzip
+
+install -m 0755 -d /etc/apt/keyrings
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+| gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+| tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+apt-get update -y
+
+apt-get install -y \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+echo "========== Installing AWS CLI v2 =========="
+
+curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
+unzip -q awscliv2.zip
+./aws/install
+
+aws --version
+
+echo "========== Starting Docker =========="
+
+systemctl enable docker
+systemctl start docker
+
+usermod -aG docker ubuntu
+
+echo "========== Installing k3s =========="
+
+curl -sfL https://get.k3s.io | sh -
+
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+kubectl get nodes
+
+echo "========== Cloning Repository =========="
+
+mkdir -p /opt
+cd /opt
+
+if [ ! -d "${github_repo}" ]; then
+    git clone https://github.com/${github_username}/${github_repo}.git
+fi
+
+cd ${github_repo}
+
+git fetch origin
+git checkout ${github_branch}
+git pull origin ${github_branch}
+
+echo "========== Waiting For IAM Credentials =========="
+
+until aws sts get-caller-identity >/dev/null 2>&1
+do
+    echo "Waiting for IAM Role..."
+    sleep 5
+done
+
+echo "========== Downloading Environment Files =========="
+
+mkdir -p backend
+mkdir -p frontend
+
+aws s3 cp s3://${bucket_name}/.env .env
+
+aws s3 cp \
+s3://${bucket_name}/backend/.env \
+backend/.env
+
+aws s3 cp \
+s3://${bucket_name}/frontend/.env \
+frontend/.env
+
+echo "========== Starting Docker Compose =========="
+
+docker compose pull
+docker compose up -d
+
+echo "========== Waiting For PostgreSQL =========="
+
+until docker compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1
+do
+    sleep 3
+done
+
+echo "========== PostgreSQL Ready =========="
+
+TABLE_COUNT=$(docker compose exec -T postgres \
+psql \
+-U postgres \
+-d devplatformdb \
+-tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';")
+
+if [ "$TABLE_COUNT" = "0" ]; then
+
+    echo "========== Database Empty =========="
+
+    echo "Downloading Backup..."
+
+    aws s3 cp \
+    s3://${bucket_name}/Database/VeloCore.sql \
+    /tmp/VeloCore.sql
+
+    echo "Restoring Database..."
+
+    cat /tmp/VeloCore.sql | docker compose exec -T postgres \
+    psql \
+    -U postgres \
+    -d devplatformdb
+
+    echo "========== Database Restored =========="
+
+else
+
+    echo "========== Database Already Initialized =========="
+
+fi
+
+echo "========== Bootstrap Completed Successfully =========="
+
+docker ps
+
+kubectl get nodes
+
+kubectl get pods -A
+
+echo "========== VeloCore Ready =========="
