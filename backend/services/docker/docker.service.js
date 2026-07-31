@@ -13,8 +13,7 @@ class DockerService {
         shell: false,
         env: {
           ...process.env,
-          DOCKER_BUILDKIT: "1",
-          COMPOSE_DOCKER_CLI_BUILD: "1",
+          DOCKER_BUILDKIT: "0",
         },
       });
       let output = "";
@@ -76,7 +75,7 @@ class DockerService {
         shell: false,
         env: {
           ...process.env,
-          DOCKER_BUILDKIT: "1",
+          DOCKER_BUILDKIT: "0",
         },
       });
 
