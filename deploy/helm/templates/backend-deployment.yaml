@@ -48,14 +48,17 @@ spec:
               value: /run/k3s/containerd/containerd.sock
 
             - name: DOCKER_CONFIG
-              value: /root/.docker
+              value: /tmp/docker
+
+            - name: DOCKER_BUILDKIT
+              value: "1"
 
           volumeMounts:
             - name: docker-sock
               mountPath: /var/run/docker.sock
 
             - name: docker-config
-              mountPath: /root/.docker/config.json
+              mountPath: /tmp/docker/config.json
               subPath: config.json
               readOnly: true
 
