@@ -1,4 +1,5 @@
 const path = require("path");
+const config = require("../../config/env")
 
 class BuilderService {
   createBuildPlan(project, deploymentId, slot = "blue") {
@@ -6,7 +7,10 @@ class BuilderService {
 
     const imageTag = deploymentId.substring(0, 8);
 
-    const imageName = `velocore-${projectName}:${imageTag}-${slot}`;
+    const DOCKER_NAMESPACE = config.DOCKER_NAMESPACE || "shauryasehgal";
+
+    const imageName =
+      `${DOCKER_NAMESPACE}/velocore-${projectName}:${imageTag}-${slot}`;
     const common = {
       projectName,
       imageName,

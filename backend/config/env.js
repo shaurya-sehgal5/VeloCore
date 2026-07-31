@@ -42,4 +42,7 @@ module.exports = {
   LOKI_URL: process.env.LOKI_URL || "http://localhost:3100",
 
   APP_DOMAIN: process.env.APP_DOMAIN,
+
+  DOCKER_NAMESPACE: process.env.DOCKER_NAMESPACE,
+
 };

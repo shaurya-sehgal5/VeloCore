@@ -52,7 +52,10 @@ class BuildEngine {
       buildContext: buildPlan.buildContext,
       deploymentId,
     });
-
+    await dockerService.pushImage(
+      buildPlan.imageName,
+      deploymentId
+    );
     const inspect = await execAsync(
       `docker image inspect ${buildPlan.imageName}`
     );
