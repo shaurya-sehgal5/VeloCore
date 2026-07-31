@@ -13,7 +13,7 @@ class DockerService {
         shell: false,
         env: {
           ...process.env,
-          DOCKER_BUILDKIT: "0",
+          DOCKER_BUILDKIT: "1",
         },
       });
       let output = "";
@@ -75,7 +75,7 @@ class DockerService {
         shell: false,
         env: {
           ...process.env,
-          DOCKER_BUILDKIT: "0",
+          DOCKER_BUILDKIT: "1",
         },
       });
 
@@ -121,6 +121,9 @@ class DockerService {
         "--rm",
 
         "--pull=false",
+
+        "--build-arg",
+        "BUILDKIT_INLINE_CACHE=1",
 
         "--label",
         "velocore.build=true",
