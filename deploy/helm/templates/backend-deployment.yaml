@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: backend
+  namespace: {{ .Values.namespace }}
+
+spec:
+
+  replicas: {{ .Values.backend.replicas }}
+
+  strategy:
+
+    type: RollingUpdate
+
+    rollingUpdate:
+
+      maxUnavailable: 0
+      maxSurge: 1
+
+  selector:
+
+    matchLabels:
+      app: backend
+
+  template:
+
+    metadata:
+
+      labels:
+        app: backend
+
+    spec:
+
+      containers:
+
+        - name: backend
+
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+
+          ports:
+
+            - containerPort: 8080
+
+          envFrom:
+
+            - configMapRef:
+                name: velocore-config
+
+            - secretRef:
+                name: velocore-secret
+
+          readinessProbe:
+
+            httpGet:
+
+              path: /api/health
+
+              port: 8080
+
+            initialDelaySeconds: 10
+
+            periodSeconds: 5
+
+          livenessProbe:
+
+            httpGet:
+
+              path: /api/health
+
+              port: 8080
+
+            initialDelaySeconds: 20
+
+            periodSeconds: 10
+
+          resources:
+
+            requests:
+
+              cpu: 250m
+
+              memory: 256Mi
+
+            limits:
+
+              cpu: 1000m
+
+              memory: 1Gi

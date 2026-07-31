@@ -1,0 +1,105 @@
+namespace: velocore
+
+backend:
+  replicas: 1
+
+  image:
+    repository: shauryasehgal/velocore-backend
+    tag: latest
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+frontend:
+  replicas: 1
+
+  image:
+    repository: shauryasehgal/velocore-frontend
+    tag: latest
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 80
+
+postgres:
+  enabled: true
+
+  image:
+    repository: postgres
+    tag: "17-alpine"
+    pullPolicy: IfNotPresent
+
+  auth:
+    database: devplatformdb
+    username: postgres
+    password: postgres
+
+  persistence:
+    enabled: true
+    storageClass: local-path
+    accessMode: ReadWriteOnce
+    size: 5Gi
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+redis:
+  enabled: true
+
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+ingress:
+  enabled: true
+
+  className: traefik
+
+  host: velocore.local
+
+resources:
+
+  backend:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  frontend:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+  postgres:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  redis:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+    limits:
+      cpu: 250m
+      memory: 256Mi

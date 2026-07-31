@@ -1,0 +1,11 @@
+apiVersion: v2
+
+name: velocore
+
+description: VeloCore Platform
+
+type: application
+
+version: 1.0.0
+
+appVersion: "1.0.0"

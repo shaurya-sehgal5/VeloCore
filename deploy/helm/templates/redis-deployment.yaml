@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace }}
+
+spec:
+
+  replicas: 1
+
+  selector:
+
+    matchLabels:
+      app: redis
+
+  template:
+
+    metadata:
+
+      labels:
+        app: redis
+
+    spec:
+
+      containers:
+
+        - name: redis
+
+          image: {{ .Values.redis.image }}
+
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+
+          ports:
+
+            - containerPort: 6379

@@ -1,38 +1,43 @@
-name: VeloCore CD
+name: CD
 
 on:
   workflow_run:
-    workflows: ["VeloCore CI"]
+    workflows: ["CI"]
     types:
       - completed
 
+permissions:
+  contents: write
+
 jobs:
-  deploy:
+  update-helm:
 
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Deploy to Server
-
-        uses: appleboy/ssh-action@v1.2.0
-
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-          script: |
+      - name: Update Backend Image Tag
+        run: |
+          sed -i "s/tag:.*/tag: ${GITHUB_SHA}/" deploy/helm/values.yaml
 
-            cd /opt/velocore
+      - name: Commit Changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-            docker compose pull
+          git add deploy/helm/values.yaml
 
-            docker compose up -d
+          git diff --cached --quiet && exit 0
 
-            docker image prune -af
+          git commit -m "chore: update image tag to ${GITHUB_SHA}"
 
-            docker ps
+      - name: Push Changes
+        run: |
+          git push origin main

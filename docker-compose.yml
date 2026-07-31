@@ -125,5 +125,5 @@ volumes:
   redis-data:
 
 networks:
-  velocore-network:
+  velocore-network:`
     driver: bridge

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+
+metadata:
+  name: velocore
+  namespace: argocd
+
+spec:
+
+  description: VeloCore Project
+
+  sourceRepos:
+    - "https://github.com/shaurya-sehgal5/VeloCore.git"
+
+  destinations:
+    - namespace: velocore
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
