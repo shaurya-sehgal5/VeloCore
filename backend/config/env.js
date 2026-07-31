@@ -45,4 +45,6 @@ module.exports = {
 
   DOCKER_NAMESPACE: process.env.DOCKER_NAMESPACE,
 
+  DOCKER_REPOSITORY: process.env.DOCKER_REPOSITORY,
+
 };

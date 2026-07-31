@@ -9,8 +9,10 @@ class BuilderService {
 
     const DOCKER_NAMESPACE = config.DOCKER_NAMESPACE || "shauryasehgal";
 
-    const imageName =
-      `${DOCKER_NAMESPACE}/velocore-${projectName}:${imageTag}-${slot}`;
+    const repository = config.DOCKER_REPOSITORY || "velocore-runtime";
+
+    const imageName = `${DOCKER_NAMESPACE}/${repository}:${imageTag}-${slot}`;
+
     const common = {
       projectName,
       imageName,
