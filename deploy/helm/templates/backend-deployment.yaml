@@ -36,7 +36,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: velocore-config
-
             - secretRef:
                 name: velocore-secret
 
@@ -54,6 +53,10 @@ spec:
 
             - name: k3s-data
               mountPath: /var/lib/rancher/k3s
+              readOnly: true
+
+            - name: k3s-run
+              mountPath: /run/k3s
               readOnly: true
 
             - name: k3s-bin
@@ -78,7 +81,6 @@ spec:
             requests:
               cpu: 250m
               memory: 256Mi
-
             limits:
               cpu: 1000m
               memory: 1Gi
@@ -97,6 +99,11 @@ spec:
         - name: k3s-data
           hostPath:
             path: /var/lib/rancher/k3s
+            type: Directory
+
+        - name: k3s-run
+          hostPath:
+            path: /run/k3s
             type: Directory
 
         - name: k3s-bin
