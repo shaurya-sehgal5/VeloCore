@@ -59,7 +59,6 @@ spec:
 
             - name: docker-config
               mountPath: /tmp/docker
-              subPath: config.json
               readOnly: true
 
             - name: k3s-config
@@ -105,7 +104,7 @@ spec:
         - name: docker-config
           hostPath:
             path: /home/ubuntu/.docker
-            type: File
+            type: Directory
 
         - name: k3s-config
           hostPath:
