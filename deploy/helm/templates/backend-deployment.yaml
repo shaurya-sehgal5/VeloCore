@@ -36,12 +36,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: velocore-config
+
             - secretRef:
                 name: velocore-secret
 
           env:
             - name: KUBECONFIG
               value: /etc/rancher/k3s/k3s.yaml
+
+            - name: K3S_CONTAINERD_SOCKET
+              value: /run/k3s/containerd/containerd.sock
 
           volumeMounts:
             - name: docker-sock
@@ -57,11 +61,6 @@ spec:
 
             - name: k3s-run
               mountPath: /run/k3s
-              readOnly: true
-
-            - name: k3s-bin
-              mountPath: /usr/local/bin/k3s
-              readOnly: true
 
           readinessProbe:
             httpGet:
@@ -81,6 +80,7 @@ spec:
             requests:
               cpu: 250m
               memory: 256Mi
+
             limits:
               cpu: 1000m
               memory: 1Gi
@@ -105,8 +105,3 @@ spec:
           hostPath:
             path: /run/k3s
             type: Directory
-
-        - name: k3s-bin
-          hostPath:
-            path: /usr/local/bin/k3s
-            type: File

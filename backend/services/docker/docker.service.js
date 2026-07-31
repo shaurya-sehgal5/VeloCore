@@ -321,7 +321,7 @@ class DockerService {
         "sh",
         [
           "-c",
-          `docker save ${imageName} | k3s ctr images import -`
+          `docker save ${imageName} | k3s ctr --address /run/k3s/containerd/containerd.sock -n k8s.io images import -`
         ],
         {
           shell: false,
