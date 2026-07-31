@@ -6,86 +6,91 @@ metadata:
   namespace: {{ .Values.namespace }}
 
 spec:
-
   replicas: {{ .Values.backend.replicas }}
 
   strategy:
-
     type: RollingUpdate
-
     rollingUpdate:
-
       maxUnavailable: 0
       maxSurge: 1
 
   selector:
-
     matchLabels:
       app: backend
 
   template:
-
     metadata:
-
       labels:
         app: backend
 
     spec:
-
       containers:
-
         - name: backend
 
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
-
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
 
           ports:
-
             - containerPort: 8080
 
           envFrom:
-
             - configMapRef:
                 name: velocore-config
 
             - secretRef:
                 name: velocore-secret
 
+          env:
+            - name: KUBECONFIG
+              value: /etc/rancher/k3s/k3s.yaml
+
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+
+            - name: k3s-config
+              mountPath: /etc/rancher/k3s
+              readOnly: true
+
+            - name: kubelet
+              mountPath: /var/lib/rancher/k3s
+              readOnly: true
+
           readinessProbe:
-
             httpGet:
-
               path: /api/health
-
               port: 8080
-
             initialDelaySeconds: 10
-
             periodSeconds: 5
 
           livenessProbe:
-
             httpGet:
-
               path: /api/health
-
               port: 8080
-
             initialDelaySeconds: 20
-
             periodSeconds: 10
 
           resources:
-
             requests:
-
               cpu: 250m
-
               memory: 256Mi
 
             limits:
-
               cpu: 1000m
-
               memory: 1Gi
+
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+
+        - name: k3s-config
+          hostPath:
+            path: /etc/rancher/k3s
+            type: Directory
+
+        - name: kubelet
+          hostPath:
+            path: /var/lib/rancher/k3s
+            type: Directory
