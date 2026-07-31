@@ -3,31 +3,26 @@ kind: Deployment
 
 metadata:
   name: redis
-  namespace: {{ .Values.namespace }}
+  namespace: { { .Values.namespace } }
 
 spec:
-
   replicas: 1
 
   selector:
-
     matchLabels:
       app: redis
 
   template:
-
     metadata:
-
       labels:
         app: redis
 
     spec:
-
       containers:
-
         - name: redis
 
-          image: {{ .Values.redis.image }}
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: { { .Values.redis.image.pullPolicy } }
 
           args:
             - redis-server
@@ -35,5 +30,4 @@ spec:
             - "yes"
 
           ports:
-
             - containerPort: 6379
