@@ -36,7 +36,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: velocore-config
-
             - secretRef:
                 name: velocore-secret
 
@@ -50,15 +49,18 @@ spec:
             - name: DOCKER_CONFIG
               value: /tmp/docker
 
-            - name: DOCKER_BUILDKIT
-              value: "1"
-
           volumeMounts:
             - name: docker-sock
               mountPath: /var/run/docker.sock
 
-            - name: docker-config
+            # Writable directory for buildx
+            - name: docker-config-dir
               mountPath: /tmp/docker
+
+            # Only config.json is read-only
+            - name: docker-config
+              mountPath: /tmp/docker/config.json
+              subPath: config.json
               readOnly: true
 
             - name: k3s-config
@@ -90,7 +92,6 @@ spec:
             requests:
               cpu: 250m
               memory: 256Mi
-
             limits:
               cpu: 1000m
               memory: 1Gi
@@ -101,10 +102,15 @@ spec:
             path: /var/run/docker.sock
             type: Socket
 
+        # Writable tmp directory
+        - name: docker-config-dir
+          emptyDir: {}
+
+        # Only mount config.json
         - name: docker-config
           hostPath:
-            path: /home/ubuntu/.docker
-            type: Directory
+            path: /home/ubuntu/.docker/config.json
+            type: File
 
         - name: k3s-config
           hostPath:
