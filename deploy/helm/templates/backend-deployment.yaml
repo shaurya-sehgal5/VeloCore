@@ -52,8 +52,12 @@ spec:
               mountPath: /etc/rancher/k3s
               readOnly: true
 
-            - name: kubelet
+            - name: k3s-data
               mountPath: /var/lib/rancher/k3s
+              readOnly: true
+
+            - name: k3s-bin
+              mountPath: /usr/local/bin/k3s
               readOnly: true
 
           readinessProbe:
@@ -90,7 +94,12 @@ spec:
             path: /etc/rancher/k3s
             type: Directory
 
-        - name: kubelet
+        - name: k3s-data
           hostPath:
             path: /var/lib/rancher/k3s
             type: Directory
+
+        - name: k3s-bin
+          hostPath:
+            path: /usr/local/bin/k3s
+            type: File
