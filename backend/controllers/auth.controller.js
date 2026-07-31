@@ -46,19 +46,19 @@ exports.gitHubCallback = async (req, res) => {
 
     const userId = dbResult.rows[0].id;
 
-   
+
     const sessionToken = jwt.sign(
       { userId: userId, username: username },
       config.JWT_SECRET,
       { expiresIn: '7d' } // Session valid for 7 days
     );
 
-  
+
     res.cookie('veloplatform_session', sessionToken, {
-      httpOnly: true,     
-      secure: false,     
-      sameSite: 'lax',   
-      maxAge: 7 * 24 * 60 * 60 * 1000 
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     // Clean, secure redirect with zero tracking variables exposed in the URL bar
