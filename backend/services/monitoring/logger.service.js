@@ -66,6 +66,7 @@ class LoggerService {
 
       try {
         const io = getIO();
+        console.log("EMIT ROOM:", deploymentId);
         io.to(deploymentId).emit("live_logs", log);
       } catch (_) { }
 

@@ -11,8 +11,13 @@ export default function useLiveLogs(onStatusChange) {
   useEffect(() => {
     if (!activeDeploymentId) return;
     const socket = io(SOCKET_URL, { withCredentials: true, transports: ['websocket', 'polling'] });
+    socket.on("connect", () => {
+      console.log("Socket connected");
 
-    socket.on('connect', () => socket.emit('join-deployment-stream', activeDeploymentId));
+      socket.emit("join-deployment-stream", activeDeploymentId);
+    });
+
+    socket.emit("join-deployment-stream", activeDeploymentId);
 
     socket.on("live_logs", (payload) => {
       if (!payload) return;
