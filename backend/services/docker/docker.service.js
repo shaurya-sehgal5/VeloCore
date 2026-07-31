@@ -122,11 +122,6 @@ class DockerService {
 
         "--pull=false",
 
-        "--progress=plain",
-
-        "--build-arg",
-        "BUILDKIT_INLINE_CACHE=1",
-
         "--label",
         "velocore.build=true",
 
@@ -282,30 +277,30 @@ class DockerService {
       });
     });
   }
-async pushImage(imageName, deploymentId) {
+  async pushImage(imageName, deploymentId) {
 
     await logger.info(
-        deploymentId,
-        "BUILD",
-        "Pushing image to Docker Hub..."
+      deploymentId,
+      "BUILD",
+      "Pushing image to Docker Hub..."
     );
 
     await this.execute(
-        "docker",
-        [
-            "push",
-            imageName
-        ],
-        deploymentId
+      "docker",
+      [
+        "push",
+        imageName
+      ],
+      deploymentId
     );
 
     await logger.success(
-        deploymentId,
-        "BUILD",
-        "Image pushed successfully."
+      deploymentId,
+      "BUILD",
+      "Image pushed successfully."
     );
 
-}
+  }
   async stopContainer(name) {
     return this.execute(
       "docker",

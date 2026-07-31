@@ -17,7 +17,8 @@ FROM node:22-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV DOCKER_BUILDKIT=0
+ENV DOCKER_BUILDKIT=1
+
 
 RUN apk add --no-cache \
     docker-cli \
