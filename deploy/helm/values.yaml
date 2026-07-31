@@ -64,10 +64,17 @@ ingress:
 
   className: traefik
 
-  host: velocore.local
+  host: ""
+
+  backend:
+    path: /
+    pathType: Prefix
+
+  frontend:
+    path: /
+    pathType: Prefix
 
 resources:
-
   backend:
     requests:
       cpu: 200m
