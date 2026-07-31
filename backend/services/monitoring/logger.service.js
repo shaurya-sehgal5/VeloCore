@@ -77,10 +77,6 @@ class LoggerService {
       level,
       message,
     });
-    try {
-      const io = getIO();
-      io.to(deploymentId).emit("live_logs", log);
-    } catch (_) { }
   }
 
   async event(deploymentId, event, message) {

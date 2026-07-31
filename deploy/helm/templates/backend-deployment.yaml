@@ -51,6 +51,11 @@ spec:
             - name: docker-sock
               mountPath: /var/run/docker.sock
 
+            # Docker authentication
+            - name: docker-config
+              mountPath: /root/.docker
+              readOnly: true
+
             - name: k3s-config
               mountPath: /etc/rancher/k3s
               readOnly: true
@@ -90,6 +95,12 @@ spec:
           hostPath:
             path: /var/run/docker.sock
             type: Socket
+
+        # Docker authentication
+        - name: docker-config
+          hostPath:
+            path: /home/ubuntu/.docker
+            type: Directory
 
         - name: k3s-config
           hostPath:
