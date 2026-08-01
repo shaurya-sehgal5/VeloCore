@@ -65,7 +65,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Current deployment status"
     },
@@ -114,7 +114,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Total deployment uptime"
     },
@@ -163,7 +163,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Total deployment restarts"
     },
@@ -212,7 +212,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Deployment history and status",
       "transformations": [
@@ -297,7 +297,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "CPU usage percentage"
     },
@@ -376,7 +376,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Memory usage"
     },
@@ -438,7 +438,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Network receive"
     },
@@ -500,7 +500,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Network transmit"
     },
@@ -549,7 +549,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Number of running processes"
     },
@@ -598,7 +598,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Deployment duration"
     },
@@ -647,7 +647,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Build duration"
     },
@@ -696,7 +696,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Runtime startup time"
     },
@@ -745,15 +745,13 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Deployment availability",
       "options": {
         "reduceOptions": {
           "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": ""
         },
         "orientation": "auto",
@@ -806,15 +804,13 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Security score",
       "options": {
         "reduceOptions": {
           "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": ""
         },
         "orientation": "auto",
@@ -841,7 +837,7 @@
       ],
       "datasource": {
         "type": "loki",
-        "uid": "Loki"
+        "uid": "P8E80F9AEF21F6940"
       },
       "description": "Live deployment logs",
       "options": {
@@ -856,31 +852,9 @@
   ],
   "schemaVersion": 39,
   "version": 0,
-  "tags": [
-    "velocore",
-    "deployment",
-    "user"
-  ],
+  "tags": ["velocore", "deployment", "user"],
   "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "48h",
-      "7d"
-    ]
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h"],
+    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "48h", "7d"]
   }
 }

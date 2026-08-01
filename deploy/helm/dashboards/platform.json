@@ -50,7 +50,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Currently running deployments"
     },
@@ -95,7 +95,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Active runtime instances"
     },
@@ -144,7 +144,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Jobs waiting in queue"
     },
@@ -193,7 +193,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Currently active queue jobs"
     },
@@ -242,7 +242,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Delayed queue jobs"
     },
@@ -287,7 +287,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Deployment success rate"
     },
@@ -332,7 +332,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Failed deployments"
     },
@@ -381,15 +381,13 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Overall security score",
       "options": {
         "reduceOptions": {
           "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": ""
         },
         "orientation": "auto",
@@ -442,7 +440,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "95th percentile deployment duration"
     },
@@ -491,7 +489,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Average build duration"
     },
@@ -540,7 +538,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Runtime startup time"
     },
@@ -589,7 +587,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Security scan duration"
     },
@@ -638,14 +636,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Rollout duration"
     },
     {
       "id": 14,
       "title": "Container CPU",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 5,
@@ -717,14 +715,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Container CPU usage"
     },
     {
       "id": 15,
       "title": "Container Memory",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 5,
@@ -796,14 +794,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Container memory usage"
     },
     {
       "id": 16,
       "title": "Network RX",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -858,14 +856,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Network receive"
     },
     {
       "id": 17,
       "title": "Network TX",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -920,7 +918,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Network transmit"
     },
@@ -969,7 +967,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Container processes"
     },
@@ -1014,7 +1012,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Critical security vulnerabilities"
     },
@@ -1063,7 +1061,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "High severity vulnerabilities"
     },
@@ -1112,7 +1110,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Medium severity vulnerabilities"
     },
@@ -1161,14 +1159,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Low severity vulnerabilities"
     },
     {
       "id": 23,
       "title": "Node CPU",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -1240,14 +1238,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Node CPU usage"
     },
     {
       "id": 24,
       "title": "Node Memory",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -1319,14 +1317,14 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Node memory usage"
     },
     {
       "id": 25,
       "title": "Node Disk",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -1398,7 +1396,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Node disk usage"
     },
@@ -1447,7 +1445,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Redis memory usage"
     },
@@ -1496,7 +1494,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Redis connected clients"
     },
@@ -1545,7 +1543,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Postgres active connections"
     },
@@ -1594,7 +1592,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Postgres transactions per second"
     },
@@ -1654,7 +1652,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Frontend availability"
     },
@@ -1714,7 +1712,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Backend availability"
     },
@@ -1763,7 +1761,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "HTTP response status"
     },
@@ -1812,7 +1810,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "bftwe85msrpxcd"
       },
       "description": "Response latency"
     },
@@ -1835,7 +1833,7 @@
       ],
       "datasource": {
         "type": "loki",
-        "uid": "Loki"
+        "uid": "P8E80F9AEF21F6940"
       },
       "description": "Live platform logs",
       "options": {
@@ -1850,31 +1848,9 @@
   ],
   "schemaVersion": 39,
   "version": 0,
-  "tags": [
-    "velocore",
-    "platform",
-    "sre"
-  ],
+  "tags": ["velocore", "platform", "sre"],
   "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "48h",
-      "7d"
-    ]
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h"],
+    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "48h", "7d"]
   }
 }
