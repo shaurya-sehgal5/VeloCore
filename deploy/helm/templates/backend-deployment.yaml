@@ -24,11 +24,9 @@ spec:
         app: backend
 
     spec:
-
       initContainers:
         - name: docker-config-init
           image: busybox:1.36
-
           command:
             - sh
             - -c
@@ -36,7 +34,6 @@ spec:
               mkdir -p /tmp/docker
               cp /docker-host/config.json /tmp/docker/config.json
               chmod 600 /tmp/docker/config.json
-
           volumeMounts:
             - name: docker-config-dir
               mountPath: /tmp/docker
@@ -47,9 +44,17 @@ spec:
 
       containers:
         - name: backend
-
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+
+          command:
+            - sh
+            - -c
+            - |
+              cp /etc/rancher/k3s/k3s.yaml /tmp/kubeconfig
+              sed -i 's#https://127.0.0.1:6443#https://kubernetes.default.svc:443#g' /tmp/kubeconfig
+              export KUBECONFIG=/tmp/kubeconfig
+              exec npm start
 
           ports:
             - containerPort: 8080
@@ -63,7 +68,7 @@ spec:
 
           env:
             - name: KUBECONFIG
-              value: /etc/rancher/k3s/k3s.yaml
+              value: /tmp/kubeconfig
 
             - name: K3S_CONTAINERD_SOCKET
               value: /run/k3s/containerd/containerd.sock
