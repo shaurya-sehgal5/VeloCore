@@ -82,10 +82,11 @@ class LokiService {
             );
 
         } catch (err) {
-            console.error(
-                "[LOKI]",
-                err.message
-            );
+            console.error("========== LOKI ERROR ==========");
+            console.error(err.response?.status);
+            console.error(err.response?.data);
+            console.error(err.message);
+            console.error("===============================");
         }
     }
 }
