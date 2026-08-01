@@ -1,6 +1,6 @@
 {
   "title": "VeloCore - Deployment Dashboard",
-  "uid": "velocore-user",
+  "uid": "velocore-user-dashboard-1",
   "editable": true,
   "refresh": "30s",
   "time": {
@@ -225,7 +225,7 @@
     {
       "id": 5,
       "title": "CPU Usage",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 6,
@@ -290,7 +290,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_cpu_percent",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (pod)",
           "refId": "A",
           "legendFormat": "CPU %"
         }
@@ -304,7 +304,7 @@
     {
       "id": 6,
       "title": "Memory Usage",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 6,
@@ -369,7 +369,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_memory_bytes",
+          "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (pod)",
           "refId": "A",
           "legendFormat": "Memory"
         }
@@ -383,7 +383,7 @@
     {
       "id": 7,
       "title": "Network RX",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -431,7 +431,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_network_receive_bytes",
+          "expr": "sum(rate(container_network_receive_bytes_total{container!=\"\"}[5m])) by (pod)",
           "refId": "A",
           "legendFormat": "RX"
         }
@@ -445,7 +445,7 @@
     {
       "id": 8,
       "title": "Network TX",
-      "type": "time series",
+      "type": "timeseries",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -493,7 +493,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_network_transmit_bytes",
+          "expr": "sum(rate(container_network_transmit_bytes_total{container!=\"\"}[5m])) by (pod)",
           "refId": "A",
           "legendFormat": "TX"
         }
@@ -542,7 +542,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_pids",
+          "expr": "sum(container_tasks_state{container!=\"\"})",
           "refId": "A",
           "legendFormat": "Processes"
         }
@@ -591,7 +591,8 @@
       },
       "targets": [
         {
-          "expr": "velocore_deployment_duration_seconds",
+          "expr": "rate(velocore_deployment_duration_seconds_sum[5m])/rate(velocore_deployment_duration_seconds_count[5m])",
+
           "refId": "A",
           "legendFormat": "Duration"
         }
@@ -640,7 +641,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_build_duration_seconds",
+          "expr": "rate(velocore_build_duration_seconds_sum[5m])/rate(velocore_build_duration_seconds_count[5m])",
           "refId": "A",
           "legendFormat": "Build"
         }
@@ -689,7 +690,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_runtime_startup_seconds",
+          "expr": "rate(velocore_runtime_startup_seconds_sum[5m])/rate(velocore_runtime_startup_seconds_count[5m])",
           "refId": "A",
           "legendFormat": "Startup"
         }

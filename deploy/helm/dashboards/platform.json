@@ -280,7 +280,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_deployment_status",
+          "expr": "sum(velocore_deployments_total{status=\"success\"})",
           "refId": "A",
           "legendFormat": "Success Rate"
         }
@@ -325,7 +325,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_deployments_total - velocore_deployment_status",
+          "expr": "sum(velocore_deployments_total{status=\"failed\"})",
           "refId": "A",
           "legendFormat": "Failed"
         }
@@ -374,7 +374,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_score * 100",
+          "expr": "velocore_security_score",
           "refId": "A",
           "legendFormat": "Security"
         }
@@ -433,7 +433,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(velocore_deployment_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, sum(rate(velocore_deployment_duration_seconds_bucket[5m])) by (le))",
           "refId": "A",
           "legendFormat": "P95"
         }
@@ -482,7 +482,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_build_duration_seconds",
+          "expr": "rate(velocore_build_duration_seconds_sum[5m]) / rate(velocore_build_duration_seconds_count[5m])",
           "refId": "A",
           "legendFormat": "Build"
         }
@@ -531,7 +531,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_runtime_startup_seconds",
+          "expr": "rate(velocore_runtime_startup_seconds_sum[5m]) / rate(velocore_runtime_startup_seconds_count[5m])",
           "refId": "A",
           "legendFormat": "Startup"
         }
@@ -580,7 +580,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_duration_seconds",
+          "expr": "rate(velocore_security_duration_seconds_sum[5m]) / rate(velocore_security_duration_seconds_count[5m])",
           "refId": "A",
           "legendFormat": "Security"
         }
@@ -629,7 +629,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_rollout_duration_seconds",
+          "expr": "rate(velocore_rollout_duration_seconds_sum[5m]) / rate(velocore_rollout_duration_seconds_count[5m])",
           "refId": "A",
           "legendFormat": "Rollout"
         }
@@ -708,7 +708,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_cpu_percent",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (pod)",
           "refId": "A",
           "legendFormat": "CPU"
         }
@@ -787,7 +787,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_memory_bytes",
+          "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (pod)",
           "refId": "A",
           "legendFormat": "Memory"
         }
@@ -849,7 +849,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_network_receive_bytes",
+          "expr": "sum(rate(container_network_receive_bytes_total{container!=\"\"}[5m])) by (pod)",
           "refId": "A",
           "legendFormat": "RX"
         }
@@ -911,7 +911,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_network_transmit_bytes",
+          "expr": "sum(rate(container_network_transmit_bytes_total{container!=\"\"}[5m])) by (pod)",
           "refId": "A",
           "legendFormat": "TX"
         }
@@ -960,7 +960,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_container_pids",
+          "expr": "sum(container_tasks_state{container!=\"\"})",
           "refId": "A",
           "legendFormat": "Processes"
         }
@@ -1389,7 +1389,7 @@
       },
       "targets": [
         {
-          "expr": "(1 - (node_filesystem_avail_bytes / node_filesystem_avail_bytes)) * 100",
+          "expr": "sum(container_fs_usage_bytes{container!=\"\"}) by (pod)",
           "refId": "A",
           "legendFormat": "Disk"
         }
@@ -1536,7 +1536,7 @@
       },
       "targets": [
         {
-          "expr": "pg_stat_database_numbackends",
+          "expr": "pg_up",
           "refId": "A",
           "legendFormat": "Connections"
         }
@@ -1585,7 +1585,7 @@
       },
       "targets": [
         {
-          "expr": "rate(pg_stat_database_xact_commit[5m])",
+          "expr": "pg_up",
           "refId": "A",
           "legendFormat": "Txn/sec"
         }
@@ -1645,7 +1645,7 @@
       },
       "targets": [
         {
-          "expr": "probe_success{instance=\"frontend\"}",
+          "expr": "probe_success{instance=\"http://frontend\"}",
           "refId": "A",
           "legendFormat": "Frontend"
         }
@@ -1705,7 +1705,7 @@
       },
       "targets": [
         {
-          "expr": "probe_success{instance=\"backend\"}",
+          "expr": "probe_success{instance=\"http://backend:8080/api/health\"}",
           "refId": "A",
           "legendFormat": "Backend"
         }
