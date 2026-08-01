@@ -3,7 +3,7 @@ kind: ConfigMap
 
 metadata:
   name: velocore-config
-  namespace: {{ .Values.namespace }}
+  namespace: { { .Values.namespace } }
 
 data:
   NODE_ENV: production
@@ -14,4 +14,5 @@ data:
 
   DB_HOST: postgres
   DB_PORT: "5432"
-  DB_NAME: {{ .Values.postgres.auth.database | quote }}
+  DB_NAME: { { .Values.postgres.auth.database | quote } }
+  LOKI_URL: http://loki:3100
