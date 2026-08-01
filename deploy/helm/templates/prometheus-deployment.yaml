@@ -3,6 +3,7 @@ kind: Deployment
 
 metadata:
   name: prometheus
+  namespace: {{ .Values.namespace }}
 
 spec:
   replicas: 1
@@ -17,9 +18,9 @@ spec:
         app: prometheus
 
     spec:
+      serviceAccountName: prometheus
 
       containers:
-
         - name: prometheus
 
           image: prom/prometheus:v2.54.1
@@ -32,7 +33,6 @@ spec:
             - --storage.tsdb.path=/prometheus
 
           volumeMounts:
-
             - name: config
               mountPath: /etc/prometheus
 
@@ -40,7 +40,6 @@ spec:
               mountPath: /prometheus
 
       volumes:
-
         - name: config
           configMap:
             name: prometheus-config

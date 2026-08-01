@@ -1,5 +1,6 @@
 apiVersion: v1
 kind: ConfigMap
+
 metadata:
   name: prometheus-config
   namespace: velocore
@@ -36,12 +37,12 @@ data:
 
         relabel_configs:
           - source_labels:
-              [__meta_kubernetes_pod_label_name]
+              - __meta_kubernetes_pod_label_app
             regex: promtail
             action: keep
 
           - source_labels:
-              [__meta_kubernetes_pod_ip]
+              - __meta_kubernetes_pod_ip
             target_label: __address__
             replacement: ${1}:9080
 
@@ -51,15 +52,14 @@ data:
               - kube-state-metrics:8080
 
       - job_name: node-exporter
-        kubernetes_sd_configs:
-          - role: node
+        static_configs:
+          - targets:
+              - node-exporter:9100
 
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-
-          - target_label: __address__
-            replacement: node-exporter:9100
+      - job_name: cadvisor
+        static_configs:
+          - targets:
+              - cadvisor:8080
 
       - job_name: postgres-exporter
         static_configs:
