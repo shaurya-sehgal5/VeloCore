@@ -21,6 +21,11 @@ class RuntimeAdapter {
       runtime.namespace,
       runtime.deployment
     );
+    metrics.deploymentRestarts.labels(
+      deploymentId,
+      repository.name,
+      namespace
+    ).set(info.restarts);
   }
 
   /*

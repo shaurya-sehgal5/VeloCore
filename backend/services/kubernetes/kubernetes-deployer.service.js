@@ -6,6 +6,7 @@ const metrics = require("../monitoring/metrics.service");
 const helm = require("../helm/helm.service");
 const analyzer = require("./failure-analyzer.service");
 const config = require("../../config/env")
+const kubernetesMetrics = require("./kubernetes-metrics.service");
 
 class KubernetesDeployer {
     async deploy({
@@ -101,6 +102,33 @@ class KubernetesDeployer {
                 ),
             ]);
 
+            const info = await kubernetesMetrics.get(
+                pod.metadata.name,
+                buildPlan.namespace,
+                buildPlan.projectName
+            );
+
+            metrics.containerCpu.labels(
+                buildPlan.projectName,
+                buildPlan.projectName
+            ).set(info.cpu);
+
+            metrics.containerMemory.labels(
+                buildPlan.projectName,
+                buildPlan.projectName
+            ).set(info.memory);
+
+            metrics.deploymentRestarts.labels(
+                buildPlan.projectName,
+                buildPlan.projectName,
+                buildPlan.namespace
+            ).set(info.restarts);
+
+            metrics.deploymentStatus.labels(
+                buildPlan.projectName,
+                buildPlan.projectName,
+                buildPlan.namespace
+            ).set(1);
             await logger.success(
                 deploymentId,
                 "HEALTH",
@@ -147,7 +175,7 @@ class KubernetesDeployer {
 
                 engine: "kubernetes",
 
-               url: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+                url: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
 
                 runtime: {
 

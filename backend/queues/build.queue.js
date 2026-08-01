@@ -12,24 +12,11 @@ const redisConnection = new IORedis({
 const buildQueue = new Queue("production-build-queue", {
   connection: redisConnection,
 });
-
-buildQueue.on("waiting", async () => {
-  metrics.queueWaiting.set(
-    await buildQueue.getWaitingCount()
-  );
-});
-
-buildQueue.on("completed", async () => {
-  metrics.queueActive.set(
-    await buildQueue.getActiveCount()
-  );
-});
-
-buildQueue.on("failed", async () => {
-  metrics.queueDelayed.set(
-    await buildQueue.getDelayedCount()
-  );
-});
+setInterval(async () => {
+  metrics.queueWaiting.set(await buildQueue.getWaitingCount());
+  metrics.queueActive.set(await buildQueue.getActiveCount());
+  metrics.queueDelayed.set(await buildQueue.getDelayedCount());
+}, 5000);
 
 const buildWorker = new Worker(
   "production-build-queue",

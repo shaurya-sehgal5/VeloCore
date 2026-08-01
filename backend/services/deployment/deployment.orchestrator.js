@@ -148,7 +148,15 @@ class DeploymentOrchestrator {
         repository,
         graph,
       });
+      metrics.securityScore.labels(repository.name).set(securityReport.score || 100);
 
+      metrics.securityCritical.labels(repository.name).set(securityReport.critical || 0);
+
+      metrics.securityHigh.labels(repository.name).set(securityReport.high || 0);
+
+      metrics.securityMedium.labels(repository.name).set(securityReport.medium || 0);
+
+      metrics.securityLow.labels(repository.name).set(securityReport.low || 0);
       await endStage("Security");
       await logger.milestone(
         deploymentId,
@@ -185,6 +193,7 @@ class DeploymentOrchestrator {
       );
       startStage("Deployment");
       await stackEngine.deploy({
+
         graph,
         deploymentId,
         workspace,
@@ -226,10 +235,10 @@ class DeploymentOrchestrator {
         "Deployment completed successfully."
       );
 
-      metrics.runningDeployments.inc();
+      metrics.runningDeployments.set(1);
 
       timer({
-        status: "SUCCESS",
+        status: "RUNNING",
       });
       summary.totalTime =
         ((Date.now() - started) / 1000).toFixed(1);
@@ -238,6 +247,22 @@ class DeploymentOrchestrator {
         deploymentId,
         `Build:${summary.buildTime}s | Deploy:${summary.deployTime}s | Total:${summary.totalTime}s | Status:${summary.status}`
       );
+      metrics.buildDuration
+        .labels(repository.name)
+        .observe(summary.buildTime);
+      metrics.deploymentStatus.labels(
+        deploymentId,
+        "unknown",
+        "unknown"
+      ).set(0);
+      metrics.deploymentUptime.labels(
+        deploymentId,
+        repository.name,
+        `velocore-${repository.name}`
+      ).set(
+        Math.floor((Date.now() - started) / 1000)
+      );
+      metrics.runtimeCount.set(1);
       return {
         success: true,
 
@@ -264,7 +289,7 @@ class DeploymentOrchestrator {
         deploymentId,
         error.message.includes("timed out") ? "TIMEOUT" : "FAILED",
       );
-
+      metrics.runningDeployments.set(0);
       if (workspace) {
         await cleanupService.failed({
           workspace,
@@ -277,10 +302,15 @@ class DeploymentOrchestrator {
         runtime: config.RUNTIME_ENGINE || "docker",
         framework: "mixed",
       });
-
+      metrics.deploymentStatus.labels(
+        deploymentId,
+        repository.name,
+        `velocore-${repository.name}`
+      ).set(0);
       timer({
         status: "FAILED",
       });
+      metrics.runtimeCount.set(0);
       throw error;
     }
   }
