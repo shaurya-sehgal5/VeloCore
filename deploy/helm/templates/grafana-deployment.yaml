@@ -21,7 +21,6 @@ spec:
       containers:
 
         - name: grafana
-
           image: grafana/grafana:11.1.0
 
           ports:
@@ -45,8 +44,11 @@ spec:
             - name: dashboard-provider
               mountPath: /etc/grafana/provisioning/dashboards
 
-            - name: dashboards
-              mountPath: /var/lib/grafana/dashboards
+            - name: platform-dashboard
+              mountPath: /var/lib/grafana/dashboards/platform
+
+            - name: user-dashboard
+              mountPath: /var/lib/grafana/dashboards/user
 
       volumes:
 
@@ -62,6 +64,10 @@ spec:
           configMap:
             name: grafana-dashboard-provider
 
-        - name: dashboards
+        - name: platform-dashboard
           configMap:
             name: grafana-platform-dashboard
+
+        - name: user-dashboard
+          configMap:
+            name: grafana-user-dashboard
