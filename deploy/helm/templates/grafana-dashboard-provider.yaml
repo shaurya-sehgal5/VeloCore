@@ -11,11 +11,11 @@ data:
 
     providers:
 
-      - name: velocore
+      - name: Platform
 
         orgId: 1
 
-        folder: VeloCore
+        folder: Platform
 
         type: file
 
@@ -23,9 +23,28 @@ data:
 
         editable: true
 
+        allowUiUpdates: true
+
         updateIntervalSeconds: 10
+
+        options:
+          path: /var/lib/grafana/dashboards/platform
+
+      - name: User
+
+        orgId: 1
+
+        folder: User
+
+        type: file
+
+        disableDeletion: false
+
+        editable: true
 
         allowUiUpdates: true
 
+        updateIntervalSeconds: 10
+
         options:
-          path: /var/lib/grafana/dashboards
+          path: /var/lib/grafana/dashboards/user

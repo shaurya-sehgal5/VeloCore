@@ -1389,7 +1389,7 @@
       },
       "targets": [
         {
-          "expr": "sum(container_fs_usage_bytes{container!=\"\"}) by (pod)",
+          "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}))",
           "refId": "A",
           "legendFormat": "Disk"
         }
@@ -1826,7 +1826,7 @@
       },
       "targets": [
         {
-          "expr": "{job=\"velocore-platform\"} |= ``",
+          "expr": "{job=\"backend\"}",
           "refId": "A",
           "legendFormat": "Logs"
         }
