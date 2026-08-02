@@ -47,14 +47,6 @@ class LokiService {
         level = "INFO",
         message,
     }) {
-        console.log(
-            "[LOKI PUSH]",
-            deploymentId,
-            stage,
-            level,
-            message
-        );
-
         try {
             const payload = {
                 streams: [
