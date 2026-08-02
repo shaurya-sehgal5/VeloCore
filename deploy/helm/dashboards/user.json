@@ -832,7 +832,7 @@
       },
       "targets": [
         {
-          "expr": "{job=\"velocore\"} |= ``",
+          "expr": "{deployment=~\".+\"}",
           "refId": "A",
           "legendFormat": "Logs"
         }

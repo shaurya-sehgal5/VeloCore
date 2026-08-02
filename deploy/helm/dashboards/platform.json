@@ -1826,7 +1826,7 @@
       },
       "targets": [
         {
-          "expr": "{job=\"backend\"}",
+          "expr": "{app=\"velocore\"}",
           "refId": "A",
           "legendFormat": "Logs"
         }
