@@ -1,7 +1,6 @@
 const fs = require("fs/promises");
 const path = require("path");
 const yaml = require("js-yaml");
-const hpaTemplate = require("../../templates/hpa.template");
 const deploymentTemplate = require("../../templates/deployment.template");
 const serviceTemplate = require("../../templates/service.template");
 const configMapTemplate = require("../../templates/configmap.template");
@@ -46,15 +45,7 @@ class KubernetesService {
       data: buildPlan.secrets || {},
     });
 
-    const hpa = hpaTemplate({
-      name: buildPlan.projectName,
-      namespace: buildPlan.namespace,
-      minReplicas: buildPlan.scaling.min,
-
-      maxReplicas: buildPlan.scaling.max,
-
-      cpu: buildPlan.scaling.cpu,
-    });
+   
     const ingress = ingressTemplate({
       name: buildPlan.projectName,
       namespace: buildPlan.namespace,
@@ -76,7 +67,7 @@ class KubernetesService {
       documents.push(ingress);
     }
 
-    documents.push(hpa);
+    // documents.push(hpa);
 
     const manifest = documents
       .map((doc) => yaml.dump(doc).trim())
