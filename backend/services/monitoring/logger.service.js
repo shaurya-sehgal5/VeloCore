@@ -73,6 +73,7 @@ class LoggerService {
     }
     await loki.push({
       deploymentId,
+      project: deploymentId,
       stage,
       level,
       message,

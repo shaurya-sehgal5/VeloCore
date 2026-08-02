@@ -47,12 +47,21 @@ class LokiService {
         level = "INFO",
         message,
     }) {
+        console.log(
+            "[LOKI PUSH]",
+            deploymentId,
+            stage,
+            level,
+            message
+        );
+
         try {
             const payload = {
                 streams: [
                     {
                         stream: {
                             app: config.labels.app,
+                            service_name: "velocore",
                             component: config.labels.component,
                             environment: config.labels.environment,
                             deployment: deploymentId,
