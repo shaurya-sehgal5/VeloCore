@@ -17,8 +17,7 @@ data:
       - url: http://loki:3100/loki/api/v1/push
 
     scrape_configs:
-
-      - job_name: kubernetes
+      - job_name: kubernetes-pods
 
         kubernetes_sd_configs:
           - role: pod
@@ -27,22 +26,35 @@ data:
           - cri: {}
 
         relabel_configs:
+          - action: keep
+            source_labels:
+              - __meta_kubernetes_pod_node_name
+            regex: .+
 
-          - source_labels:
+          - action: replace
+            source_labels:
               - __meta_kubernetes_namespace
             target_label: namespace
 
-          - source_labels:
+          - action: replace
+            source_labels:
               - __meta_kubernetes_pod_name
             target_label: pod
 
-          - source_labels:
+          - action: replace
+            source_labels:
               - __meta_kubernetes_pod_container_name
             target_label: container
 
-          - replacement: /var/log/pods/*$1/*.log
-            separator: /
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_pod_label_app
+            target_label: app
+
+          - action: replace
             source_labels:
               - __meta_kubernetes_pod_uid
               - __meta_kubernetes_pod_container_name
+            separator: /
             target_label: __path__
+            replacement: /var/log/pods/*$1/*.log

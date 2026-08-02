@@ -33,7 +33,7 @@ class DeploymentOrchestrator {
         buildTime: 0,
         deployTime: 0,
         totalTime: 0,
-        status: "SUCCESS",
+        status: "RUNNING",
       };
       const stageTimers = {};
 
