@@ -325,7 +325,7 @@
       },
       "targets": [
         {
-          "expr": "sum(velocore_deployments_total{status=\"failed\"})",
+          "expr": "sum(velocore_deployments_total{status=\"FAILED\"})",
           "refId": "A",
           "legendFormat": "Failed"
         }
@@ -374,7 +374,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_score",
+          "expr": "avg(velocore_security_score)",
           "refId": "A",
           "legendFormat": "Security"
         }
@@ -641,337 +641,6 @@
       "description": "Rollout duration"
     },
     {
-      "id": 14,
-      "title": "Container CPU",
-      "type": "timeseries",
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 0,
-        "y": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (pod)",
-          "refId": "A",
-          "legendFormat": "CPU"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Container CPU usage"
-    },
-    {
-      "id": 15,
-      "title": "Container Memory",
-      "type": "timeseries",
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 5,
-        "y": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1073741824
-              },
-              {
-                "color": "red",
-                "value": 2147483648
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (pod)",
-          "refId": "A",
-          "legendFormat": "Memory"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Container memory usage"
-    },
-    {
-      "id": 16,
-      "title": "Network RX",
-      "type": "timeseries",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 10,
-        "y": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          },
-          "unit": "bps"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(container_network_receive_bytes_total{container!=\"\"}[5m])) by (pod)",
-          "refId": "A",
-          "legendFormat": "RX"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Network receive"
-    },
-    {
-      "id": 17,
-      "title": "Network TX",
-      "type": "timeseries",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 14,
-        "y": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          },
-          "unit": "bps"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(container_network_transmit_bytes_total{container!=\"\"}[5m])) by (pod)",
-          "refId": "A",
-          "legendFormat": "TX"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Network transmit"
-    },
-    {
-      "id": 18,
-      "title": "Container Processes",
-      "type": "stat",
-      "gridPos": {
-        "h": 6,
-        "w": 5,
-        "x": 18,
-        "y": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 100
-              },
-              {
-                "color": "red",
-                "value": 500
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "sum(container_tasks_state{container!=\"\"})",
-          "refId": "A",
-          "legendFormat": "Processes"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Container processes"
-    },
-    {
       "id": 19,
       "title": "Security - Critical",
       "type": "stat",
@@ -1005,7 +674,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_critical",
+          "expr": "sum(velocore_security_critical)",
           "refId": "A",
           "legendFormat": "Critical"
         }
@@ -1054,7 +723,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_high",
+          "expr": "sum(velocore_security_high)",
           "refId": "A",
           "legendFormat": "High"
         }
@@ -1103,7 +772,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_medium",
+          "expr": "sum(velocore_security_medium)",
           "refId": "A",
           "legendFormat": "Medium"
         }
@@ -1152,7 +821,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_low",
+          "expr": "sum(velocore_security_low)",
           "refId": "A",
           "legendFormat": "Low"
         }
