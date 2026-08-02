@@ -8,11 +8,7 @@ class BuilderService {
       slot,
     );
 
-    plan.scaling = {
-      min: 1,
-      max: 5,
-      cpu: 70,
-    };
+    plan.scaling = null;
 
     plan.healthCheck = {
       path: node.type === "frontend" ? "/" : "/health",
