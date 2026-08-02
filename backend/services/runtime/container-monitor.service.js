@@ -70,22 +70,22 @@ class ContainerMonitor {
                         ] = network.split("/");
                         
                         metrics.containerNetworkRx
-                            .labels(name, name)
+                            .labels(id, name)
                             .set(parseSize(rx));
 
                         metrics.containerNetworkTx
-                            .labels(name, name)
+                            .labels(id, name)
                             .set(parseSize(tx));
 
                         metrics.containerPids
-                            .labels(name, name)
+                            .labels(id, name)
                             .set(Number(pids));
                         metrics.containerCpu
-                            .labels(name, name)
+                            .labels(id, name)
                             .set(cpuPercent);
 
                         metrics.containerMemory
-                            .labels(name, name)
+                            .labels(id, name)
                             .set(memory);
                     }
 

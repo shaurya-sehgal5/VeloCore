@@ -27,7 +27,7 @@ class RuntimeManager {
       health: "UNKNOWN",
       host: runtime.host,
       namespace: runtime.namespace || "default",
-     route: runtime.route,
+      route: runtime.route,
       startedAt: Date.now(),
       metrics: {
         cpu: "0%",
@@ -38,6 +38,49 @@ class RuntimeManager {
     });
 
     metrics.runtimeCount.set(this.runtimes.size);
+
+    metrics.deploymentStatus
+      .labels(
+        runtime.deploymentId,
+        project,
+        runtime.namespace
+      )
+      .set(1);
+
+    metrics.deploymentUptime
+      .labels(
+        runtime.deploymentId,
+        project,
+        runtime.namespace
+      )
+      .set(0);
+
+    metrics.deploymentRestarts
+      .labels(
+        runtime.deploymentId,
+        project,
+        runtime.namespace
+      )
+      .set(runtime.restartCount || 0);
+    metrics.containerCpu
+      .labels(runtime.deploymentId, project)
+      .set(0);
+
+    metrics.containerMemory
+      .labels(runtime.deploymentId, project)
+      .set(0);
+
+    metrics.containerNetworkRx
+      .labels(runtime.deploymentId, project)
+      .set(0);
+
+    metrics.containerNetworkTx
+      .labels(runtime.deploymentId, project)
+      .set(0);
+
+    metrics.containerPids
+      .labels(runtime.deploymentId, project)
+      .set(0);
   }
 
   /*

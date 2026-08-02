@@ -587,7 +587,7 @@
       },
       "targets": [
         {
-          "expr": "rate(velocore_build_duration_seconds_sum[5m])/rate(velocore_build_duration_seconds_count[5m])",
+          "expr": "velocore_build_duration",
           "refId": "A",
           "legendFormat": "Build"
         }
@@ -636,7 +636,7 @@
       },
       "targets": [
         {
-          "expr": "rate(velocore_runtime_startup_seconds_sum[5m])/rate(velocore_runtime_startup_seconds_count[5m])",
+          "expr": "last_over_time(velocore_runtime_startup_seconds_sum[1h])",
           "refId": "A",
           "legendFormat": "Startup"
         }
@@ -744,7 +744,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_security_score{project=\"$deployment\"}",
+          "expr": "vmax(velocore_security_score)",
           "refId": "A",
           "legendFormat": "Security"
         }
@@ -777,7 +777,7 @@
       },
       "targets": [
         {
-          "expr": "{deployment=~\".+\"}",
+          "expr": "{deployment=\"$deployment\"}",
           "refId": "A",
           "legendFormat": "Logs"
         }

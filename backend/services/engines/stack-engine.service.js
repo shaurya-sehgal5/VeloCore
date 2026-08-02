@@ -230,9 +230,27 @@ Register All Runtimes
           deployment.runtime
         );
 
-        runtimeManager.register(
-          deployment.runtime.runtime
-        );
+        const rt = deployment.runtime.runtime;
+
+        runtimeManager.register(rt);
+
+        metrics.deploymentStatus
+          .labels(
+            rt.deploymentId,
+            rt.project,
+            rt.namespace
+          )
+          .set(1);
+
+        metrics.deploymentUptime
+          .labels(
+            rt.deploymentId,
+            rt.project,
+            rt.namespace
+          )
+          .set(0);
+
+        metrics.runtimeCount.set(runtimeManager.list().length);
 
         await runtimeRegistry.register(
           deployment.runtime.runtime

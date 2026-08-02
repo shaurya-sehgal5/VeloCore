@@ -160,25 +160,40 @@ class RuntimeMonitorService {
 
           if (runtime.engine === "docker") {
             metrics.containerCpu
-              .labels(runtime.deploymentId, runtime.project)
+              .labels(
+                runtime.deploymentId,
+                runtime.project || runtime.name
+              )
               .set(parseFloat(stats.CPUPerc));
 
             metrics.containerPids
-              .labels(runtime.deploymentId, runtime.project)
+              .labels(
+                runtime.deploymentId,
+                runtime.project || runtime.name
+              )
               .set(parseInt(stats.PIDs));
 
             metrics.containerMemory
-              .labels(runtime.deploymentId, runtime.project)
+              .labels(
+                runtime.deploymentId,
+                runtime.project || runtime.name
+              )
               .set(memoryToBytes(stats.MemUsage));
 
             const [rx, tx] = stats.NetIO.split("/").map((v) => v.trim());
 
             metrics.containerNetworkRx
-              .labels(runtime.deploymentId, runtime.project)
+              .labels(
+                runtime.deploymentId,
+                runtime.project || runtime.name
+              )
               .set(networkToBytes(rx));
 
             metrics.containerNetworkTx
-              .labels(runtime.deploymentId, runtime.project)
+              .labels(
+                runtime.deploymentId,
+                runtime.project || runtime.name
+              )
               .set(networkToBytes(tx));
             metrics.deploymentStatus
               .labels(
