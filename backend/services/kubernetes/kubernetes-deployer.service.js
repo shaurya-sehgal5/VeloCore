@@ -6,7 +6,7 @@ const metrics = require("../monitoring/metrics.service");
 const helm = require("../helm/helm.service");
 const analyzer = require("./failure-analyzer.service");
 const config = require("../../config/env")
-const kubernetesMetrics = require("./kubernetes-metrics.service");
+const kubernetesMetrics = require("../monitoring/kubernetes-metrics.service");
 
 class KubernetesDeployer {
     async deploy({
