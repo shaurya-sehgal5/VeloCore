@@ -84,7 +84,7 @@ const containerNetworkRx = new client.Gauge({
 const securityScore = new client.Gauge({
   name: "velocore_security_score",
   help: "Security score",
-  labelNames: ["project"],
+  labelNames: ["deployment"],
 });
 
 const securityCritical = new client.Gauge({
@@ -129,6 +129,18 @@ const buildDuration = new client.Histogram({
   help: "Docker build duration",
   labelNames: ["project"],
   buckets: [1, 5, 10, 20, 30, 60, 120],
+});
+
+const deploymentDurationLatest = new client.Gauge({
+    name: "velocore_deployment_duration_latest_seconds",
+    help: "Latest deployment duration",
+    labelNames: ["deployment"]
+});
+
+const runtimeStartupLatest = new client.Gauge({
+    name: "velocore_runtime_startup_latest_seconds",
+    help: "Runtime startup",
+    labelNames: ["deployment"]
 });
 
 const securityDuration = new client.Histogram({

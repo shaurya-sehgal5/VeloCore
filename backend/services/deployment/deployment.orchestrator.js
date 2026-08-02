@@ -254,7 +254,9 @@ class DeploymentOrchestrator {
         `velocore-${deploymentId}`
       ).set(1);
 
-
+      metrics.deploymentDurationLatest
+        .labels(deploymentId)
+        .set(summary.totalTime);
       return {
         success: true,
 

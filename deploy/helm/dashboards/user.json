@@ -327,130 +327,6 @@
       "description": "Memory usage"
     },
     {
-      "id": 7,
-      "title": "Network RX",
-      "type": "timeseries",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 12,
-        "y": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          },
-          "unit": "bps"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "velocore_container_network_receive_bytes{deployment=\"$deployment\"}",
-          "refId": "A",
-          "legendFormat": "RX"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Network receive"
-    },
-    {
-      "id": 8,
-      "title": "Network TX",
-      "type": "timeseries",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 16,
-        "y": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          },
-          "unit": "bps"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "velocore_container_network_transmit_bytes{deployment=\"$deployment\"}",
-          "refId": "A",
-          "legendFormat": "TX"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
-      },
-      "description": "Network transmit"
-    },
-    {
       "id": 9,
       "title": "Running Processes",
       "type": "stat",
@@ -537,7 +413,7 @@
       },
       "targets": [
         {
-          "expr": "rate(velocore_deployment_duration_seconds_sum[5m])/rate(velocore_deployment_duration_seconds_count[5m])",
+          "expr": "velocore_deployment_duration_latest_seconds{deployment=\"$deployment\"}",
 
           "refId": "A",
           "legendFormat": "Duration"
@@ -587,7 +463,7 @@
       },
       "targets": [
         {
-          "expr": "velocore_build_duration",
+          "expr": "velocore_build_duration{deployment=\"$deployment\"}",
           "refId": "A",
           "legendFormat": "Build"
         }
@@ -636,7 +512,7 @@
       },
       "targets": [
         {
-          "expr": "last_over_time(velocore_runtime_startup_seconds_sum[1h])",
+          "expr": "velocore_runtime_startup_latest_seconds{deployment=\"$deployment\"}",
           "refId": "A",
           "legendFormat": "Startup"
         }
@@ -744,7 +620,7 @@
       },
       "targets": [
         {
-          "expr": "vmax(velocore_security_score)",
+          "expr": "velocore_security_score{deployment=\"$deployment\"}",
           "refId": "A",
           "legendFormat": "Security"
         }

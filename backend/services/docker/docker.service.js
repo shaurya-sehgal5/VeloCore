@@ -273,6 +273,9 @@ class DockerService {
         metrics.runtimeStartupDuration.observe(
           (Date.now() - started) / 1000
         );
+        metrics.runtimeStartupLatest
+    .labels(deploymentId)
+    .set((Date.now()-started)/1000);
         resolve({
           containerId,
           containerName,

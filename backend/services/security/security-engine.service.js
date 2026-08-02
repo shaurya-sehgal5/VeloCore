@@ -235,7 +235,7 @@ class SecurityEngine {
     );
 
     metrics.securityScore
-      .labels(graph.frontend?.name || "project")
+      .labels(deploymentId)
       .set(report.score);
 
     metrics.securityCritical
