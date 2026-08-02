@@ -267,6 +267,9 @@ class DockerService {
           "RUNTIME",
           "Application is now running."
         );
+        metrics.runtimeEvents
+          .labels("START")
+          .inc();
         metrics.runtimeStartupDuration.observe(
           (Date.now() - started) / 1000
         );

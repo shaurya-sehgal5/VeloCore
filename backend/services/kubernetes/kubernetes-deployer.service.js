@@ -109,23 +109,19 @@ class KubernetesDeployer {
             );
 
             metrics.containerCpu.labels(
-                buildPlan.projectName,
                 buildPlan.projectName
             ).set(info.cpu);
 
             metrics.containerMemory.labels(
-                buildPlan.projectName,
                 buildPlan.projectName
             ).set(info.memory);
 
             metrics.deploymentRestarts.labels(
                 buildPlan.projectName,
-                buildPlan.projectName,
                 buildPlan.namespace
             ).set(info.restarts);
 
             metrics.deploymentStatus.labels(
-                buildPlan.projectName,
                 buildPlan.projectName,
                 buildPlan.namespace
             ).set(1);

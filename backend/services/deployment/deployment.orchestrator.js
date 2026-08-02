@@ -235,7 +235,7 @@ class DeploymentOrchestrator {
         "Deployment completed successfully."
       );
 
-      metrics.runningDeployments.set(1);
+      metrics.runningDeployments.inc();
 
       timer({
         status: "RUNNING",
@@ -247,22 +247,14 @@ class DeploymentOrchestrator {
         deploymentId,
         `Build:${summary.buildTime}s | Deploy:${summary.deployTime}s | Total:${summary.totalTime}s | Status:${summary.status}`
       );
-      metrics.buildDuration
-        .labels(repository.name)
-        .observe(summary.buildTime);
+
       metrics.deploymentStatus.labels(
         deploymentId,
-        "unknown",
-        "unknown"
-      ).set(0);
-      metrics.deploymentUptime.labels(
-        deploymentId,
         repository.name,
-        `velocore-${repository.name}`
-      ).set(
-        Math.floor((Date.now() - started) / 1000)
-      );
-      metrics.runtimeCount.set(1);
+        `velocore-${deploymentId}`
+      ).set(1);
+
+
       return {
         success: true,
 
@@ -289,7 +281,7 @@ class DeploymentOrchestrator {
         deploymentId,
         error.message.includes("timed out") ? "TIMEOUT" : "FAILED",
       );
-      metrics.runningDeployments.set(0);
+      metrics.runningDeployments.dec();
       if (workspace) {
         await cleanupService.failed({
           workspace,
@@ -310,7 +302,6 @@ class DeploymentOrchestrator {
       timer({
         status: "FAILED",
       });
-      metrics.runtimeCount.set(0);
       throw error;
     }
   }

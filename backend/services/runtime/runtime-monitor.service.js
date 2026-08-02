@@ -70,7 +70,9 @@ class RuntimeMonitorService {
         "RUNTIME",
         `Container exited with code ${exitCode}`
       );
-
+      metrics.runtimeEvents
+        .labels("STOP")
+        .inc();
       runtimeManager.remove(deploymentId, project, slot);
       runtimeStatus.publish(deploymentId, {
         type: "runtime_exit",
@@ -106,6 +108,9 @@ class RuntimeMonitorService {
         "RUNTIME",
         err.message
       );
+      metrics.runtimeEvents
+        .labels("ERROR")
+        .inc();
     });
   }
 
@@ -239,7 +244,9 @@ class RuntimeMonitorService {
                   (Date.now() - runtime.startedAt) / 1000
                 )
               );
-
+            metrics.runtimeStartupDuration.observe(
+              Math.floor((Date.now() - runtime.startedAt) / 1000)
+            );
             deploymentMetrics.deploymentInfo
               .labels(
                 runtime.deploymentId,

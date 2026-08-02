@@ -10,13 +10,13 @@ class LiveMetrics {
 
             const data = await metrics.get(pod);
 
-             bus.publish(
-    events.POD_UPDATED,
-    pod
-);
-            
+            bus.publish(
+                events.POD_UPDATED,
+                pod
+            );
 
-        } catch {}
+
+        } catch { }
 
     }
 

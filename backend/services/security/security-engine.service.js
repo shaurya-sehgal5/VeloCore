@@ -17,7 +17,7 @@ class SecurityEngine {
       "SECURITY",
       "Security pipeline started."
     );
-
+    const started = Date.now();
     const securityStart = Date.now();
 
     const report = {
@@ -172,6 +172,11 @@ class SecurityEngine {
           "SECURITY",
           "Trivy scan completed."
         );
+        metrics.securityDuration
+          .labels("trivy")
+          .observe(
+            (Date.now() - started) / 1000
+          );
       } catch (err) {
         trivyStatus = "SKIPPED";
 

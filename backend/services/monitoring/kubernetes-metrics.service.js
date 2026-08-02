@@ -14,8 +14,22 @@ class KubernetesMetricsService {
           if (!err && stdout.trim()) {
             const top = stdout.trim().split(/\s+/);
 
-            cpu = parseInt(top[1]) || 0;
-            memory = parseInt(top[2]) || 0;
+            const cpuText = top[1];
+            const memText = top[2];
+
+            cpu =
+              cpuText.endsWith("m")
+                ? parseFloat(cpuText.replace("m", "")) / 10
+                : parseFloat(cpuText);
+
+            memory =
+              memText.endsWith("Ki")
+                ? parseFloat(memText) * 1024
+                : memText.endsWith("Mi")
+                  ? parseFloat(memText) * 1024 * 1024
+                  : memText.endsWith("Gi")
+                    ? parseFloat(memText) * 1024 * 1024 * 1024
+                    : parseFloat(memText);
           }
 
           exec(

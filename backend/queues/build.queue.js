@@ -29,7 +29,9 @@ const buildWorker = new Worker(
       io,
       env = {},
     } = job.data;
-
+    metrics.queueJobs
+      .labels("started")
+      .inc();
     console.log(`🚀 Processing Deployment ${deploymentId}`);
 
     metrics.deployments.inc({
@@ -56,24 +58,27 @@ const buildWorker = new Worker(
     ]);
 
   },
-
   {
     connection: redisConnection,
-
     concurrency: 1,
   },
 );
 
 buildWorker.on("completed", (job) => {
   console.log(`✅ Job ${job.id} completed`);
+  metrics.queueJobs
+    .labels("completed")
+    .inc();
 });
 
 buildWorker.on("failed", (job, err) => {
   console.error(
     `❌ Job ${job?.id} failed`,
-
     err.message,
   );
+  metrics.queueJobs
+    .labels("failed")
+    .inc();
 });
 
 module.exports = {
