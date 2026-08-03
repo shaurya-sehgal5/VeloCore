@@ -1,14 +1,27 @@
-import React, { useEffect, useRef } from "react";
 import StatusBadge from "./StatusBadge";
 import { MONO } from "../config";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export default function LogsTab({ status, logs, active }) {
   const endRef = useRef(null);
+  const [mode, setMode] = useState("normal");
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
+  const filteredLogs = useMemo(() => {
+    if (mode === "details") return logs;
 
+    return logs.filter((log) => {
+      return (
+        log.stage !== "KUBERNETES" &&
+        log.stage !== "DOCKER" &&
+        log.stage !== "NPM" &&
+        log.stage !== "HELM_STDOUT" &&
+        log.stage !== "KUBECTL_STDOUT"
+      );
+    });
+  }, [logs, mode]);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div
@@ -19,19 +32,59 @@ export default function LogsTab({ status, logs, active }) {
           marginBottom: "16px",
         }}
       >
-        <h3
+        <div
           style={{
-            margin: 0,
-            fontSize: "13px",
-            fontFamily: MONO,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            color: "#a1a1aa",
-            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
           }}
         >
-          Build & Runtime Logs
-        </h3>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "13px",
+              fontFamily: MONO,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "#a1a1aa",
+              fontWeight: 500,
+            }}
+          >
+            Build & Runtime Logs
+          </h3>
+
+          <button
+            onClick={() => setMode("normal")}
+            style={{
+              background: mode === "normal" ? "#3ecf8e" : "#161616",
+              color: mode === "normal" ? "#000" : "#d4d4d8",
+              border: "none",
+              borderRadius: 6,
+              padding: "4px 10px",
+              cursor: "pointer",
+              fontFamily: MONO,
+              fontSize: 11,
+            }}
+          >
+            Normal
+          </button>
+
+          <button
+            onClick={() => setMode("details")}
+            style={{
+              background: mode === "details" ? "#3ecf8e" : "#161616",
+              color: mode === "details" ? "#000" : "#d4d4d8",
+              border: "none",
+              borderRadius: 6,
+              padding: "4px 10px",
+              cursor: "pointer",
+              fontFamily: MONO,
+              fontSize: 11,
+            }}
+          >
+            Detailed
+          </button>
+        </div>
         <StatusBadge status={status} />
       </div>
 
@@ -58,7 +111,7 @@ export default function LogsTab({ status, logs, active }) {
             <span style={{ animation: "blink 1s step-start infinite" }}>▍</span>
           </div>
         ) : (
-          logs.map((log, index) => (
+          filteredLogs.map((log, index) => (
             <div
               key={index}
               style={{
@@ -66,9 +119,13 @@ export default function LogsTab({ status, logs, active }) {
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
                 color:
-                  log.toLowerCase().includes("error") || log.includes("❌")
+                  log.level === "ERROR"
                     ? "#f87171"
-                    : "#d4d4d8",
+                    : log.level === "SUCCESS"
+                      ? "#3ecf8e"
+                      : log.level === "WARNING"
+                        ? "#facc15"
+                        : "#d4d4d8",
               }}
             >
               <span
@@ -81,7 +138,33 @@ export default function LogsTab({ status, logs, active }) {
               >
                 {(index + 1).toString().padStart(2, "0")}
               </span>
-              {log}
+              <>
+                <span style={{ color: "#52525b" }}>[{log.timestamp}]</span>{" "}
+                <span
+                  style={{
+                    color: "#38bdf8",
+                    fontWeight: 600,
+                  }}
+                >
+                  [{log.stage}]
+                </span>{" "}
+                <span
+                  style={{
+                    color:
+                      log.level === "SUCCESS"
+                        ? "#3ecf8e"
+                        : log.level === "ERROR"
+                          ? "#f87171"
+                          : log.level === "WARNING"
+                            ? "#facc15"
+                            : "#60a5fa",
+                    fontWeight: 600,
+                  }}
+                >
+                  [{log.level}]
+                </span>{" "}
+                {log.message}
+              </>
             </div>
           ))
         )}

@@ -5,6 +5,7 @@ export const STATUS_META = {
   BUILDING: { fg: '#facc15', bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.35)', busy: true },
   DEPLOYING: { fg: '#facc15', bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.35)', busy: true },
   RUNNING: { fg: '#3ecf8e', bg: 'rgba(62,207,142,0.12)', border: 'rgba(62,207,142,0.4)', busy: false },
+  SUCCESS: { fg: '#3ecf8e', bg: 'rgba(62,207,142,0.12)', border: 'rgba(62,207,142,0.4)', busy: false },
   FAILED: { fg: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.4)', busy: false, terminal: true },
   STOPPED: { fg: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.3)', busy: false, terminal: true },
   IDLE: { fg: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.3)', busy: false },

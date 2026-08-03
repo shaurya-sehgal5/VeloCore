@@ -4,7 +4,7 @@ import OverviewTab from "./OverviewTab";
 import LogsTab from "./LogsTab";
 import MonitoringTab from "./MonitoringTab";
 import Modal from "./Modal";
-import HistoryTab from "./HistoryTab"
+import HistoryTab from "./HistoryTab";
 import useDeploymentRuntime from "../hooks/useDeploymentRuntime";
 import useEnvVars from "../hooks/useEnvVars";
 import { REDEPLOY_BASE, ACTION_BASE, SOCKET_URL, MONO } from "../config";
@@ -909,7 +909,7 @@ export default function DeploymentDetails({
           actionInProgress={actionInProgress}
         />
       )}
-      {tab === "logs" && <LokiLogsTab deploymentId={deployment.id} />}
+      {tab === "logs" && <LogsTab deploymentId={deployment.id} />}
 
       {tab === "monitoring" && <MonitoringTab metrics={metrics} />}
 

@@ -36,7 +36,8 @@ class KubernetesLogService {
         deploymentId,
         "KUBERNETES",
         "INFO",
-        line
+        line,
+        true
       );
       socket.broadcast("k8s:logs", {
         deploymentId,
@@ -56,7 +57,8 @@ class KubernetesLogService {
         deploymentId,
         "KUBERNETES",
         "ERROR",
-        line
+        line,
+        true
       );
       socket.broadcast("k8s:logs", {
         deploymentId,
@@ -65,7 +67,7 @@ class KubernetesLogService {
     });
 
     stream.on("close", (code) => {
-     
+
     });
 
     return stream;

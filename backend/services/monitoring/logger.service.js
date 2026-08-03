@@ -37,12 +37,13 @@ class LoggerService {
     });
   }
 
-  create(level, stage, message) {
+  create(level, stage, message, details = false) {
     return {
       timestamp: this.timestamp(),
       level,
       stage,
       message,
+      details,
     };
   }
 
@@ -52,8 +53,19 @@ class LoggerService {
     );
   }
 
-  async live(deploymentId, stage, level, message) {
-    const log = this.create(level, stage, message);
+  async live(
+    deploymentId,
+    stage,
+    level,
+    message,
+    details = false
+  ) {
+    const log = this.create(
+      level,
+      stage,
+      message,
+      details
+    );
 
     this.console(log);
 

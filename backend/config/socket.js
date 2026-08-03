@@ -15,7 +15,7 @@ const initSocket = (server) => {
     console.log(`📡 [WebSocket Connection]: Client browser attached with socket ID: ${socket.id}`);
 
     socket.on('join-deployment-stream', (deploymentId) => {
-       console.log("JOIN ROOM:", deploymentId);
+      console.log("JOIN ROOM:", deploymentId);
       socket.join(deploymentId);
       console.log(`🚪 [WebSocket Room]: Socket ${socket.id} safely entered workspace room: ${deploymentId}`);
     });

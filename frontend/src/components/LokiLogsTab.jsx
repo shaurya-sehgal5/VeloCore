@@ -142,7 +142,10 @@ export default function LokiLogsTab({ deploymentId }) {
   const [level, setLevel] = useState("ALL");
 
   useEffect(() => {
-    if (deploymentId) load();
+    if (!deploymentId) return;
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
   }, [deploymentId]);
 
   async function load() {
@@ -201,7 +204,23 @@ export default function LokiLogsTab({ deploymentId }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
         <LevelSelect value={level} onChange={(e) => setLevel(e.target.value)} />
+
+        <button
+          onClick={load}
+          style={{
+            background: "#161616",
+            color: "#3ecf8e",
+            border: "1px solid rgba(62,207,142,.2)",
+            borderRadius: 8,
+            padding: "8px 14px",
+            cursor: "pointer",
+            fontFamily: MONO,
+          }}
+        >
+          Refresh
+        </button>
       </div>
 
       <div

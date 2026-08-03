@@ -67,7 +67,7 @@ function App() {
   };
 
   const handleGitHubLogin = () => {
-   const clientId = CONFIG.GITHUB_CLIENT_ID;
+    const clientId = CONFIG.GITHUB_CLIENT_ID;
     if (!clientId) {
       setError("Configuration error: VITE_GITHUB_CLIENT_ID is unmapped.");
       return;
