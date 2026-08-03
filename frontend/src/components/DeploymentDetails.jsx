@@ -909,7 +909,9 @@ export default function DeploymentDetails({
           actionInProgress={actionInProgress}
         />
       )}
-      {tab === "logs" && <LogsTab deploymentId={deployment.id} />}
+      {tab === "logs" && (
+        <LogsTab status={deployment.status} logs={[]} active={false} />
+      )}
 
       {tab === "monitoring" && <MonitoringTab metrics={metrics} />}
 
