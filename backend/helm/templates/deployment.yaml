@@ -27,6 +27,10 @@ spec:
 
           imagePullPolicy: IfNotPresent
 
+          envFrom:
+            - configMapRef:
+              name: {{ .Values.deploymentId }}-config
+
           ports:
             - containerPort: {{ .Values.container.port }}
 

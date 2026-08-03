@@ -22,6 +22,15 @@ class HelmService {
             "Generating Helm values..."
         );
 
+        const env = {};
+
+        if (buildPlan.type === "backend") {
+            env.PORT = String(buildPlan.containerPort);
+            env.NODE_ENV = "production";
+        } else if (buildPlan.type === "frontend") {
+            env.NODE_ENV = "production";
+        }
+
         const values = `
 deploymentId: ${buildPlan.projectName}
 
@@ -44,10 +53,13 @@ ingress:
   className: traefik
   host: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}
 
+env:
+${Object.entries(env)
+                .map(([key, value]) => `  ${key}: "${value}"`)
+                .join("\n")}
+
 resources: {}
-
-        `;
-
+`;
         await fs.writeFile(valuesPath, values);
 
         await logger.info(
@@ -59,7 +71,7 @@ resources: {}
         return this.execute([
             "upgrade",
             "--install",
-           `${buildPlan.projectName}-${deploymentId.substring(0,8)}`,
+            `${buildPlan.projectName}-${deploymentId.substring(0, 8)}`,
             path.join(__dirname, "../../helm"),
             "-f",
             valuesPath,
