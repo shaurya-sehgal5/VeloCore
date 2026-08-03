@@ -132,15 +132,15 @@ const buildDuration = new client.Histogram({
 });
 
 const deploymentDurationLatest = new client.Gauge({
-    name: "velocore_deployment_duration_latest_seconds",
-    help: "Latest deployment duration",
-    labelNames: ["deployment"]
+  name: "velocore_deployment_duration_latest_seconds",
+  help: "Latest deployment duration",
+  labelNames: ["deployment"]
 });
 
 const runtimeStartupLatest = new client.Gauge({
-    name: "velocore_runtime_startup_latest_seconds",
-    help: "Runtime startup",
-    labelNames: ["deployment"]
+  name: "velocore_runtime_startup_latest_seconds",
+  help: "Runtime startup",
+  labelNames: ["deployment"]
 });
 
 const securityDuration = new client.Histogram({
@@ -221,7 +221,11 @@ module.exports = {
   buildDuration,
 
   deploymentStatus,
-  
+
+  deploymentDurationLatest,
+
+  runtimeStartupLatest,
+
   deploymentUptime,
 
   deploymentRestarts,

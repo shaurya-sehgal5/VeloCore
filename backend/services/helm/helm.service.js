@@ -13,7 +13,7 @@ class HelmService {
 
         const valuesPath = path.join(
             __dirname,
-            "../../helm/values.generated.yaml"
+            `../../helm/${buildPlan.projectName}-${deploymentId}.values.yaml`
         );
 
         await logger.info(
@@ -42,7 +42,7 @@ service:
 ingress:
   enabled: true
   className: traefik
-  host: ${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}
+  host: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}
 
 resources: {}
 
@@ -59,7 +59,7 @@ resources: {}
         return this.execute([
             "upgrade",
             "--install",
-            deploymentId,
+           `${buildPlan.projectName}-${deploymentId.substring(0,8)}`,
             path.join(__dirname, "../../helm"),
             "-f",
             valuesPath,

@@ -166,6 +166,7 @@ class KubernetesDeployer {
                     );
                 }
             });
+            const host = `${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
             return {
 
@@ -175,10 +176,7 @@ class KubernetesDeployer {
 
                 engine: "kubernetes",
 
-                url:
-                    buildPlan.type === "backend"
-                        ? `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}/api`
-                        : `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+                url: `http://${host}`,
 
                 runtime: {
 
@@ -190,10 +188,7 @@ class KubernetesDeployer {
 
                     type: buildPlan.type,
 
-                    route:
-                        buildPlan.type === "backend"
-                            ? `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}/api`
-                            : `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+                    route: `http://${host}`,
 
                     framework: buildPlan.framework,
 
