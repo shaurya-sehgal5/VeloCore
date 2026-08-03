@@ -192,8 +192,7 @@ class DeploymentOrchestrator {
         `Workers : ${graph.workers.length}`
       );
       startStage("Deployment");
-      await stackEngine.deploy({
-
+      const deployments = await stackEngine.deploy({
         graph,
         deploymentId,
         workspace,
@@ -257,14 +256,20 @@ class DeploymentOrchestrator {
       metrics.deploymentDurationLatest
         .labels(deploymentId)
         .set(summary.totalTime);
+      const frontend = deployments.find(
+        d => d.runtime.runtime.type === "frontend"
+      );
+
+      const backend = deployments.find(
+        d => d.runtime.runtime.type === "backend"
+      );
       return {
         success: true,
-
         deploymentId,
-
         graph,
-
-        url: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+        frontendUrl: frontend?.runtime?.url,
+        backendUrl: backend?.runtime?.url,
+        deployments,
       };
     } catch (error) {
       await logger.error(

@@ -9,10 +9,11 @@ const trivyService = require("../security/scanners/trivy.service");
 const securityGate = require("../security/security-gate.service");
 const logger = require("../monitoring/logger.service");
 const deploymentEvents = require("../deployment/deployment-event.service");
-const statusService = require("../monitoring/status.service")
+const statusService = require("../monitoring/status.service");
 const runtimeRegistry = require("../runtime/runtime-registry.service");
 const runtimeManager = require("../runtime/runtime-manager.service");
-const config = require("../../config/env")
+const config = require("../../config/env");
+const metrics = require("../monitoring/metrics");
 
 class StackEngine {
   async deploy({

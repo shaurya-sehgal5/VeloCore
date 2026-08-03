@@ -109,23 +109,23 @@ class KubernetesDeployer {
             );
 
             metrics.containerCpu.labels(
-                 deploymentId,
+                deploymentId,
                 buildPlan.projectName
             ).set(info.cpu);
 
             metrics.containerMemory.labels(
-                 deploymentId,
+                deploymentId,
                 buildPlan.projectName
             ).set(info.memory);
 
             metrics.deploymentRestarts.labels(
-                 deploymentId,
+                deploymentId,
                 buildPlan.projectName,
                 buildPlan.namespace
             ).set(info.restarts);
 
             metrics.deploymentStatus.labels(
-                 deploymentId,
+                deploymentId,
                 buildPlan.projectName,
                 buildPlan.namespace
             ).set(1);
@@ -175,7 +175,10 @@ class KubernetesDeployer {
 
                 engine: "kubernetes",
 
-                url: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+                url:
+                    buildPlan.type === "backend"
+                        ? `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}/api`
+                        : `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
 
                 runtime: {
 
@@ -187,7 +190,10 @@ class KubernetesDeployer {
 
                     type: buildPlan.type,
 
-                    route: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+                    route:
+                        buildPlan.type === "backend"
+                            ? `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}/api`
+                            : `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
 
                     framework: buildPlan.framework,
 
