@@ -29,10 +29,10 @@ spec:
 
           envFrom:
             - configMapRef:
-              name: {{ .Values.deploymentId }}-config
+                name: {{ .Values.deploymentId }}-config
 
           ports:
             - containerPort: {{ .Values.container.port }}
 
           resources:
-{{ toYaml .Values.resources | indent 12 }}
+{{- toYaml .Values.resources | nindent 12 }}
