@@ -21,7 +21,7 @@ export const DOCKER_DASHBOARD_URL =
   import.meta.env.VITE_DOCKER_DASHBOARD_URL || "http://localhost:3500";
 
 export const KUBERNETES_DASHBOARD_URL =
-  import.meta.env.VITE_KUBERNETES_DASHBOARD_URL || "http://localhost:3600";
+  import.meta.env.VITE_KUBERNETES_DASHBOARD_URL || "http://3.108.30.16:30030";
 
 export const GITHUB_CLIENT_ID =
   import.meta.env.VITE_GITHUB_CLIENT_ID;

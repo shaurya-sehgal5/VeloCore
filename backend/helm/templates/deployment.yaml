@@ -22,9 +22,7 @@ spec:
     spec:
       containers:
         - name: app
-
           image: {{ .Values.image.repository | quote }}
-
           imagePullPolicy: IfNotPresent
 
           envFrom:
@@ -33,6 +31,24 @@ spec:
 
           ports:
             - containerPort: {{ .Values.container.port }}
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.container.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.container.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
 
           resources:
 {{- toYaml .Values.resources | nindent 12 }}
