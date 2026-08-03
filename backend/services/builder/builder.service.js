@@ -37,7 +37,7 @@ class BuilderService {
       scaling: {
         min: 1,
         max: 5,
-        cpu: 70,
+        cpu: 300,
       },
 
       healthCheck: {
