@@ -239,12 +239,12 @@ class DeploymentOrchestrator {
       timer({
         status: "RUNNING",
       });
-      summary.totalTime =
-        ((Date.now() - started) / 1000).toFixed(1);
+
+      summary.totalTime = (Date.now() - started) / 1000;
 
       await logger.summary(
         deploymentId,
-        `Build:${summary.buildTime}s | Deploy:${summary.deployTime}s | Total:${summary.totalTime}s | Status:${summary.status}`
+        `Build:${summary.buildTime.toFixed(1)}s | Deploy:${summary.deployTime.toFixed(1)}s | Total:${summary.totalTime.toFixed(1)}s | Status:${summary.status}`
       );
 
       metrics.deploymentStatus.labels(

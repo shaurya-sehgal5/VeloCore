@@ -11,12 +11,12 @@ class BuilderService {
 
     const repository = config.DOCKER_REPOSITORY || "velocore-runtime";
 
-    const imageName = `${DOCKER_NAMESPACE}/${repository}:${imageTag}-${slot}`;
+    const imageName = `${DOCKER_NAMESPACE}/${repository}:${projectName}-${imageTag}-${slot}`;
 
     const common = {
       projectName,
       imageName,
-      containerName: `runtime-${projectName}-${slot}`,
+      containerName: `${projectName}-${deploymentId.substring(0, 8)}-${slot}`,
       containerPort: project.containerPort,
       startCommand: project.startCommand,
       framework: project.framework,
