@@ -13,7 +13,7 @@ const statusService = require("../monitoring/status.service");
 const runtimeRegistry = require("../runtime/runtime-registry.service");
 const runtimeManager = require("../runtime/runtime-manager.service");
 const config = require("../../config/env");
-const metrics = require("../monitoring/metrics");
+const metrics = require("../monitoring/metrics.service")
 
 class StackEngine {
   async deploy({
