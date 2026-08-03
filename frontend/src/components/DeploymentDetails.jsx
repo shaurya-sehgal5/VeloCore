@@ -10,6 +10,7 @@ import useEnvVars from "../hooks/useEnvVars";
 import { REDEPLOY_BASE, ACTION_BASE, SOCKET_URL, MONO } from "../config";
 import { getStatusStyle } from "../statusMeta";
 import LokiLogsTab from "./LokiLogsTab";
+
 const backBtnStyle = {
   fontFamily: MONO,
   fontSize: "12.5px",

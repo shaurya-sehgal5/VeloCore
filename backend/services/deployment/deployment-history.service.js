@@ -5,14 +5,16 @@ class DeploymentHistoryService {
     const { rows } = await db.query(
       `
       SELECT
-        id,
-        branch,
-        commit_sha,
-        commit_message,
-        commit_author,
-        status,
-        created_at
-      FROM deployments
+    id,
+    branch,
+    commit_sha,
+    commit_message,
+    commit_author,
+    status,
+    created_at,
+    updated_at,
+    EXTRACT(EPOCH FROM (updated_at-created_at)) AS duration
+    FROM deployments
       WHERE project_id = (
         SELECT project_id
         FROM deployments

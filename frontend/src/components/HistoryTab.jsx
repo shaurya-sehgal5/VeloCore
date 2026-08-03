@@ -11,7 +11,11 @@ const sectionLabelStyle = {
   fontWeight: 500,
 };
 
-const mutedTextStyle = { color: "#52525b", fontSize: "13.5px", fontFamily: MONO };
+const mutedTextStyle = {
+  color: "#52525b",
+  fontSize: "13.5px",
+  fontFamily: MONO,
+};
 
 const cardStyle = {
   padding: "14px",
@@ -56,16 +60,69 @@ export default function HistoryTab({ deploymentId }) {
   return (
     <div>
       <div style={sectionLabelStyle}>
-        Deployment History <span style={{ color: "#3ecf8e" }}>({rows.length})</span>
+        Deployment History{" "}
+        <span style={{ color: "#3ecf8e" }}>({rows.length})</span>
       </div>
 
       {rows.length === 0 ? (
         <p style={mutedTextStyle}>$ no revision history reported yet.</p>
       ) : (
-        rows.map((r) => (
-          <div key={r.revision} style={cardStyle}>
-            <span style={revisionBadgeStyle}>Revision {r.revision}</span>
-            <p style={{ fontSize: "13px", color: "#d4d4d8", margin: 0, lineHeight: 1.5 }}>{r.changeCause}</p>
+        rows.map((r, index) => (
+          <div key={r.id} style={cardStyle}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <span style={revisionBadgeStyle}>
+                Revision #{rows.length - index}
+              </span>
+
+              <span
+                style={{
+                  color: r.status === "SUCCESS" ? "#3ecf8e" : "#ef4444",
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {r.status}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "120px 1fr",
+                rowGap: 8,
+                columnGap: 20,
+                fontSize: 13,
+              }}
+            >
+              <span style={{ color: "#71717a" }}>Branch</span>
+              <span>{r.branch}</span>
+
+              <span style={{ color: "#71717a" }}>Commit</span>
+              <span
+                style={{
+                  fontFamily: MONO,
+                  color: "#38bdf8",
+                }}
+              >
+                {r.commit_sha?.substring(0, 8)}
+              </span>
+
+              <span style={{ color: "#71717a" }}>Author</span>
+              <span>{r.commit_author}</span>
+
+              <span style={{ color: "#71717a" }}>Message</span>
+              <span>{r.commit_message}</span>
+
+              <span style={{ color: "#71717a" }}>Created</span>
+              <span>{new Date(r.created_at).toLocaleString()}</span>
+            </div>
           </div>
         ))
       )}
