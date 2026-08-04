@@ -1,14 +1,6 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { KUBERNETES_DASHBOARD_URL } from "../config";
 import { MONO } from "../config";
-
-const wrapStyle = {
-  borderRadius: "14px",
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.025)",
-  backdropFilter: "blur(12px)",
-  overflow: "hidden",
-};
 
 const headerStyle = {
   display: "flex",
@@ -18,6 +10,7 @@ const headerStyle = {
   padding: "14px 18px",
   borderBottom: "1px solid rgba(255,255,255,0.08)",
   flexWrap: "wrap",
+  flexShrink: 0,
 };
 
 const eyebrowStyle = {
@@ -65,40 +58,6 @@ function RefreshIcon() {
   );
 }
 
-function ExpandIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-    </svg>
-  );
-}
-
-function CollapseIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
-    </svg>
-  );
-}
-
 function ExternalLinkIcon() {
   return (
     <svg
@@ -121,8 +80,6 @@ function ExternalLinkIcon() {
 export default function GrafanaViewer() {
   const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [expanded, setExpanded] = useState(false);
-  const wrapRef = useRef(null);
 
   const src = `${KUBERNETES_DASHBOARD_URL}&kiosk=tv&theme=dark`;
 
@@ -133,13 +90,13 @@ export default function GrafanaViewer() {
 
   return (
     <div
-      ref={wrapRef}
       style={{
-        ...wrapStyle,
-        position: expanded ? "fixed" : "relative",
-        inset: expanded ? "20px" : "auto",
-        zIndex: expanded ? 200 : "auto",
-        boxShadow: expanded ? "0 30px 80px -20px rgba(0,0,0,0.7)" : "none",
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        flexDirection: "column",
+        background: "#08090a",
       }}
     >
       <div style={headerStyle}>
@@ -198,21 +155,6 @@ export default function GrafanaViewer() {
           >
             <ExternalLinkIcon />
           </a>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            title={expanded ? "Exit fullscreen" : "Expand"}
-            style={iconBtnStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#fafafa";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#a1a1aa";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-            }}
-          >
-            {expanded ? <CollapseIcon /> : <ExpandIcon />}
-          </button>
         </div>
       </div>
 
@@ -220,7 +162,8 @@ export default function GrafanaViewer() {
         style={{
           position: "relative",
           width: "100%",
-          height: expanded ? "calc(100% - 59px)" : "80vh",
+          flex: 1,
+          minHeight: 0,
           background: "#0b0c0d",
         }}
       >
