@@ -50,7 +50,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Currently running deployments"
     },
@@ -95,7 +95,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Active runtime instances"
     },
@@ -144,7 +144,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Jobs waiting in queue"
     },
@@ -193,7 +193,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Currently active queue jobs"
     },
@@ -242,7 +242,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Delayed queue jobs"
     },
@@ -287,7 +287,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Deployment success rate"
     },
@@ -332,7 +332,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Failed deployments"
     },
@@ -381,7 +381,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Overall security score",
       "options": {
@@ -440,7 +440,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "95th percentile deployment duration"
     },
@@ -489,7 +489,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Average build duration"
     },
@@ -538,7 +538,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Runtime startup time"
     },
@@ -587,7 +587,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Security scan duration"
     },
@@ -636,7 +636,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Rollout duration"
     },
@@ -681,7 +681,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Critical security vulnerabilities"
     },
@@ -730,7 +730,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "High severity vulnerabilities"
     },
@@ -779,7 +779,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Medium severity vulnerabilities"
     },
@@ -828,7 +828,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Low severity vulnerabilities"
     },
@@ -907,7 +907,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Node CPU usage"
     },
@@ -986,7 +986,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Node memory usage"
     },
@@ -1065,7 +1065,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Node disk usage"
     },
@@ -1114,7 +1114,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Redis memory usage"
     },
@@ -1163,7 +1163,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Redis connected clients"
     },
@@ -1212,7 +1212,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Postgres active connections"
     },
@@ -1261,7 +1261,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Postgres transactions per second"
     },
@@ -1321,7 +1321,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Frontend availability"
     },
@@ -1381,7 +1381,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Backend availability"
     },
@@ -1430,7 +1430,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "HTTP response status"
     },
@@ -1479,7 +1479,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Response latency"
     },

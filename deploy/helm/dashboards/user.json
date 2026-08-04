@@ -66,7 +66,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Current deployment status"
     },
@@ -115,7 +115,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Total deployment uptime"
     },
@@ -164,7 +164,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Total deployment restarts"
     },
@@ -243,7 +243,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "CPU usage percentage"
     },
@@ -322,7 +322,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Memory usage"
     },
@@ -371,7 +371,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Number of running processes"
     },
@@ -421,7 +421,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Deployment duration"
     },
@@ -470,7 +470,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Build duration"
     },
@@ -519,7 +519,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Runtime startup time"
     },
@@ -568,7 +568,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Deployment availability",
       "options": {
@@ -627,7 +627,7 @@
       ],
       "datasource": {
         "type": "prometheus",
-        "uid": "bftwe85msrpxcd"
+        "uid": "cfu6k2vm87gn4c"
       },
       "description": "Security score",
       "options": {
