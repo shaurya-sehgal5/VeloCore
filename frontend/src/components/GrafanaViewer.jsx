@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { KUBERNETES_DASHBOARD_URL } from "../config";
 import { MONO } from "../config";
 
@@ -77,23 +78,54 @@ function ExternalLinkIcon() {
   );
 }
 
-export default function GrafanaViewer() {
+function CloseIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+export default function GrafanaViewer({
+  deploymentId,
+  deploymentName,
+  onClose,
+}) {
   const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const src = `${KUBERNETES_DASHBOARD_URL}&kiosk=tv&theme=dark`;
+  // The Grafana dashboard has a "deployment" template variable — without it,
+  // every panel query resolves against nothing and shows "No data".
+  const varValue = deploymentName || deploymentId;
+  const src = `${KUBERNETES_DASHBOARD_URL}?orgId=1${
+    varValue ? `&var-deployment=${encodeURIComponent(varValue)}` : ""
+  }&kiosk=tv&theme=dark`;
 
   const handleRefresh = useCallback(() => {
     setLoaded(false);
     setReloadKey((k) => k + 1);
   }, []);
 
-  return (
+  const viewer = (
     <div
       style={{
         position: "fixed",
-        inset: 0,
-        zIndex: 100,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 9999,
         display: "flex",
         flexDirection: "column",
         background: "#08090a",
@@ -119,6 +151,7 @@ export default function GrafanaViewer() {
           Grafana{" "}
           <span style={{ color: "#52525b", fontWeight: 400 }}>
             // kubernetes monitoring
+            {varValue ? ` // ${varValue}` : ""}
           </span>
         </div>
 
@@ -155,6 +188,23 @@ export default function GrafanaViewer() {
           >
             <ExternalLinkIcon />
           </a>
+          {onClose && (
+            <button
+              onClick={onClose}
+              title="Close"
+              style={iconBtnStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#f87171";
+                e.currentTarget.style.borderColor = "rgba(248,113,113,0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#a1a1aa";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+              }}
+            >
+              <CloseIcon />
+            </button>
+          )}
         </div>
       </div>
 
@@ -220,4 +270,6 @@ export default function GrafanaViewer() {
       `}</style>
     </div>
   );
+
+  return createPortal(viewer, document.body);
 }
