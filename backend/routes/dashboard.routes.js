@@ -10,15 +10,47 @@ router.get('/analytics-list', secureShield, async (req, res) => {
     const userId = req.user.userId;
     const result = await db.query(
       `
-  SELECT DISTINCT ON (d.project_id)
-      d.*,
-      COALESCE(p.name, d.repo_name) AS project_name
-  FROM deployments d
-  LEFT JOIN projects p
-      ON d.project_id = p.id
-  WHERE d.user_id = $1
-  ORDER BY d.project_id, d.created_at DESC
-  `,
+ SELECT DISTINCT ON (d.project_id)
+
+    d.*,
+
+    COALESCE(p.name,d.repo_name) AS project_name,
+
+    ds.framework,
+
+    ds.engine,
+
+    ds.image_name,
+
+    ds.namespace,
+
+    ds.slot,
+
+    ds.route,
+
+    ds.container_name,
+
+    ds.deployment_name,
+
+    ds.service_name
+    FROM deployments d
+    LEFT JOIN projects p
+    ON d.project_id = p.id
+    LEFT JOIN LATERAL (
+    SELECT *
+    FROM deployment_services
+    WHERE deployment_id = d.id
+    ORDER BY
+      CASE
+        WHEN type='backend' THEN 1
+        WHEN type='worker' THEN 2
+        ELSE 3
+      END
+    LIMIT 1
+    ) ds ON true
+    WHERE d.user_id = $1
+    ORDER BY d.project_id, d.created_at DESC
+    `,
       [userId]
     );
 

@@ -53,6 +53,51 @@ const actionBtnStyle = (color) => ({
   borderRadius: "7px",
   cursor: "pointer",
 });
+const serviceCardStyle = {
+  padding: "14px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.06)",
+  backgroundColor: "rgba(255,255,255,0.02)",
+  marginBottom: "10px",
+};
+const serviceDetailGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+  gap: "6px 16px",
+  margin: "10px 0",
+  padding: "10px",
+  borderRadius: "8px",
+  backgroundColor: "rgba(255,255,255,0.015)",
+  border: "1px solid rgba(255,255,255,0.05)",
+};
+const serviceDetailRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: "12px",
+  fontFamily: MONO,
+  gap: "8px",
+};
+const serviceDetailLabelStyle = {
+  color: "#52525b",
+  flexShrink: 0,
+};
+const serviceDetailValueStyle = {
+  color: "#d4d4d8",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const linkBtnStyle = {
+  fontFamily: MONO,
+  fontSize: "11.5px",
+  fontWeight: 600,
+  color: "#38bdf8",
+  backgroundColor: "rgba(56,189,248,0.1)",
+  border: "1px solid rgba(56,189,248,0.35)",
+  padding: "6px 12px",
+  borderRadius: "7px",
+  cursor: "pointer",
+};
 
 function InfoRow({ label, value }) {
   return (
@@ -68,6 +113,21 @@ function InfoRow({ label, value }) {
       <span style={{ fontFamily: MONO, color: "#e4e4e7" }}>{value ?? "—"}</span>
     </div>
   );
+}
+
+function ServiceDetailRow({ label, value }) {
+  return (
+    <div style={serviceDetailRowStyle}>
+      <span style={serviceDetailLabelStyle}>{label}</span>
+      <span style={serviceDetailValueStyle} title={value ?? undefined}>
+        {value ?? "—"}
+      </span>
+    </div>
+  );
+}
+
+function copyToClipboard(text) {
+  if (text) navigator.clipboard.writeText(text);
 }
 
 export default function OverviewTab({
@@ -123,13 +183,92 @@ export default function OverviewTab({
         ) : services.length === 0 ? (
           <EmptyState message="no services reported for this deployment yet." />
         ) : (
-          <div style={cardShellStyle}>
+          <div>
             {services.map((service, i) => (
-              <ServiceRow
-                key={`${service.name}-${i}`}
-                service={service}
-                isLast={i === services.length - 1}
-              />
+              <div key={`${service.name}-${i}`} style={serviceCardStyle}>
+                <ServiceRow service={service} isLast />
+
+                <div style={serviceDetailGridStyle}>
+                  <ServiceDetailRow
+                    label="Framework"
+                    value={service.framework}
+                  />
+                  <ServiceDetailRow
+                    label="Engine"
+                    value={
+                      runtimeEngine === "kubernetes" ? "Kubernetes" : "Docker"
+                    }
+                  />
+                  <ServiceDetailRow
+                    label="Namespace"
+                    value={service.namespace}
+                  />
+                  <ServiceDetailRow
+                    label="Deployment"
+                    value={service.deployment_name}
+                  />
+                  <ServiceDetailRow
+                    label="Service"
+                    value={service.service_name}
+                  />
+                  <ServiceDetailRow
+                    label="Container"
+                    value={service.container_name}
+                  />
+                  <ServiceDetailRow label="Image" value={service.image} />
+                  <ServiceDetailRow label="Slot" value={service.slot} />
+                  <ServiceDetailRow label="Port" value={service.port} />
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button
+                    onClick={() =>
+                      service.url && window.open(service.url, "_blank")
+                    }
+                    disabled={!service.url}
+                    style={{
+                      ...linkBtnStyle,
+                      opacity: service.url ? 1 : 0.4,
+                      cursor: service.url ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(service.url)}
+                    disabled={!service.url}
+                    style={{
+                      ...linkBtnStyle,
+                      opacity: service.url ? 1 : 0.4,
+                      cursor: service.url ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Copy URL
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(service.image)}
+                    disabled={!service.image}
+                    style={{
+                      ...linkBtnStyle,
+                      opacity: service.image ? 1 : 0.4,
+                      cursor: service.image ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Copy Image
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(service.namespace)}
+                    disabled={!service.namespace}
+                    style={{
+                      ...linkBtnStyle,
+                      opacity: service.namespace ? 1 : 0.4,
+                      cursor: service.namespace ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Copy Namespace
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}

@@ -1,4 +1,6 @@
 import React from "react";
+import GrafanaViewer from "./GrafanaViewer";
+
 import {
   KUBERNETES_DASHBOARD_URL,
   DOCKER_DASHBOARD_URL,
@@ -106,27 +108,7 @@ export default function MonitoringTab() {
       </p>
 
       <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
-        <DashboardLinkCard
-          href={KUBERNETES_DASHBOARD_URL}
-          accent="#38bdf8"
-          title="Grafana Dashboard"
-          subtitle="Pods, nodes & cluster metrics"
-          icon={
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#38bdf8"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2l8 4v8l-8 8-8-8V6z" />
-              <path d="M12 2v20M4 6l8 5 8-5M4 14l8-4 8 4" />
-            </svg>
-          }
-        />
+       <GrafanaViewer />
       </div>
     </div>
   );

@@ -43,6 +43,22 @@ const deleteBtnStyle = (busy) => ({
   cursor: busy ? "not-allowed" : "pointer",
   opacity: busy ? 0.5 : 1,
 });
+const metaRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: "11.5px",
+  fontFamily: MONO,
+};
+const metaLabelStyle = {
+  color: "#52525b",
+};
+const metaValueStyle = {
+  color: "#d4d4d8",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  maxWidth: "160px",
+};
 
 export default function DeploymentTable({
   deployments,
@@ -111,40 +127,64 @@ export default function DeploymentTable({
                 </span>
                 <StatusBadge status={dep.status} />
               </div>
+
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  flexDirection: "column",
+                  gap: "4px",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(255,255,255,0.015)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <div style={metaRowStyle}>
+                  <span style={metaLabelStyle}>Framework</span>
+                  <span style={metaValueStyle} title={dep.framework}>
+                    {dep.framework || "—"}
+                  </span>
+                </div>
+                <div style={metaRowStyle}>
+                  <span style={metaLabelStyle}>Runtime</span>
+                  <span style={metaValueStyle}>
+                    {dep.runtime === "kubernetes" ? "Kubernetes" : "Docker"}
+                  </span>
+                </div>
+                <div style={metaRowStyle}>
+                  <span style={metaLabelStyle}>Created</span>
+                  <span style={metaValueStyle}>
+                    {dep.created_at
+                      ? new Date(dep.created_at).toLocaleString()
+                      : "—"}
+                  </span>
+                </div>
+                <div style={metaRowStyle}>
+                  <span style={metaLabelStyle}>Status</span>
+                  <span style={metaValueStyle}>{dep.status || "—"}</span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
                   gap: "8px",
                 }}
               >
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "#52525b",
-                    fontFamily: MONO,
-                  }}
+                <button
+                  onClick={() => onOpenDetails(dep)}
+                  style={detailsBtnStyle}
                 >
-                  {dep.created_at
-                    ? new Date(dep.created_at).toLocaleString()
-                    : ""}
-                </span>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    onClick={() => onOpenDetails(dep)}
-                    style={detailsBtnStyle}
-                  >
-                    Details
-                  </button>
-                  <button
-                    onClick={() => onDelete(dep.id)}
-                    disabled={deletingId === dep.id}
-                    style={deleteBtnStyle(deletingId === dep.id)}
-                  >
-                    {deletingId === dep.id ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
+                  Details
+                </button>
+                <button
+                  onClick={() => onDelete(dep.id)}
+                  disabled={deletingId === dep.id}
+                  style={deleteBtnStyle(deletingId === dep.id)}
+                >
+                  {deletingId === dep.id ? "Deleting..." : "Delete"}
+                </button>
               </div>
             </div>
           ))}

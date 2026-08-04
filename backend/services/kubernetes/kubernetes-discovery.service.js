@@ -42,7 +42,7 @@ class KubernetesDiscoveryService {
 
         engine: "kubernetes",
 
-        route: `http://${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`,
+        route: `http://${name}.${config.APP_DOMAIN}`,
 
         containerPort: service.spec.ports[0].port,
 

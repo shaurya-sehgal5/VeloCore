@@ -48,24 +48,28 @@ class RuntimeQueryService {
 
     const { rows } = await db.query(
       `
-    SELECT
-      id,
-      name,
-      type,
-      framework,
-      status,
-      engine,
-      host_port,
-      route,
-      container_port,
-      image_name,
-      container_name,
-      slot,
-      created_at
-    FROM deployment_services
-    WHERE deployment_id = $1
-    ORDER BY created_at ASC
-    `,
+SELECT
+    deployment_id,
+    name,
+    type,
+    framework,
+    status,
+    engine,
+    route,
+    container_port,
+    image_name,
+    container_name,
+    slot,
+    namespace,
+    deployment_name,
+    service_name,
+    pod,
+    host,
+    created_at
+FROM deployment_services
+WHERE deployment_id = $1
+ORDER BY created_at ASC
+`,
       [targetDeploymentId]
     );
 
