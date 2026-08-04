@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -10,7 +12,7 @@
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
+  font-family: "JetBrains Mono", monospace;
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --heading: system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -54,7 +56,6 @@
   }
 }
 
-/* box-sizing reset so padding/borders never blow out 100% widths */
 *,
 *::before,
 *::after {
@@ -63,6 +64,7 @@
 
 html,
 body {
+  font-family: "JetBrains Mono", monospace;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -73,12 +75,7 @@ body {
   margin: 0;
 }
 
-/*
-  FIX: #root previously had a hardcoded `width: 1126px`, left over from the
-  Vite starter template. That's what was boxing your whole app into a fixed
-  1126px column with visible border-inline lines on wider screens, instead
-  of letting it fill the viewport. Now it's a true full-bleed flex shell.
-*/
+
 #root {
   width: 100%;
   max-width: 100%;
