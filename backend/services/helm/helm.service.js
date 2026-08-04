@@ -30,13 +30,16 @@ class HelmService {
         } else if (buildPlan.type === "frontend") {
             env.NODE_ENV = "production";
         }
-
         const values = `
 deploymentId: ${buildPlan.projectName}
 
 namespace: ${buildPlan.namespace}
 
 slot: ${buildPlan.slot}
+
+type: ${buildPlan.type}
+
+framework: ${buildPlan.framework}
 
 image:
   repository: ${buildPlan.imageName}
