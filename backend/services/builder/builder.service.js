@@ -16,20 +16,28 @@ class BuilderService {
 
     return plan;
   }
-
   createRollbackPlan(runtime) {
     return {
       projectName: runtime.name,
+
       type: runtime.type,
 
-      imageName: runtime.image_name,
+      framework: runtime.framework,
+
+      slot: runtime.slot || "green",
+
       deploymentId: runtime.deployment_id,
 
+      imageName: runtime.image_name,
+
       namespace: runtime.namespace,
+
       deploymentName: runtime.deployment_name,
+
       serviceName: runtime.service_name,
 
       containerPort: runtime.container_port,
+
       port: runtime.container_port,
 
       replicas: runtime.replicas || 1,
