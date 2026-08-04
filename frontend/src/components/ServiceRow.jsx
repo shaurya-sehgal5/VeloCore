@@ -13,18 +13,46 @@ const btnStyle = {
   borderRadius: "7px",
   cursor: "pointer",
 };
+const infoRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  fontSize: "12px",
+  padding: "3px 0",
+};
+const infoLabelStyle = {
+  color: "#52525b",
+  fontFamily: MONO,
+};
+const infoValueStyle = {
+  color: "#d4d4d8",
+  fontFamily: MONO,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  maxWidth: "60%",
+};
+
+function InfoLine({ label, value }) {
+  return (
+    <div style={infoRowStyle}>
+      <span style={infoLabelStyle}>{label}</span>
+      <span style={infoValueStyle}>{value ?? "—"}</span>
+    </div>
+  );
+}
 
 function ServiceRow({ service, isLast }) {
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
   const style = getStatusStyle(service.status);
   const hasUrl = Boolean(service.url);
 
-  const handleCopy = async () => {
-    if (!hasUrl) return;
+  const handleCopy = async (field, value) => {
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(service.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
     } catch (err) {
       console.error("[Clipboard Error]:", err.message);
     }
@@ -42,7 +70,7 @@ function ServiceRow({ service, isLast }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "6px",
+          marginBottom: "10px",
           gap: "10px",
         }}
       >
@@ -95,13 +123,28 @@ function ServiceRow({ service, isLast }) {
 
       <div
         style={{
-          fontSize: "12px",
-          color: "#71717a",
-          fontFamily: MONO,
-          marginBottom: hasUrl ? "4px" : "10px",
+          backgroundColor: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "8px",
+          padding: "10px 12px",
+          marginBottom: "10px",
         }}
       >
-        {formatFramework(service.framework)}
+        <InfoLine
+          label="Framework"
+          value={formatFramework(service.framework)}
+        />
+        <InfoLine label="Engine" value={service.engine} />
+        <InfoLine label="Namespace" value={service.namespace} />
+        <InfoLine
+          label="Deployment"
+          value={service.deploymentName || service.deployment}
+        />
+        <InfoLine label="Service" value={service.serviceName || service.name} />
+        <InfoLine label="Container" value={service.container} />
+        <InfoLine label="Image" value={service.image} />
+        <InfoLine label="Slot" value={service.slot} />
+        <InfoLine label="Port" value={service.port} />
       </div>
 
       {hasUrl && (
@@ -134,8 +177,27 @@ function ServiceRow({ service, isLast }) {
           </a>
         )}
         {hasUrl && (
-          <button onClick={handleCopy} style={btnStyle}>
-            {copied ? "Copied!" : "Copy"}
+          <button
+            onClick={() => handleCopy("url", service.url)}
+            style={btnStyle}
+          >
+            {copiedField === "url" ? "Copied!" : "Copy URL"}
+          </button>
+        )}
+        {service.image && (
+          <button
+            onClick={() => handleCopy("image", service.image)}
+            style={btnStyle}
+          >
+            {copiedField === "image" ? "Copied!" : "Copy Image"}
+          </button>
+        )}
+        {service.namespace && (
+          <button
+            onClick={() => handleCopy("namespace", service.namespace)}
+            style={btnStyle}
+          >
+            {copiedField === "namespace" ? "Copied!" : "Copy Namespace"}
           </button>
         )}
       </div>

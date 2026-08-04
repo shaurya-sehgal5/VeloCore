@@ -2,6 +2,7 @@ import React from "react";
 import StatusBadge from "./StatusBadge";
 import EmptyState from "./EmptyState";
 import LoadingState from "./LoadingState";
+import { formatFramework } from "../utils";
 import { MONO } from "../config";
 
 const cardShellStyle = {
@@ -43,22 +44,34 @@ const deleteBtnStyle = (busy) => ({
   cursor: busy ? "not-allowed" : "pointer",
   opacity: busy ? 0.5 : 1,
 });
-const metaRowStyle = {
+const infoRowStyle = {
   display: "flex",
   justifyContent: "space-between",
-  fontSize: "11.5px",
+  alignItems: "center",
+  fontSize: "12px",
+  padding: "3px 0",
+};
+const infoLabelStyle = {
+  color: "#52525b",
   fontFamily: MONO,
 };
-const metaLabelStyle = {
-  color: "#52525b",
-};
-const metaValueStyle = {
+const infoValueStyle = {
   color: "#d4d4d8",
+  fontFamily: MONO,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
-  maxWidth: "160px",
+  maxWidth: "60%",
 };
+
+function InfoLine({ label, value }) {
+  return (
+    <div style={infoRowStyle}>
+      <span style={infoLabelStyle}>{label}</span>
+      <span style={infoValueStyle}>{value ?? "—"}</span>
+    </div>
+  );
+}
 
 export default function DeploymentTable({
   deployments,
@@ -125,43 +138,38 @@ export default function DeploymentTable({
                 >
                   {dep.project_name}
                 </span>
-                <StatusBadge status={dep.status} />
               </div>
 
               <div
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  backgroundColor: "rgba(255,255,255,0.015)",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  paddingTop: "8px",
                 }}
               >
-                <div style={metaRowStyle}>
-                  <span style={metaLabelStyle}>Framework</span>
-                  <span style={metaValueStyle} title={dep.framework}>
-                    {dep.framework || "—"}
-                  </span>
-                </div>
-                <div style={metaRowStyle}>
-                  <span style={metaLabelStyle}>Runtime</span>
-                  <span style={metaValueStyle}>
-                    {dep.runtime === "kubernetes" ? "Kubernetes" : "Docker"}
-                  </span>
-                </div>
-                <div style={metaRowStyle}>
-                  <span style={metaLabelStyle}>Created</span>
-                  <span style={metaValueStyle}>
-                    {dep.created_at
+                <InfoLine
+                  label="Framework"
+                  value={formatFramework(dep.framework)}
+                />
+                <InfoLine
+                  label="Runtime"
+                  value={
+                    dep.runtime === "kubernetes" ||
+                    dep.runtimeEngine === "kubernetes"
+                      ? "Kubernetes"
+                      : "Docker"
+                  }
+                />
+                <InfoLine
+                  label="Created"
+                  value={
+                    dep.created_at
                       ? new Date(dep.created_at).toLocaleString()
-                      : "—"}
-                  </span>
-                </div>
-                <div style={metaRowStyle}>
-                  <span style={metaLabelStyle}>Status</span>
-                  <span style={metaValueStyle}>{dep.status || "—"}</span>
+                      : "—"
+                  }
+                />
+                <div style={infoRowStyle}>
+                  <span style={infoLabelStyle}>Status</span>
+                  <StatusBadge status={dep.status} />
                 </div>
               </div>
 
