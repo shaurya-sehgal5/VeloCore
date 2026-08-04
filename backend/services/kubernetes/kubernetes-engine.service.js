@@ -1,4 +1,4 @@
-const kubernetesService = require("./kubernetes.service");
+
 const platformRollback = require("../deployment/platform-rollback.service");
 const kubernetesDeployer = require("./kubernetes-deployer.service");
 const logger = require("../monitoring/logger.service")
@@ -10,14 +10,10 @@ class KubernetesEngine {
       "Generating Kubernetes manifest..."
     );
 
-    const manifest =
-      await kubernetesService.generate(buildPlan);
-
     try {
       return await kubernetesDeployer.deploy({
         deploymentId,
         buildPlan,
-        manifest,
       });
     } catch (err) {
       await logger.error(

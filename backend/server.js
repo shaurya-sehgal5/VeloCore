@@ -20,7 +20,6 @@ const kubernetesSocket = require("./services/kubernetes/kubernetes-socket.servic
 const eventBootstrap = require("./services/events/bootstrap.service");
 const securityRoutes = require("./routes/security.routes");
 const containerMonitor = require("./services/runtime/container-monitor.service");
-const rollbackRoutes = require("./routes/rollback.routes")
 const requestLogger = require("./middleware/request-logger");
 const logsRoutes = require("./routes/logs.routes");
 const webhookRoutes = require("./routes/webhook.routes")
@@ -140,8 +139,6 @@ app.use("/api/env", envRoutes);
 app.use("/api/deployments", deploymentServicesRoutes);
 app.use("/api/deployments", require("./routes/runtime-action.routes"));
 app.use("/api/deployments", require("./routes/runtime.routes"));
-app.use("/api/deployments", require("./routes/traffic.routes"));
-app.use("/api/deployments", require("./routes/rollback.routes"));
 app.use("/api/deployments", require("./routes/deployment-event.routes"));
 app.use("/api/deployments", require("./routes/runtime-status.routes"));
 app.use("/api/deployments", require("./routes/runtime-group.routes"));
@@ -152,7 +149,6 @@ app.use("/visit", require("./routes/visit.routes"));
 app.use("/api/github/webhook", githubWebhookRoutes);
 app.use("/api", kubernetesRoutes);
 app.use("/api/security", securityRoutes);
-app.use("/api/rollback", rollbackRoutes);
 app.use("/api/logs", logsRoutes);
 app.use("/api/webhooks", webhookRoutes);
 

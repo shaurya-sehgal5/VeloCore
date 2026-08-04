@@ -3,6 +3,7 @@ const IORedis = require("ioredis");
 const metrics = require("../services/monitoring/metrics.service");
 const deploymentOrchestrator = require("../services/deployment/deployment.orchestrator");
 const config = require("../config/env")
+const platformRollback = require("../services/deployment/platform-rollback.service");
 
 const redisConnection = new IORedis({
   host: config.REDIS_HOST,
@@ -71,14 +72,24 @@ buildWorker.on("completed", (job) => {
     .inc();
 });
 
-buildWorker.on("failed", (job, err) => {
+buildWorker.on("failed", async (job, err) => {
   console.error(
     `❌ Job ${job?.id} failed`,
     err.message,
   );
-  metrics.queueJobs
-    .labels("failed")
-    .inc();
+
+  metrics.queueJobs.labels("failed").inc();
+
+  try {
+    await platformRollback.rollback(
+      job.data.deploymentId
+    );
+  } catch (rollbackError) {
+    console.error(
+      "Automatic rollback failed:",
+      rollbackError.message
+    );
+  }
 });
 
 module.exports = {

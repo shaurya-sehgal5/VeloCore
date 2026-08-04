@@ -32,23 +32,6 @@ class KubernetesDeployer {
                     "ROLLBACK",
                     "Deployment failed. Rolling back..."
                 );
-                try {
-                    await helm.rollbackPrevious(
-                        deploymentId,
-                        buildPlan.namespace
-                    );
-                    await logger.info(
-                        deploymentId,
-                        "ROLLBACK",
-                        "Rollback completed."
-                    );
-                } catch (rollbackError) {
-                    await logger.error(
-                        deploymentId,
-                        "ROLLBACK",
-                        rollbackError.message
-                    );
-                }
                 throw error;
             }
             await logger.info(

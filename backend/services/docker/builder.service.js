@@ -122,14 +122,24 @@ class BuilderService {
   createRollbackPlan(runtime) {
     return {
       projectName: runtime.name,
+
       imageName: runtime.image_name,
+
       namespace: runtime.namespace,
+
       framework: runtime.framework,
+
       type: runtime.type,
+
       slot: runtime.slot,
+
       containerPort: runtime.container_port,
 
-      healthCheck: "/health",
+      deploymentId: runtime.deployment_id,   // <-- IMPORTANT
+
+      healthCheck: {
+        path: runtime.type === "frontend" ? "/" : "/health",
+      },
 
       secrets: {},
 

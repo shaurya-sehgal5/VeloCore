@@ -18,7 +18,6 @@
     "bullmq": "^5.79.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "crypto": "^1.0.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-list-endpoints": "^7.1.1",
@@ -34,6 +33,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.1"
+    "eslint": "^8.57.1",
+    "madge": "^8.0.0"
   }
 }
