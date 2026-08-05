@@ -140,8 +140,6 @@ class TrivyScanner {
         "--cache-dir",
         cacheDir,
 
-        "--download-db-only",
-
         "--format",
         "json",
 

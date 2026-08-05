@@ -24,7 +24,7 @@ function StackIcon({ name, slug, size = 32 }) {
         </span>
       ) : (
         <img
-          src={`https://cdn.simpleicons.org/${slug}`}
+          src={`https://cdn.simpleicons.org/amazonwebservices/${slug}`}
           alt={name}
           width={size}
           height={size}
@@ -307,7 +307,7 @@ function Login({ onGitHubLogin }) {
                       >
                         {isActive && <span style={s.nodeIconPulse} />}
                         <img
-                          src={`https://cdn.simpleicons.org/${step.slug}${isActive || isPast ? "/3ecf8e" : "/525252"}`}
+                          src={`https://cdn.simpleicons.org/amazonwebservices/${step.slug}${isActive || isPast ? "/3ecf8e" : "/525252"}`}
                           alt={step.label}
                           width={17}
                           height={17}
