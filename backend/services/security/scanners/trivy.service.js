@@ -1,9 +1,9 @@
-const { spawn } = require("child_process");
 const logger = require("../../monitoring/logger.service");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
 const securityMetrics = require("../../monitoring/security-metadata.service");
+const docker = require("./docker-runner.service");
 
 class TrivyScanner {
   async scan({
@@ -25,7 +25,7 @@ class TrivyScanner {
         await logger.warning(
           deploymentId,
           "SECURITY",
-          "Trivy binary not installed or database not found. Skipping Trivy scan."
+          "Trivy scan failed."
         );
         return;
       }
@@ -132,100 +132,49 @@ class TrivyScanner {
       `Image scan completed`
     );
   }
+  async execute(image) {
+    const result = await docker.run([
 
-  execute(image) {
-    return new Promise((resolve, reject) => {
+      "-v",
+      "/var/run/docker.sock:/var/run/docker.sock",
 
-      // Persistent cache shared across all deployments
-      const cacheDir = path.join(
-        os.homedir(),
-        ".velocore",
-        "trivy-cache"
-      );
+      "-v",
+      "trivy-cache:/root/.cache/trivy",
 
-      fs.mkdirSync(cacheDir, { recursive: true });
+      "aquasec/trivy:latest",
 
-      const child = spawn("trivy", [
-        "image",
+      "image",
 
-        "--cache-dir",
-        cacheDir,
+      "--format",
+      "json",
 
-        "--scanners",
-        "vuln",
+      "--scanners",
+      "vuln",
 
-        "--severity",
-        "CRITICAL,HIGH,MEDIUM,LOW",
+      "--severity",
+      "CRITICAL,HIGH,MEDIUM,LOW",
 
-        "--ignore-unfixed",
+      "--ignore-unfixed",
 
-        "--format",
-        "json",
+      "--no-progress",
 
-        "--no-progress",
+      image
+    ]);
+    if (result.code !== 0) {
+      return {
+        skipped: true,
+        Results: []
+      };
+    }
 
-        image,
-      ]);
+    if (!result.stdout.trim()) {
+      return {
+        Results: []
 
-      let stdout = "";
-      let stderr = "";
+      };
+    }
+    return JSON.parse(result.stdout);
 
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-
-      child.on("error", (err) => {
-        if (err.code === "ENOENT") {
-          return resolve({
-            skipped: true,
-            Results: [],
-          });
-        }
-
-        reject(err);
-      });
-
-      child.on("close", (code) => {
-
-        if (code !== 0) {
-          if (
-            stderr.includes("database") ||
-            stderr.includes("DB") ||
-            stderr.includes("not found")
-          ) {
-            return resolve({
-              skipped: true,
-              Results: [],
-            });
-          }
-
-          return reject(
-            new Error(stderr || `Trivy exited with code ${code}`)
-          );
-        }
-
-        if (!stdout.trim()) {
-          return resolve({
-            Results: [],
-          });
-        }
-
-        try {
-          resolve(JSON.parse(stdout));
-        } catch (err) {
-          reject(
-            new Error(
-              `Failed to parse Trivy JSON:\n${stderr || err.message}`
-            )
-          );
-        }
-      });
-
-    });
   }
 }
 

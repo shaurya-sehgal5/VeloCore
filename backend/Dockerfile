@@ -27,12 +27,6 @@ RUN curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz \
     mv linux-amd64/helm /usr/local/bin && \
     rm -rf linux-amd64
 
-# Install gitleaks (if needed at runtime)
-RUN wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
-    | tar -xz && \
-    mv gitleaks /usr/local/bin && \
-    chmod +x /usr/local/bin/gitleaks
-
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force

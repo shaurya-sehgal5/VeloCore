@@ -1,74 +1,52 @@
-const { spawn } = require("child_process");
+const docker = require("./docker-runner.service");
 
 class GitleaksService {
-  scan(source) {
-    return new Promise((resolve) => {
-      const args = [
-        "detect",
-        "--source",
-        source,
-        "--report-format",
-        "json",
-        "--report-path",
-        "-",
-        "--no-banner",
-      ];
 
-      const child = spawn("gitleaks", args);
+  async scan(source) {
 
-      let stdout = "";
-      let stderr = "";
+    const result = await docker.run([
 
-      child.stdout.on("data", (d) => {
-        stdout += d.toString();
-      });
+      "-v",
+      `${source}:/repo`,
 
-      child.stderr.on("data", (d) => {
-        stderr += d.toString();
-      });
+      "zricethezav/gitleaks:latest",
 
-      child.on("error", (err) => {
-        if (err.code === "ENOENT") {
-          return resolve({
-            skipped: true,
-            findings: [],
-            stderr: "Gitleaks not installed.",
-          });
-        }
+      "detect",
 
-        resolve({
-          skipped: true,
-          findings: [],
-          stderr: err.message,
-        });
-      });
+      "--source=/repo",
 
-      child.on("close", (code) => {
-        let findings = [];
-        if (code !== 0 && !stdout.trim()) {
-          return resolve({
-            skipped: false,
-            findings: [],
-            stderr,
-          });
-        }
-        try {
-          findings = stdout.trim()
-            ? JSON.parse(stdout)
-            : [];
-        } catch { }
+      "--report-format=json",
 
-        resolve({
-          skipped: false,
-          findings,
-          scanned: true,
-          files: source,
-          total: findings.length,
-          stderr,
-        });
-      });
-    });
+      "--report-path=-",
+
+      "--no-banner"
+
+    ]);
+
+    let findings = [];
+
+    try {
+
+      findings = result.stdout
+        ? JSON.parse(result.stdout)
+        : [];
+
+    } catch { }
+
+    return {
+
+      skipped: false,
+
+      findings,
+
+      total: findings.length,
+
+      stderr: result.stderr
+
+    };
+
   }
+
 }
 
 module.exports = new GitleaksService();
