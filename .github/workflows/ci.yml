@@ -142,7 +142,7 @@ jobs:
             --config .gitleaks.toml \
             --report-format json \
             --report-path gitleaks-report.json \
-            --no-banner || true
+            --no-banner
 
       ####################################################
       # Upload Gitleaks Report
