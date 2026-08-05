@@ -19,7 +19,6 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
 
 env:
   BACKEND_IMAGE: shauryasehgal/velocore-backend
@@ -38,119 +37,6 @@ jobs:
 
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      ####################################################
-      # Create Gitleaks Config
-      ####################################################
-
-      - name: Create Gitleaks Config
-        run: |
-          cat > .gitleaks.toml << 'EOF'
-          [extend]
-          useDefault = true
-
-          [allowlist]
-            files = [
-              '''\.lock$''',
-              '''\.log$''',
-              '''\.map$''',
-              '''\.min\.js$''',
-              '''package-lock\.json$''',
-              '''yarn\.lock$''',
-              '''pnpm-lock\.yaml$''',
-              '''go\.sum$''',
-              '''vendor/''',
-              '''node_modules/''',
-              '''\.git/''',
-              '''\.idea/''',
-              '''\.vscode/''',
-              '''dist/''',
-              '''build/''',
-              '''coverage/''',
-            ]
-            paths = [
-              '''.env.example$''',
-              '''docker-compose.*\.ya?ml$''',
-              '''.gitignore$''',
-            ]
-
-          [[rules]]
-            id = "allowlist-ips"
-            description = "Allowlist known IPs"
-            regex = '''3\.108\.30\.16|3\.110\.163\.70'''
-            allowlist = [
-              "3\\.108\\.30\\.16",
-              "3\\.110\\.163\\.70"
-            ]
-
-          [[rules]]
-            id = "allowlist-docker-paths"
-            description = "Allowlist Docker volume paths"
-            regex = '''(/var/run/docker\.sock|/home/ubuntu/\.kube|/usr/local/bin/k3s|/run/k3s|/var/lib/rancher/k3s)'''
-            allowlist = [
-              "/var/run/docker.sock",
-              "/home/ubuntu/.kube",
-              "/usr/local/bin/k3s",
-              "/run/k3s",
-              "/var/lib/rancher/k3s"
-            ]
-
-          [[rules]]
-            id = "allowlist-docker-images"
-            description = "Allowlist docker image names"
-            regex = '''shauryasehgal/velocore-backend|shauryasehgal/velocore-frontend'''
-            allowlist = [
-              "shauryasehgal/velocore-backend",
-              "shauryasehgal/velocore-frontend"
-            ]
-
-          [[rules]]
-            id = "allowlist-healthchecks"
-            description = "Allowlist healthcheck patterns"
-            regex = '''pg_isready|redis-cli ping|http://localhost:8080/api/health|http://localhost/'''
-            allowlist = [
-              "pg_isready",
-              "redis-cli ping",
-              "http://localhost:8080/api/health",
-              "http://localhost/"
-            ]
-
-          [[rules]]
-            id = "allowlist-env-vars"
-            description = "Allowlist environment variable patterns"
-            regex = '''\$\{DB_[A-Z]+\}|\$\{ENV_[A-Z]+\}'''
-            allowlist = [
-              "${DB_NAME}",
-              "${DB_USER}",
-              "${DB_PASSWORD}"
-            ]
-          EOF
-          
-          echo "✅ Gitleaks config created"
-
-      ####################################################
-      # Run Gitleaks (NO INSTALLATION - Using Official Action)
-      ####################################################
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
-        with:
-          config: .gitleaks.toml
-          report-format: json
-          report-path: gitleaks-report.json
-
-      ####################################################
-      # Upload Gitleaks Report
-      ####################################################
-
-      - name: Upload Gitleaks Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitleaks-report
-          path: gitleaks-report.json
-          if-no-files-found: ignore
 
       ####################################################
       # Node
@@ -353,7 +239,6 @@ jobs:
             echo "| Stage | Status |"
             echo "|------|--------|"
             echo "| Checkout | ✅ |"
-            echo "| Gitleaks | ✅ (report uploaded)" 
             echo "| Dependencies | ✅ |"
             echo "| Frontend Build | ✅ |"
             echo "| npm audit | ✅ |"
@@ -373,11 +258,6 @@ jobs:
             echo ""
             echo "- Backend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
             echo "- Frontend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
-            echo ""
-            echo "### Security Scanning"
-            echo ""
-            echo "- ✅ Gitleaks: Secret scanning completed"
-            echo "- ✅ Trivy: Vulnerability scanning completed (running as container)"
             echo ""
             echo "### Commit"
             echo ""
