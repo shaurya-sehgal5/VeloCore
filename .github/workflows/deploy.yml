@@ -1,4 +1,4 @@
-name: VeloCore Build
+name: VeloCore Deploy
 
 on:
   push:
@@ -25,12 +25,11 @@ env:
   FRONTEND_IMAGE: shauryasehgal/velocore-frontend
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
-
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -91,7 +90,7 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Scan Backend Image with Trivy
+      - name: Scan Backend Image
         continue-on-error: true
         run: |
           docker run --rm \
@@ -131,7 +130,7 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Scan Frontend Image with Trivy
+      - name: Scan Frontend Image
         continue-on-error: true
         run: |
           docker run --rm \
@@ -158,12 +157,8 @@ jobs:
           docker image prune -af || true
           docker builder prune -af || true
 
-      - name: Pipeline Summary
-        if: always()
+      - name: Done
         run: |
-          echo "## 🚀 VeloCore CI Pipeline" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Build Completed Successfully" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Backend: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "Frontend: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Build Complete!"
+          echo "Backend: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
+          echo "Frontend: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
