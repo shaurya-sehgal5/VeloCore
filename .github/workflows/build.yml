@@ -1,4 +1,4 @@
-name: VeloCore CI
+name: VeloCore Build
 
 on:
   push:
