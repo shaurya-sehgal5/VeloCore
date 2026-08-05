@@ -166,15 +166,10 @@ SonarQube
       sonarStatus = "FAILED";
 
       await logger.warning(
-
         deploymentId,
-
         "SECURITY",
-
-        `SonarQube failed: ${err.message}`
-
+        `SonarQube failed:\n${err.stack || err.stderr || JSON.stringify(err, null, 2)}`
       );
-
     }
 
     /*

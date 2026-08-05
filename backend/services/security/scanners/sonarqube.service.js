@@ -24,25 +24,52 @@ class SonarQubeService {
         projectName,
         source,
     }) {
+
         const result = await docker.run([
+
+            "--network",
+            "host",
+
             "-v",
             `${source}:/usr/src`,
+
+            "-w",
+            "/usr/src",
+
             "-e",
             `SONAR_HOST_URL=${process.env.SONAR_URL}`,
+
             "-e",
             `SONAR_TOKEN=${process.env.SONAR_TOKEN}`,
+
             "sonarsource/sonar-scanner-cli:latest",
+
             "sonar-scanner",
+
             `-Dsonar.projectKey=${projectKey}`,
             `-Dsonar.projectName=${projectName}`,
             "-Dsonar.sources=.",
-            "-Dsonar.host.url=" + process.env.SONAR_URL,
-            "-Dsonar.token=" + process.env.SONAR_TOKEN,
-            "-Dsonar.qualitygate.wait=true"
+            "-Dsonar.sourceEncoding=UTF-8",
+            "-Dsonar.qualitygate.wait=true",
+            `-Dsonar.host.url=${process.env.SONAR_URL}`,
+            `-Dsonar.token=${process.env.SONAR_TOKEN}`,
         ]);
 
+        console.log("========== SONAR STDOUT ==========");
+        console.log(result.stdout);
+
+        console.log("========== SONAR STDERR ==========");
+        console.log(result.stderr);
+
         if (result.code !== 0) {
-            throw new Error(result.stderr);
+            throw new Error(
+                [
+                    result.stderr,
+                    result.stdout,
+                ]
+                    .filter(Boolean)
+                    .join("\n")
+            );
         }
 
         return result;
