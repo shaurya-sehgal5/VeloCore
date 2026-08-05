@@ -1,10 +1,7 @@
 import React from "react";
 import GrafanaViewer from "./GrafanaViewer";
 
-import {
-  KUBERNETES_DASHBOARD_URL,
-  MONO,
-} from "../config";
+import { KUBERNETES_DASHBOARD_URL, MONO } from "../config";
 
 const sectionLabelStyle = {
   fontSize: "11px",
@@ -96,8 +93,7 @@ function DashboardLinkCard({ href, accent, title, subtitle, icon }) {
     </a>
   );
 }
-
-export default function MonitoringTab() {
+export default function MonitoringTab({ deployment, metrics }) {
   return (
     <div>
       <div style={sectionLabelStyle}>Monitoring</div>
@@ -107,7 +103,10 @@ export default function MonitoringTab() {
       </p>
 
       <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
-       <GrafanaViewer />
+        <GrafanaViewer
+          deploymentId={deployment?.id}
+          deploymentName={deployment?.name}
+        />
       </div>
     </div>
   );

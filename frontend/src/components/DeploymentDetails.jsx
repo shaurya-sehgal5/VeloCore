@@ -911,7 +911,9 @@ export default function DeploymentDetails({
       )}
       {tab === "logs" && <LokiLogsTab deploymentId={deployment.id} />}
 
-      {tab === "monitoring" && <MonitoringTab metrics={metrics} />}
+      {tab === "monitoring" && (
+        <MonitoringTab deployment={deployment} metrics={metrics} />
+      )}
 
       {tab === "timeline" && <TimelineTab deploymentId={deployment.id} />}
 
