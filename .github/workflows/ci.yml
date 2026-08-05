@@ -118,7 +118,7 @@ jobs:
           echo "✅ Gitleaks config created"
 
       ####################################################
-      # Run Gitleaks using Docker
+      # Run Gitleaks using Docker (NO manual installation!)
       ####################################################
 
       - name: Run Gitleaks
@@ -253,12 +253,12 @@ jobs:
       ####################################################
 
       - name: Scan Backend Image
-        continue-on-error: true
         run: |
           trivy image \
             --scanners vuln \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
+            --exit-code 1 \
             --no-progress \
             ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
@@ -310,12 +310,12 @@ jobs:
       ####################################################
 
       - name: Scan Frontend Image
-        continue-on-error: true
         run: |
           trivy image \
             --scanners vuln \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
+            --exit-code 1 \
             --no-progress \
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
@@ -362,9 +362,9 @@ jobs:
             echo "| Stage | Status |"
             echo "|------|--------|"
             echo "| Checkout | ✅ |"
+            echo "| Gitleaks | ✅ (report uploaded)" 
             echo "| Dependencies | ✅ |"
             echo "| Frontend Build | ✅ |"
-            echo "| Gitleaks | ✅ (report uploaded)" 
             echo "| npm audit | ✅ |"
             echo "| Build Backend | ✅ |"
             echo "| Scan Backend | ✅ |"
@@ -377,6 +377,11 @@ jobs:
             echo ""
             echo "- Backend: \`${{ env.BACKEND_IMAGE }}:${{ github.sha }}\`"
             echo "- Frontend: \`${{ env.FRONTEND_IMAGE }}:${{ github.sha }}\`"
+            echo ""
+            echo "### Tags"
+            echo ""
+            echo "- Backend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
+            echo "- Frontend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
             echo ""
             echo "### Commit"
             echo ""
@@ -402,7 +407,14 @@ jobs:
           echo "Branch     : ${{ github.ref_name }}"
           echo "Commit     : ${{ github.sha }}"
           echo ""
-          echo "Backend: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
-          echo "Frontend: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
+          echo "Backend Image"
+          echo "  ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
+          echo "  ${{ env.BACKEND_IMAGE }}:latest"
+          echo "  ${{ env.BACKEND_IMAGE }}:main"
+          echo ""
+          echo "Frontend Image"
+          echo "  ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
+          echo "  ${{ env.FRONTEND_IMAGE }}:latest"
+          echo "  ${{ env.FRONTEND_IMAGE }}:main"
           echo ""
           echo "=============================================="
