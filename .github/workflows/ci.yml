@@ -31,16 +31,8 @@ jobs:
 
     steps:
 
-      ####################################################
-      # Checkout
-      ####################################################
-
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      ####################################################
-      # Node
-      ####################################################
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -51,10 +43,6 @@ jobs:
             backend/package-lock.json
             frontend/package-lock.json
 
-      ####################################################
-      # Install Dependencies
-      ####################################################
-
       - name: Install Backend Dependencies
         working-directory: backend
         run: npm ci
@@ -62,10 +50,6 @@ jobs:
       - name: Install Frontend Dependencies
         working-directory: frontend
         run: npm ci
-
-      ####################################################
-      # Build Frontend
-      ####################################################
 
       - name: Build Frontend
         working-directory: frontend
@@ -77,10 +61,6 @@ jobs:
           VITE_KUBERNETES_DASHBOARD_URL: ${{ secrets.VITE_KUBERNETES_DASHBOARD_URL }}
         run: npm run build
 
-      ####################################################
-      # npm audit
-      ####################################################
-
       - name: Backend npm audit
         working-directory: backend
         run: npm audit --audit-level=high || true
@@ -88,10 +68,6 @@ jobs:
       - name: Frontend npm audit
         working-directory: frontend
         run: npm audit --audit-level=high || true
-
-      ####################################################
-      # Docker Setup
-      ####################################################
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -101,10 +77,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      ####################################################
-      # Build Backend Image
-      ####################################################
 
       - name: Build Backend Image
         uses: docker/build-push-action@v6
@@ -119,10 +91,6 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      ####################################################
-      # Scan Backend with Trivy (Running as Container)
-      ####################################################
-
       - name: Scan Backend Image with Trivy
         continue-on-error: true
         run: |
@@ -136,29 +104,13 @@ jobs:
             --no-progress \
             ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
-      ####################################################
-      # Push Backend
-      ####################################################
-
       - name: Push Backend Image
         run: |
           docker push ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-
-          docker tag \
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            ${{ env.BACKEND_IMAGE }}:latest
-
+          docker tag ${{ env.BACKEND_IMAGE }}:${{ github.sha }} ${{ env.BACKEND_IMAGE }}:latest
           docker push ${{ env.BACKEND_IMAGE }}:latest
-
-          docker tag \
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
-            ${{ env.BACKEND_IMAGE }}:main
-
+          docker tag ${{ env.BACKEND_IMAGE }}:${{ github.sha }} ${{ env.BACKEND_IMAGE }}:main
           docker push ${{ env.BACKEND_IMAGE }}:main
-
-      ####################################################
-      # Build Frontend Image
-      ####################################################
 
       - name: Build Frontend Image
         uses: docker/build-push-action@v6
@@ -179,10 +131,6 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      ####################################################
-      # Scan Frontend with Trivy (Running as Container)
-      ####################################################
-
       - name: Scan Frontend Image with Trivy
         continue-on-error: true
         run: |
@@ -196,29 +144,13 @@ jobs:
             --no-progress \
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
-      ####################################################
-      # Push Frontend
-      ####################################################
-
       - name: Push Frontend Image
         run: |
           docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-
-          docker tag \
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            ${{ env.FRONTEND_IMAGE }}:latest
-
+          docker tag ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} ${{ env.FRONTEND_IMAGE }}:latest
           docker push ${{ env.FRONTEND_IMAGE }}:latest
-
-          docker tag \
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-            ${{ env.FRONTEND_IMAGE }}:main
-
+          docker tag ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} ${{ env.FRONTEND_IMAGE }}:main
           docker push ${{ env.FRONTEND_IMAGE }}:main
-
-      ####################################################
-      # Docker Cleanup
-      ####################################################
 
       - name: Cleanup Docker
         if: always()
@@ -226,71 +158,12 @@ jobs:
           docker image prune -af || true
           docker builder prune -af || true
 
-      ####################################################
-      # GitHub Actions Summary
-      ####################################################
-
       - name: Pipeline Summary
         if: always()
         run: |
-          {
-            echo "## 🚀 VeloCore CI Pipeline"
-            echo ""
-            echo "| Stage | Status |"
-            echo "|------|--------|"
-            echo "| Checkout | ✅ |"
-            echo "| Dependencies | ✅ |"
-            echo "| Frontend Build | ✅ |"
-            echo "| npm audit | ✅ |"
-            echo "| Build Backend | ✅ |"
-            echo "| Scan Backend (Trivy) | ✅ |"
-            echo "| Push Backend | ✅ |"
-            echo "| Build Frontend | ✅ |"
-            echo "| Scan Frontend (Trivy) | ✅ |"
-            echo "| Push Frontend | ✅ |"
-            echo ""
-            echo "### Images"
-            echo ""
-            echo "- Backend: \`${{ env.BACKEND_IMAGE }}:${{ github.sha }}\`"
-            echo "- Frontend: \`${{ env.FRONTEND_IMAGE }}:${{ github.sha }}\`"
-            echo ""
-            echo "### Tags"
-            echo ""
-            echo "- Backend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
-            echo "- Frontend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
-            echo ""
-            echo "### Commit"
-            echo ""
-            echo "\`${{ github.sha }}\`"
-            echo ""
-            echo "### Branch"
-            echo ""
-            echo "\`${{ github.ref_name }}\`"
-          } >> $GITHUB_STEP_SUMMARY
-
-      ####################################################
-      # Finished
-      ####################################################
-
-      - name: Finish
-        run: |
-          echo ""
-          echo "=============================================="
-          echo "✅ VeloCore CI Finished Successfully"
-          echo "=============================================="
-          echo ""
-          echo "Repository : ${{ github.repository }}"
-          echo "Branch     : ${{ github.ref_name }}"
-          echo "Commit     : ${{ github.sha }}"
-          echo ""
-          echo "Backend Image"
-          echo "  ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
-          echo "  ${{ env.BACKEND_IMAGE }}:latest"
-          echo "  ${{ env.BACKEND_IMAGE }}:main"
-          echo ""
-          echo "Frontend Image"
-          echo "  ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
-          echo "  ${{ env.FRONTEND_IMAGE }}:latest"
-          echo "  ${{ env.FRONTEND_IMAGE }}:main"
-          echo ""
-          echo "=============================================="
+          echo "## 🚀 VeloCore CI Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Build Completed Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Backend: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Frontend: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
