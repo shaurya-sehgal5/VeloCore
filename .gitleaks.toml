@@ -1,60 +1,120 @@
-[extend]
-useDefault = true
+####################################################
+# Create Gitleaks Config (Expanded)
+####################################################
 
-# Allowlist for specific files and patterns
-[allowlist]
-  # These files won't be scanned
-  files = [
-    '''\.lock$''',
-    '''\.log$''',
-    '''\.map$''',
-    '''\.min\.js$''',
-    '''package-lock\.json$''',
-    '''yarn\.lock$''',
-    '''pnpm-lock\.yaml$''',
-    '''go\.sum$''',
-    '''vendor/''',
-    '''node_modules/''',
-    '''\.git/''',
-    '''\.idea/''',
-    '''\.vscode/''',
-  ]
-  
-  # These paths won't be scanned
-  paths = [
-    '''.env.example$''',
-    '''docker-compose.*\.ya?ml$''',
-    '''.gitignore$''',
-  ]
+- name: Create Gitleaks Config
+  run: |
+    cat > .gitleaks.toml << 'EOF'
+    # This config extends the default Gitleaks configuration
+    [extend]
+    useDefault = true
 
-# Custom rules for specific false positives
-[[rules]]
-  id = "allowlist-ips"
-  description = "Allowlist known IPs for VeloCore"
-  regex = '''3\.108\.30\.16|3\.110\.163\.70'''
-  allowlist = [
-    "3\\.108\\.30\\.16",
-    "3\\.110\\.163\\.70"
-  ]
+    # Ignore specific files completely
+    [[allowlist]]
+      files = [
+        '''.*\.lock$''',
+        '''.*\.log$''',
+        '''.*\.map$''',
+        '''.*\.min\.js$''',
+        '''.*package-lock\.json$''',
+        '''.*yarn\.lock$''',
+        '''.*pnpm-lock\.yaml$''',
+        '''.*go\.sum$''',
+        '''.*vendor/.*''',
+        '''.*node_modules/.*''',
+        '''.*\.git/.*''',
+        '''.*\.idea/.*''',
+        '''.*\.vscode/.*''',
+        '''.*/dist/.*''',
+        '''.*/build/.*''',
+        '''.*\.env\.example$''',
+        '''.*docker-compose.*\.ya?ml$''',
+        '''.*\.gitleaks\.toml$''',
+      ]
+      
+      # Ignore specific commit SHAs (if any)
+      commits = []
 
-[[rules]]
-  id = "allowlist-docker-paths"
-  description = "Allowlist Docker volume paths"
-  regex = '''(/var/run/docker\.sock|/home/ubuntu/\.kube|/usr/local/bin/k3s|/run/k3s|/var/lib/rancher/k3s)'''
-  allowlist = [
-    "/var/run/docker.sock",
-    "/home/ubuntu/.kube",
-    "/usr/local/bin/k3s",
-    "/run/k3s",
-    "/var/lib/rancher/k3s"
-  ]
+    # Custom rule to ignore our specific IPs
+    [[rules]]
+      id = "custom-ip-allowlist"
+      description = "Allowlist VeloCore IPs"
+      regex = '''3\.108\.30\.16|3\.110\.163\.70'''
+      allowlist = [
+        "3\\.108\\.30\\.16",
+        "3\\.110\\.163\\.70"
+      ]
 
-# Custom rule for docker-compose specific patterns
-[[rules]]
-  id = "allowlist-docker-compose"
-  description = "Allowlist docker-compose specific patterns"
-  regex = '''shauryasehgal/velocore-backend|shauryasehgal/velocore-frontend'''
-  allowlist = [
-    "shauryasehgal/velocore-backend",
-    "shauryasehgal/velocore-frontend"
-  ]
+    # Custom rule to ignore docker paths
+    [[rules]]
+      id = "custom-docker-paths"
+      description = "Allowlist Docker volume paths"
+      regex = '''(/var/run/docker\.sock|/home/ubuntu/\.kube|/usr/local/bin/k3s|/run/k3s|/var/lib/rancher/k3s)'''
+      allowlist = [
+        "/var/run/docker.sock",
+        "/home/ubuntu/.kube",
+        "/usr/local/bin/k3s",
+        "/run/k3s",
+        "/var/lib/rancher/k3s"
+      ]
+
+    # Custom rule to ignore docker image names
+    [[rules]]
+      id = "custom-docker-images"
+      description = "Allowlist docker image names"
+      regex = '''shauryasehgal/velocore-backend|shauryasehgal/velocore-frontend'''
+      allowlist = [
+        "shauryasehgal/velocore-backend",
+        "shauryasehgal/velocore-frontend"
+      ]
+
+    # Custom rule to ignore PostgreSQL healthcheck patterns
+    [[rules]]
+      id = "custom-postgres-patterns"
+      description = "Allowlist PostgreSQL healthcheck patterns"
+      regex = '''pg_isready -U \$\{DB_USER\} -d \$\{DB_NAME\}'''
+      allowlist = [
+        "pg_isready -U ${DB_USER} -d ${DB_NAME}"
+      ]
+
+    # Custom rule to ignore Redis healthcheck
+    [[rules]]
+      id = "custom-redis-patterns"
+      description = "Allowlist Redis healthcheck patterns"
+      regex = '''redis-cli ping'''
+      allowlist = [
+        "redis-cli ping"
+      ]
+
+    # Custom rule to ignore backend healthcheck
+    [[rules]]
+      id = "custom-backend-healthcheck"
+      description = "Allowlist backend healthcheck patterns"
+      regex = '''require\('http'\)\.get\('http://localhost:8080/api/health'[^)]*\)'''
+      allowlist = [
+        "require('http').get('http://localhost:8080/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      ]
+
+    # Custom rule to ignore frontend healthcheck
+    [[rules]]
+      id = "custom-frontend-healthcheck"
+      description = "Allowlist frontend healthcheck patterns"
+      regex = '''wget --spider -q http://localhost/'''
+      allowlist = [
+        "wget --spider -q http://localhost/"
+      ]
+
+    # Ignore environment variable patterns
+    [[rules]]
+      id = "custom-env-vars"
+      description = "Allowlist environment variable patterns"
+      regex = '''\$\{DB_[A-Z]+\}|\$\{ENV_[A-Z]+\}'''
+      allowlist = [
+        "${DB_NAME}",
+        "${DB_USER}",
+        "${DB_PASSWORD}"
+      ]
+    EOF
+
+    echo "✅ Gitleaks config created"
+    cat .gitleaks.toml
