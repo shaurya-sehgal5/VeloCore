@@ -5,13 +5,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV DOCKER_BUILDKIT=1
 
-# Install Docker CLI and basic tools
+# Install only essential tools (NO Trivy)
 RUN apk add --no-cache \
     docker-cli \
     docker-cli-buildx \
     bash \
     curl \
-    wget \
     ca-certificates \
     tzdata
 
@@ -31,12 +30,6 @@ RUN wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/git
     | tar -xz && \
     mv gitleaks /usr/local/bin && \
     chmod +x /usr/local/bin/gitleaks
-
-# Install trivy - Use correct extraction
-RUN wget -qO- https://github.com/aquasecurity/trivy/releases/download/v0.61.0/trivy_0.61.0_Linux-64bit.tar.gz \
-    | tar -xzvf - && \
-    mv trivy /usr/local/bin && \
-    chmod +x /usr/local/bin/trivy
 
 # Copy package files and install dependencies
 COPY package*.json ./
