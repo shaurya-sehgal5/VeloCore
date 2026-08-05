@@ -8,7 +8,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && \
     npm cache clean --force
 
-# Runtime
+# Runtime - APPLICATION ONLY!
 FROM node:22-alpine
 
 WORKDIR /app
@@ -16,31 +16,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV DOCKER_BUILDKIT=1
 
-# Install ONLY what's needed at runtime
+# Install ONLY what your Node.js app needs at runtime
+# These are the bare minimum for the application to run
 RUN apk add --no-cache \
-    git \
-    openssh-client \
-    docker-cli \
-    docker-cli-buildx \
-    bash \
     curl \
     ca-certificates \
-    tzdata \
-    gitleaks \
-    trivy
+    tzdata
 
-# kubectl - needed for k8s operations
-RUN curl -fsSL https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl \
-    -o /usr/local/bin/kubectl && \
-    chmod +x /usr/local/bin/kubectl
-
-# Helm 
-RUN curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz \
-    | tar -xz && \
-    mv linux-amd64/helm /usr/local/bin && \
-    rm -rf linux-amd64
-
+# Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application code
 COPY . .
 
 EXPOSE 8080
