@@ -5,7 +5,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV DOCKER_BUILDKIT=1
 
-# Install all dependencies and tools
+# Install Docker CLI and basic tools
 RUN apk add --no-cache \
     docker-cli \
     docker-cli-buildx \
@@ -13,23 +13,30 @@ RUN apk add --no-cache \
     curl \
     wget \
     ca-certificates \
-    tzdata \
-    && \
-    # kubectl
-    curl -fsSL https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
-    chmod +x /usr/local/bin/kubectl && \
-    # helm
-    curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz | tar -xz && \
+    tzdata
+
+# Install kubectl
+RUN curl -fsSL https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl \
+    -o /usr/local/bin/kubectl && \
+    chmod +x /usr/local/bin/kubectl
+
+# Install helm
+RUN curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz \
+    | tar -xz && \
     mv linux-amd64/helm /usr/local/bin && \
-    rm -rf linux-amd64 && \
-    # gitleaks
-    wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz | tar -xz && \
+    rm -rf linux-amd64
+
+# Install gitleaks
+RUN wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
+    | tar -xz && \
     mv gitleaks /usr/local/bin && \
-    chmod +x /usr/local/bin/gitleaks && \
-    # trivy - Try with community repo
-    echo "http://dl-cdn.alpinelinux.org/alpine/v3.20/community" >> /etc/apk/repositories && \
-    apk update && \
-    apk add --no-cache trivy
+    chmod +x /usr/local/bin/gitleaks
+
+# Install trivy - Use correct extraction
+RUN wget -qO- https://github.com/aquasecurity/trivy/releases/download/v0.61.0/trivy_0.61.0_Linux-64bit.tar.gz \
+    | tar -xzvf - && \
+    mv trivy /usr/local/bin && \
+    chmod +x /usr/local/bin/trivy
 
 # Copy package files and install dependencies
 COPY package*.json ./
