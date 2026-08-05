@@ -100,13 +100,7 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
 
   const varValue = deploymentName || deploymentId;
 
-  const src =
-    `${KUBERNETES_DASHBOARD_URL}` +
-    `?orgId=1` +
-    `&theme=dark` +
-    `&kiosk` +
-    `&refresh=30s` +
-    `&var-deployment=${encodeURIComponent(varValue)}`;
+  const src = `${import.meta.env.VITE_GRAFANA_URL}/d/velocore-user-dashboard-1/velocore-deployment-dashboard?orgId=1&theme=dark&kiosk&refresh=30s&var-deployment=${deploymentId}`;
 
   const handleRefresh = useCallback(() => {
     setLoaded(false);
