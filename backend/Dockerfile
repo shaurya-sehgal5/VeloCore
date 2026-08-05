@@ -18,19 +18,23 @@ ENV DOCKER_BUILDKIT=1
 
 # Install ONLY what's needed at runtime
 RUN apk add --no-cache \
+    git \
+    openssh-client \
     docker-cli \
     docker-cli-buildx \
     bash \
     curl \
     ca-certificates \
-    tzdata
+    tzdata \
+    gitleaks \
+    trivy
 
 # kubectl - needed for k8s operations
 RUN curl -fsSL https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl
 
-# Helm - if needed
+# Helm 
 RUN curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz \
     | tar -xz && \
     mv linux-amd64/helm /usr/local/bin && \
