@@ -275,12 +275,13 @@ SonarQube
     report.score -= report.medium * 5;
     report.score -= report.low;
 
-    const sonar = report.scanners.find(
+    const sonarReport = report.scanners.find(
       s => s.scanner === "SonarQube"
     );
-    if (sonar) {
-      if (!sonar.passed) report.score -= 15;
-      if (sonar.coverage < 80) report.score -= 5;
+
+    if (sonarReport) {
+      if (!sonarReport.passed) report.score -= 15;
+      if (sonarReport.coverage < 80) report.score -= 5;
     }
 
     report.score = Math.max(report.score, 0);
@@ -291,32 +292,30 @@ SonarQube
     ----------------------------------
     */
 
-    const sonar = report.scanners.find(
-      s => s.scanner === "SonarQube"
-    );
-
     if (
 
       report.secrets.length > 0 ||
 
       report.critical > 0 ||
 
-      (sonar && !sonar.passed)
+      (sonarReport && !sonarReport.passed)
 
-    )
+    ) {
+      report.passed = false;
+    }
 
-      /*
-      ----------------------------------
-      Summary
-      ----------------------------------
-      */
+    /*
+    ----------------------------------
+    Summary
+    ----------------------------------
+    */
 
-      await logger.milestone(
-        deploymentId,
-        "SECURITY_COMPLETED",
-        "SECURITY",
-        `Security Score : ${report.score}/100`
-      );
+    await logger.milestone(
+      deploymentId,
+      "SECURITY_COMPLETED",
+      "SECURITY",
+      `Security Score : ${report.score}/100`
+    );
 
     await logger.success(
       deploymentId,
@@ -357,7 +356,7 @@ SonarQube
       scanner: "sonarqube",
       status: sonarStatus,
     });
-    
+
     metrics.securityScans.inc({
       scanner: "trivy",
       status: trivyStatus,
