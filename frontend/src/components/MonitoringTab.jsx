@@ -3,7 +3,6 @@ import GrafanaViewer from "./GrafanaViewer";
 
 import {
   KUBERNETES_DASHBOARD_URL,
-  DOCKER_DASHBOARD_URL,
   MONO,
 } from "../config";
 
