@@ -212,7 +212,6 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
         width="100%"
         height="100%"
         frameBorder="0"
-        sandbox="allow-scripts allow-same-origin allow-forms"
         onLoad={() => setLoaded(true)}
         style={{
           border: "none",
