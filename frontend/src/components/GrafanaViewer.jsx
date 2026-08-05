@@ -100,7 +100,11 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
 
   const varValue = deploymentName || deploymentId;
 
-  const src = `${import.meta.env.VITE_GRAFANA_URL}/d/velocore-user-dashboard-1/velocore-deployment-dashboard?orgId=1&theme=dark&kiosk&refresh=30s&var-deployment=${deploymentId}`;
+ const src =
+  `${import.meta.env.VITE_GRAFANA_URL}` +
+  `/d/velocore-user-dashboard-1/velocore-deployment-dashboard` +
+  `?orgId=1&theme=dark&kiosk=tv&refresh=30s` +
+  `&var-deployment=${encodeURIComponent(deploymentId)}`;
 
   const handleRefresh = useCallback(() => {
     setLoaded(false);
