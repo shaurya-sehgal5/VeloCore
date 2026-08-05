@@ -72,8 +72,16 @@ function App() {
       setError("Configuration error: VITE_GITHUB_CLIENT_ID is unmapped.");
       return;
     }
-    const redirectUri = `${CONFIG.AUTH_BASE}/github/callback`;
-    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
+    const redirectUri = new URL(
+      "/api/auth/github/callback",
+      window.location.origin,
+    ).toString();
+
+    window.location.href =
+      `https://github.com/login/oauth/authorize` +
+      `?client_id=${clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=repo`;
   };
 
   const handleDeployRepository = async (repoName, cloneUrl, projectName) => {
