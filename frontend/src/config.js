@@ -1,4 +1,5 @@
-const API_ROOT = import.meta.env.VITE_API_URL || "http://3.108.30.16:8080";
+// config.js
+const API_ROOT = import.meta.env.VITE_API_URL || "";
 
 export const AUTH_BASE = `${API_ROOT}/api/auth`;
 export const DASH_BASE = `${API_ROOT}/api/dashboard`;
@@ -12,13 +13,14 @@ export const ACTION_BASE = `${API_ROOT}/api/deployments`;
 export const SOCKET_URL = API_ROOT;
 
 export const FRONTEND_URL =
-  import.meta.env.VITE_FRONTEND_URL || "http://3.108.30.16";
+  import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 
 export const GRAFANA_URL =
-  import.meta.env.VITE_GRAFANA_URL || "http://3.108.30.16:30030";
+  import.meta.env.VITE_GRAFANA_URL || "";
 
 export const KUBERNETES_DASHBOARD_URL =
-  "http://3.108.30.16:30030/d/velocore-user-dashboard-1/velocore-deployment-dashboard";
+  import.meta.env.VITE_KUBERNETES_DASHBOARD_URL || 
+  `${GRAFANA_URL}/d/velocore-user-dashboard-1/velocore-deployment-dashboard`;
 
 export const GITHUB_CLIENT_ID =
   import.meta.env.VITE_GITHUB_CLIENT_ID;
