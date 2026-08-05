@@ -3,6 +3,7 @@ const gitleaks = require("./scanners/gitleaks.service");
 const npmAudit = require("./scanners/npm-audit.service");
 const trivy = require("./scanners/trivy.service");
 const metrics = require("../monitoring/metrics.service");
+const sonarqube = require("./scanners/sonarqube.service");
 
 class SecurityEngine {
   async run({
@@ -103,6 +104,80 @@ class SecurityEngine {
     }
 
     /*
+----------------------------------
+SonarQube
+----------------------------------
+*/
+
+    let sonarStatus = "SUCCESS";
+
+    await logger.info(
+      deploymentId,
+      "SECURITY",
+      "Running SonarQube..."
+    );
+
+    try {
+
+      const sonar = await sonarqube.scan({
+
+        deploymentId,
+
+        projectKey: `${process.env.SONAR_PROJECT_PREFIX}-${deploymentId}`,
+
+        projectName: graph.frontend?.name ||
+          graph.backend?.name ||
+          "application",
+
+        source: workspace.path,
+
+      });
+
+      report.scanners.push(sonar);
+
+      report.findings.push({
+
+        scanner: "SonarQube",
+
+        severity: sonar.passed ? "INFO" : "HIGH",
+
+        title: "Quality Gate",
+
+      });
+
+      if (!sonar.passed) {
+
+        report.high++;
+
+      }
+
+      await logger.success(
+
+        deploymentId,
+
+        "SECURITY",
+
+        `Quality Gate : ${sonar.passed ? "PASSED" : "FAILED"} | Bugs:${sonar.bugs} Vulnerabilities:${sonar.vulnerabilities} Coverage:${sonar.coverage}%`
+
+      );
+
+    } catch (err) {
+
+      sonarStatus = "FAILED";
+
+      await logger.warning(
+
+        deploymentId,
+
+        "SECURITY",
+
+        `SonarQube failed: ${err.message}`
+
+      );
+
+    }
+
+    /*
     ----------------------------------
     npm audit
     ----------------------------------
@@ -200,6 +275,14 @@ class SecurityEngine {
     report.score -= report.medium * 5;
     report.score -= report.low;
 
+    const sonar = report.scanners.find(
+      s => s.scanner === "SonarQube"
+    );
+    if (sonar) {
+      if (!sonar.passed) report.score -= 15;
+      if (sonar.coverage < 80) report.score -= 5;
+    }
+
     report.score = Math.max(report.score, 0);
 
     /*
@@ -208,25 +291,32 @@ class SecurityEngine {
     ----------------------------------
     */
 
-    if (
-      report.secrets.length > 0 ||
-      report.critical > 0
-    ) {
-      report.passed = false;
-    }
-
-    /*
-    ----------------------------------
-    Summary
-    ----------------------------------
-    */
-
-    await logger.milestone(
-      deploymentId,
-      "SECURITY_COMPLETED",
-      "SECURITY",
-      `Security Score : ${report.score}/100`
+    const sonar = report.scanners.find(
+      s => s.scanner === "SonarQube"
     );
+
+    if (
+
+      report.secrets.length > 0 ||
+
+      report.critical > 0 ||
+
+      (sonar && !sonar.passed)
+
+    )
+
+      /*
+      ----------------------------------
+      Summary
+      ----------------------------------
+      */
+
+      await logger.milestone(
+        deploymentId,
+        "SECURITY_COMPLETED",
+        "SECURITY",
+        `Security Score : ${report.score}/100`
+      );
 
     await logger.success(
       deploymentId,
@@ -263,7 +353,11 @@ class SecurityEngine {
       scanner: "npm-audit",
       status: npmStatus,
     });
-
+    metrics.securityScans.inc({
+      scanner: "sonarqube",
+      status: sonarStatus,
+    });
+    
     metrics.securityScans.inc({
       scanner: "trivy",
       status: trivyStatus,

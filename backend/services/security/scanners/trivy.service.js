@@ -14,7 +14,7 @@ class TrivyScanner {
     await logger.info(
       deploymentId,
       "SECURITY",
-      "Running Trivy image scan..."
+      `Running Trivy on ${image}`
     );
 
     let result;
@@ -25,9 +25,8 @@ class TrivyScanner {
         await logger.warning(
           deploymentId,
           "SECURITY",
-          "Trivy unavailable. Skipping image scan."
+          "Trivy binary not installed or database not found. Skipping Trivy scan."
         );
-
         return;
       }
     } catch (err) {
@@ -57,21 +56,7 @@ class TrivyScanner {
       )
       .set(1);
 
-    securityMetrics.vulnerabilities
-      .labels(deploymentId, "CRITICAL")
-      .set(report.critical);
 
-    securityMetrics.vulnerabilities
-      .labels(deploymentId, "HIGH")
-      .set(report.high);
-
-    securityMetrics.vulnerabilities
-      .labels(deploymentId, "MEDIUM")
-      .set(report.medium);
-
-    securityMetrics.vulnerabilities
-      .labels(deploymentId, "LOW")
-      .set(report.low);
     let totalFindings = 0;
 
     for (const target of result.Results) {
@@ -109,7 +94,21 @@ class TrivyScanner {
         }
       }
     }
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "CRITICAL")
+      .set(report.critical);
 
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "HIGH")
+      .set(report.high);
+
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "MEDIUM")
+      .set(report.medium);
+
+    securityMetrics.vulnerabilities
+      .labels(deploymentId, "LOW")
+      .set(report.low);
     report.scanners.push({
       scanner: "Trivy",
       findings: totalFindings,
@@ -118,7 +117,19 @@ class TrivyScanner {
     await logger.success(
       deploymentId,
       "SECURITY",
-      `Trivy completed (${totalFindings} vulnerabilities found)`
+      `Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`
+    );
+
+    await logger.success(
+      deploymentId,
+      "SECURITY",
+      `Packages scanned : ${result.Results.length}`
+    );
+
+    await logger.success(
+      deploymentId,
+      "SECURITY",
+      `Image scan completed`
     );
   }
 
@@ -140,11 +151,16 @@ class TrivyScanner {
         "--cache-dir",
         cacheDir,
 
-        "--format",
-        "json",
-
         "--scanners",
         "vuln",
+
+        "--severity",
+        "CRITICAL,HIGH,MEDIUM,LOW",
+
+        "--ignore-unfixed",
+
+        "--format",
+        "json",
 
         "--no-progress",
 

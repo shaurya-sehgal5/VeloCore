@@ -17,9 +17,6 @@ export const FRONTEND_URL =
 export const GRAFANA_URL =
   import.meta.env.VITE_GRAFANA_URL || "http://3.108.30.16:30030";
 
-export const DOCKER_DASHBOARD_URL =
-  import.meta.env.VITE_DOCKER_DASHBOARD_URL || "http://3.108.30.16:3500";
-
 export const KUBERNETES_DASHBOARD_URL =
   "http://3.108.30.16:30030/d/velocore-user-dashboard-1/velocore-deployment-dashboard";
 

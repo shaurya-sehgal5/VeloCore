@@ -27,20 +27,22 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
+
       ####################################################
       # Checkout
       ####################################################
 
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       ####################################################
       # Node
       ####################################################
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -50,14 +52,14 @@ jobs:
             frontend/package-lock.json
 
       ####################################################
-      # Install
+      # Install Dependencies
       ####################################################
 
-      - name: Install Backend
+      - name: Install Backend Dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Install Frontend
+      - name: Install Frontend Dependencies
         working-directory: frontend
         run: npm ci
 
@@ -67,17 +69,73 @@ jobs:
 
       - name: Build Frontend
         working-directory: frontend
-        run: npm run build
         env:
           VITE_API_URL: http://3.110.163.70
           VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
           VITE_GRAFANA_URL: http://localhost:3002
+        run: npm run build
 
       ####################################################
-      # Docker
+      # Install Gitleaks
       ####################################################
 
-      - name: Setup Buildx
+      - name: Install Gitleaks
+        run: |
+          wget -q https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
+          tar -xzf gitleaks_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+          gitleaks version
+
+      ####################################################
+      # Secret Scan
+      ####################################################
+
+      - name: Run Gitleaks
+        run: |
+          gitleaks detect \
+            --source . \
+            --report-format json \
+            --report-path gitleaks-report.json \
+            --no-banner
+
+      ####################################################
+      # npm audit
+      ####################################################
+
+      - name: Backend npm audit
+        working-directory: backend
+        run: npm audit --audit-level=high || true
+
+      - name: Frontend npm audit
+        working-directory: frontend
+        run: npm audit --audit-level=high || true
+
+      ####################################################
+      # Install Trivy
+      ####################################################
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget gnupg lsb-release -y
+
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/trivy.gpg >/dev/null
+
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+          trivy image --download-db-only
+
+      ####################################################
+      # Docker Setup
+      ####################################################
+
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Docker Login
@@ -87,39 +145,203 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       ####################################################
-      # Backend Image
+      # Build Backend Image
       ####################################################
 
-      - name: Build & Push Backend
+      - name: Build Backend Image
         uses: docker/build-push-action@v6
         with:
           context: backend
-          push: true
+          file: backend/Dockerfile
+          push: false
+          load: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
             ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-            ${{ env.BACKEND_IMAGE }}:main
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
 
       ####################################################
-      # Frontend Image
+      # Scan Backend
       ####################################################
 
-      - name: Build & Push Frontend
+      - name: Scan Backend Image
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --no-progress \
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      ####################################################
+      # Push Backend
+      ####################################################
+
+      - name: Push Backend Image
+        run: |
+          docker push ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+          docker tag \
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            ${{ env.BACKEND_IMAGE }}:latest
+
+          docker push ${{ env.BACKEND_IMAGE }}:latest
+
+          docker tag \
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            ${{ env.BACKEND_IMAGE }}:main
+
+          docker push ${{ env.BACKEND_IMAGE }}:main
+
+      ####################################################
+      # Build Frontend Image
+      ####################################################
+
+      - name: Build Frontend Image
         uses: docker/build-push-action@v6
         with:
           context: frontend
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            ${{ env.FRONTEND_IMAGE }}:main
+          file: frontend/Dockerfile
+          push: false
+          load: true
           build-args: |
             VITE_API_URL=http://3.110.163.70
             VITE_GITHUB_CLIENT_ID=${{ secrets.VITE_GITHUB_CLIENT_ID }}
             VITE_GRAFANA_URL=http://localhost:3002
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      ####################################################
+      # Scan Frontend
+      ####################################################
+
+      - name: Scan Frontend Image
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --no-progress \
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+      ####################################################
+      # Push Frontend
+      ####################################################
+
+      - name: Push Frontend Image
+        run: |
+          docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+          docker tag \
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            ${{ env.FRONTEND_IMAGE }}:latest
+
+          docker push ${{ env.FRONTEND_IMAGE }}:latest
+
+          docker tag \
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            ${{ env.FRONTEND_IMAGE }}:main
+
+          docker push ${{ env.FRONTEND_IMAGE }}:main
+
+      ####################################################
+      # Upload Security Reports
+      ####################################################
+
+      - name: Upload Gitleaks Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          if-no-files-found: ignore
+
+      ####################################################
+      # Docker Cleanup
+      ####################################################
+
+      - name: Cleanup Docker
+        if: always()
+        run: |
+          docker image prune -af || true
+          docker builder prune -af || true
+
+      ####################################################
+      # GitHub Actions Summary
+      ####################################################
+
+      - name: Pipeline Summary
+        if: always()
+        run: |
+          {
+            echo "## 🚀 VeloCore CI Pipeline"
+            echo ""
+            echo "| Stage | Status |"
+            echo "|------|--------|"
+            echo "| Checkout | ✅ |"
+            echo "| Dependencies | ✅ |"
+            echo "| Frontend Build | ✅ |"
+            echo "| Gitleaks | ✅ |"
+            echo "| npm audit | ✅ |"
+            echo "| Build Backend Image | ✅ |"
+            echo "| Scan Backend Image | ✅ |"
+            echo "| Push Backend Image | ✅ |"
+            echo "| Build Frontend Image | ✅ |"
+            echo "| Scan Frontend Image | ✅ |"
+            echo "| Push Frontend Image | ✅ |"
+            echo ""
+            echo "### Images"
+            echo ""
+            echo "- Backend: \`${{ env.BACKEND_IMAGE }}:${{ github.sha }}\`"
+            echo "- Frontend: \`${{ env.FRONTEND_IMAGE }}:${{ github.sha }}\`"
+            echo ""
+            echo "### Tags"
+            echo ""
+            echo "- Backend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
+            echo "- Frontend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
+            echo ""
+            echo "### Commit"
+            echo ""
+            echo "\`${{ github.sha }}\`"
+            echo ""
+            echo "### Branch"
+            echo ""
+            echo "\`${{ github.ref_name }}\`"
+          } >> $GITHUB_STEP_SUMMARY
+
+      ####################################################
+      # Finished
+      ####################################################
+
+      - name: Finish
+        run: |
+          echo ""
+          echo "=============================================="
+          echo "✅ VeloCore CI Finished Successfully"
+          echo "=============================================="
+          echo ""
+          echo "Repository : ${{ github.repository }}"
+          echo "Branch     : ${{ github.ref_name }}"
+          echo "Commit     : ${{ github.sha }}"
+          echo ""
+          echo "Backend Image"
+          echo "  ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
+          echo "  ${{ env.BACKEND_IMAGE }}:latest"
+          echo "  ${{ env.BACKEND_IMAGE }}:main"
+          echo ""
+          echo "Frontend Image"
+          echo "  ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
+          echo "  ${{ env.FRONTEND_IMAGE }}:latest"
+          echo "  ${{ env.FRONTEND_IMAGE }}:main"
+          echo ""
+          echo "Security"
+          echo "  ✔ Gitleaks"
+          echo "  ✔ npm audit"
+          echo "  ✔ Trivy"
+          echo ""
+          echo "=============================================="

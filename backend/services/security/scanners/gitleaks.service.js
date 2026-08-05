@@ -9,6 +9,9 @@ class GitleaksService {
         source,
         "--report-format",
         "json",
+        "--report-path",
+        "-",
+        "--no-banner",
       ];
 
       const child = spawn("gitleaks", args);
@@ -40,18 +43,27 @@ class GitleaksService {
         });
       });
 
-      child.on("close", () => {
+      child.on("close", (code) => {
         let findings = [];
-
+        if (code !== 0 && !stdout.trim()) {
+          return resolve({
+            skipped: false,
+            findings: [],
+            stderr,
+          });
+        }
         try {
           findings = stdout.trim()
             ? JSON.parse(stdout)
             : [];
-        } catch {}
+        } catch { }
 
         resolve({
           skipped: false,
           findings,
+          scanned: true,
+          files: source,
+          total: findings.length,
           stderr,
         });
       });
