@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
   contents: read
+  security-events: write
 
 env:
   BACKEND_IMAGE: shauryasehgal/velocore-backend
@@ -39,110 +40,16 @@ jobs:
         uses: actions/checkout@v4
 
       ####################################################
-      # Create Gitleaks Config
-      ####################################################
-
-      - name: Create Gitleaks Config
-        run: |
-          cat > .gitleaks.toml << 'EOF'
-          [extend]
-          useDefault = true
-
-          [allowlist]
-            files = [
-              '''\.lock$''',
-              '''\.log$''',
-              '''\.map$''',
-              '''\.min\.js$''',
-              '''package-lock\.json$''',
-              '''yarn\.lock$''',
-              '''pnpm-lock\.yaml$''',
-              '''go\.sum$''',
-              '''vendor/''',
-              '''node_modules/''',
-              '''\.git/''',
-              '''\.idea/''',
-              '''\.vscode/''',
-              '''dist/''',
-              '''build/''',
-              '''coverage/''',
-            ]
-            paths = [
-              '''.env.example$''',
-              '''docker-compose.*\.ya?ml$''',
-              '''.gitignore$''',
-            ]
-
-          [[rules]]
-            id = "allowlist-ips"
-            description = "Allowlist known IPs"
-            regex = '''3\.108\.30\.16|3\.110\.163\.70'''
-            allowlist = [
-              "3\\.108\\.30\\.16",
-              "3\\.110\\.163\\.70"
-            ]
-
-          [[rules]]
-            id = "allowlist-docker-paths"
-            description = "Allowlist Docker volume paths"
-            regex = '''(/var/run/docker\.sock|/home/ubuntu/\.kube|/usr/local/bin/k3s|/run/k3s|/var/lib/rancher/k3s)'''
-            allowlist = [
-              "/var/run/docker.sock",
-              "/home/ubuntu/.kube",
-              "/usr/local/bin/k3s",
-              "/run/k3s",
-              "/var/lib/rancher/k3s"
-            ]
-
-          [[rules]]
-            id = "allowlist-docker-images"
-            description = "Allowlist docker image names"
-            regex = '''shauryasehgal/velocore-backend|shauryasehgal/velocore-frontend'''
-            allowlist = [
-              "shauryasehgal/velocore-backend",
-              "shauryasehgal/velocore-frontend"
-            ]
-
-          [[rules]]
-            id = "allowlist-healthchecks"
-            description = "Allowlist healthcheck patterns"
-            regex = '''pg_isready|redis-cli ping|http://localhost:8080/api/health|http://localhost/'''
-            allowlist = [
-              "pg_isready",
-              "redis-cli ping",
-              "http://localhost:8080/api/health",
-              "http://localhost/"
-            ]
-
-          [[rules]]
-            id = "allowlist-env-vars"
-            description = "Allowlist environment variable patterns"
-            regex = '''\$\{DB_[A-Z]+\}|\$\{ENV_[A-Z]+\}'''
-            allowlist = [
-              "${DB_NAME}",
-              "${DB_USER}",
-              "${DB_PASSWORD}"
-            ]
-          EOF
-          
-          echo "✅ Gitleaks config created"
-
-      ####################################################
-      # Run Gitleaks using Docker (NO INSTALLATION!)
+      # Run Gitleaks using Official GitHub Action
       ####################################################
 
       - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
         continue-on-error: true
-        run: |
-          docker run --rm \
-            -v $(pwd):/path \
-            -w /path \
-            zricethezav/gitleaks:latest \
-            detect \
-            --config .gitleaks.toml \
-            --report-format json \
-            --report-path gitleaks-report.json \
-            --no-banner
+        with:
+          config: .gitleaks.toml
+          report-format: json
+          report-path: gitleaks-report.json
 
       ####################################################
       # Upload Gitleaks Report
