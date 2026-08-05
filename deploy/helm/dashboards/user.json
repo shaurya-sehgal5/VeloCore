@@ -673,6 +673,27 @@
       }
     }
   ],
+  "templating": {
+    "list": [
+      {
+        "name": "deployment",
+        "label": "Deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "cfu6k2vm87gn4c"
+        },
+        "definition": "label_values(velocore_deployment_status,deployment)",
+        "query": {
+          "query": "label_values(velocore_deployment_status,deployment)"
+        },
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1
+      }
+    ]
+  },
   "schemaVersion": 39,
   "version": 1,
   "tags": ["velocore", "deployment", "user"],

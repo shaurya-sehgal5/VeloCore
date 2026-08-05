@@ -152,12 +152,7 @@ export default function DeploymentTable({
                 />
                 <InfoLine
                   label="Runtime"
-                  value={
-                    dep.runtime === "kubernetes" ||
-                    dep.runtimeEngine === "kubernetes"
-                      ? "Kubernetes"
-                      : "Docker"
-                  }
+                  value="Kubernetes"
                 />
                 <InfoLine
                   label="Created"

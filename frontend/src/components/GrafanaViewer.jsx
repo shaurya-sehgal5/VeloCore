@@ -100,9 +100,13 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
 
   const varValue = deploymentName || deploymentId;
 
-  const src = `${KUBERNETES_DASHBOARD_URL}?orgId=1${
-    varValue ? `&var-deployment=${encodeURIComponent(varValue)}` : ""
-  }&kiosk=tv&theme=dark&editable=false&refresh=10s`;
+  const src =
+    `${KUBERNETES_DASHBOARD_URL}` +
+    `?orgId=1` +
+    `&theme=dark` +
+    `&kiosk` +
+    `&refresh=30s` +
+    `&var-deployment=${encodeURIComponent(varValue)}`;
 
   const handleRefresh = useCallback(() => {
     setLoaded(false);
@@ -214,9 +218,6 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
         width="100%"
         height="100%"
         frameBorder="0"
-        // sandbox intentionally omits allow-top-navigation and
-        // allow-popups — user can view + let auto-refresh happen,
-        // but cannot navigate away or open Grafana's own editing UI.
         sandbox="allow-scripts allow-same-origin allow-forms"
         onLoad={() => setLoaded(true)}
         style={{
@@ -230,8 +231,6 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
     </div>
   );
 
-  // ── Fullscreen mode: portal to document.body so ancestor
-  // backdrop-filter/transform can't trap the fixed overlay. ──
   if (fullscreen) {
     return createPortal(
       <div
@@ -259,7 +258,6 @@ export default function GrafanaViewer({ deploymentId, deploymentName }) {
       document.body,
     );
   }
-
 
   return (
     <div
