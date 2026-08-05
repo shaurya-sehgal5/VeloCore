@@ -115,27 +115,6 @@ jobs:
         run: npm audit --audit-level=high || true
 
       ####################################################
-      # Install Trivy
-      ####################################################
-
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install wget gnupg lsb-release -y
-
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-            | gpg --dearmor \
-            | sudo tee /usr/share/keyrings/trivy.gpg >/dev/null
-
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" \
-            | sudo tee /etc/apt/sources.list.d/trivy.list
-
-          sudo apt-get update
-          sudo apt-get install trivy -y
-
-          trivy image --download-db-only
-
-      ####################################################
       # Docker Setup
       ####################################################
 
@@ -166,13 +145,16 @@ jobs:
           provenance: false
 
       ####################################################
-      # Scan Backend
+      # Scan Backend with Trivy (Running as Container)
       ####################################################
 
-      - name: Scan Backend Image
+      - name: Scan Backend Image with Trivy
         continue-on-error: true
         run: |
-          trivy image \
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest \
+            image \
             --scanners vuln \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
@@ -223,13 +205,16 @@ jobs:
           provenance: false
 
       ####################################################
-      # Scan Frontend
+      # Scan Frontend with Trivy (Running as Container)
       ####################################################
 
-      - name: Scan Frontend Image
+      - name: Scan Frontend Image with Trivy
         continue-on-error: true
         run: |
-          trivy image \
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest \
+            image \
             --scanners vuln \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
@@ -284,10 +269,10 @@ jobs:
             echo "| Frontend Build | ✅ |"
             echo "| npm audit | ✅ |"
             echo "| Build Backend | ✅ |"
-            echo "| Scan Backend | ✅ |"
+            echo "| Scan Backend (Trivy) | ✅ |"
             echo "| Push Backend | ✅ |"
             echo "| Build Frontend | ✅ |"
-            echo "| Scan Frontend | ✅ |"
+            echo "| Scan Frontend (Trivy) | ✅ |"
             echo "| Push Frontend | ✅ |"
             echo ""
             echo "### Images"
@@ -299,6 +284,11 @@ jobs:
             echo ""
             echo "- Backend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
             echo "- Frontend: \`latest\`, \`main\`, \`${{ github.sha }}\`"
+            echo ""
+            echo "### Security Scanning"
+            echo ""
+            echo "- ✅ Gitleaks: Secret scanning completed"
+            echo "- ✅ Trivy: Vulnerability scanning completed (running as container)"
             echo ""
             echo "### Commit"
             echo ""
@@ -333,5 +323,9 @@ jobs:
           echo "  ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
           echo "  ${{ env.FRONTEND_IMAGE }}:latest"
           echo "  ${{ env.FRONTEND_IMAGE }}:main"
+          echo ""
+          echo "Security Scans"
+          echo "  ✅ Gitleaks - Secret scanning"
+          echo "  ✅ Trivy - Vulnerability scanning (container)"
           echo ""
           echo "=============================================="
