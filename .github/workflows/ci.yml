@@ -113,31 +113,26 @@ jobs:
               "http://localhost:8080/api/health",
               "http://localhost/"
             ]
-
-          [[rules]]
-            id = "allowlist-env-vars"
-            description = "Allowlist environment variable patterns"
-            regex = '''\$\{DB_[A-Z]+\}'''
-            allowlist = [
-              "${DB_NAME}",
-              "${DB_USER}",
-              "${DB_PASSWORD}"
-            ]
           EOF
           
           echo "✅ Gitleaks config created"
 
       ####################################################
-      # Run Gitleaks (Using GitHub Action)
+      # Run Gitleaks using Docker
       ####################################################
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
         continue-on-error: true
-        with:
-          config: .gitleaks.toml
-          report-format: json
-          report-path: gitleaks-report.json
+        run: |
+          docker run --rm \
+            -v $(pwd):/path \
+            -w /path \
+            zricethezav/gitleaks:latest \
+            detect \
+            --config .gitleaks.toml \
+            --report-format json \
+            --report-path gitleaks-report.json \
+            --no-banner
 
       ####################################################
       # Upload Gitleaks Report
