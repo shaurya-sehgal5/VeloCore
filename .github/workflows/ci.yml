@@ -128,26 +128,17 @@ jobs:
           echo "✅ Gitleaks config created"
 
       ####################################################
-      # Install Gitleaks for CI (with error handling)
-      ####################################################
-
-      - name: Install Gitleaks
-        continue-on-error: true
-        run: |
-          wget -q https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
-          tar -xzf gitleaks_linux_x64.tar.gz
-          sudo mv gitleaks /usr/local/bin/
-          gitleaks version || true
-
-      ####################################################
-      # Run Gitleaks (Continue on error)
+      # Run Gitleaks using Docker (NO INSTALLATION!)
       ####################################################
 
       - name: Run Gitleaks
         continue-on-error: true
         run: |
-          gitleaks detect \
-            --source . \
+          docker run --rm \
+            -v $(pwd):/path \
+            -w /path \
+            zricethezav/gitleaks:latest \
+            detect \
             --config .gitleaks.toml \
             --report-format json \
             --report-path gitleaks-report.json \
