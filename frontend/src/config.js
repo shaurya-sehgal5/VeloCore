@@ -16,7 +16,7 @@ export const FRONTEND_URL =
   import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 
 export const GRAFANA_URL =
-  import.meta.env.VITE_GRAFANA_URL || "";
+  import.meta.env.VITE_GRAFANA_URL || "http://3.110.163.70:30030";
 
 export const KUBERNETES_DASHBOARD_URL = import.meta.env.VITE_KUBERNETES_DASHBOARD_URL ||
   `${GRAFANA_URL}/d/velocore-user-dashboard-1/velocore-deployment-dashboard`;
