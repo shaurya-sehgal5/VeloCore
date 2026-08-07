@@ -90,7 +90,7 @@ exports.receive = async (req, res) => {
     ---------------------------------------------------------
     */
 
-    await buildQueue.removeJobs(`project-${project.id}`);
+    // await buildQueue.removeJobs(`project-${project.id}`);
 
     const githubToken = decrypt(project.github_token);
     const headCommit = json.head_commit || { message: "No commit message", author: { name: "Unknown" } };
