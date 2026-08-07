@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require("uuid");
 const axios = require("axios");
 const path = require("path");
 const { buildQueue } = require("../queues/build.queue");
+const webhookService = require("../services/git/webhook.service");
 
 exports.getUserRepositories = async (req, res) => {
   try {
@@ -57,27 +58,49 @@ exports.deployProject = async (req, res) => {
     let finalProjectId = projectId;
 
     if (!finalProjectId) {
+
       const { rows } = await db.query(
         `
-    INSERT INTO projects
-    (
-      user_id,
-      name,
-      repo_url,
-      branch
-    )
-    VALUES
-    (
-      $1,$2,$3,'main'
-    )
-    RETURNING id
-    `,
-        [userId, repoName, cloneUrl],
+INSERT INTO projects
+(
+    user_id,
+    name,
+    repo_url,
+    branch
+)
+VALUES
+(
+    $1,
+    $2,
+    $3,
+    'main'
+)
+RETURNING id
+`,
+        [
+          userId,
+          repoName,
+          cloneUrl,
+        ]
       );
 
       finalProjectId = rows[0].id;
-    }
 
+      await webhookService.create(finalProjectId);
+
+    }
+    const { rows: projectRows } = await db.query(
+      `
+SELECT webhook_id
+FROM projects
+WHERE id=$1
+`,
+      [finalProjectId]
+    );
+
+    if (!projectRows[0].webhook_id) {
+      await webhookService.create(finalProjectId);
+    }
     await db.query(
       `
     INSERT INTO deployments (

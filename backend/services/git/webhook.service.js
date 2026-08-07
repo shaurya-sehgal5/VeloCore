@@ -32,6 +32,12 @@ class WebhookService {
     }
 
     const project = rows[0];
+    if (project.webhook_id) {
+      return {
+        success: true,
+        webhookId: project.webhook_id,
+      };
+    }
 
     /*
     -----------------------------------
@@ -50,8 +56,8 @@ class WebhookService {
     Create Webhook
     -----------------------------------
     */
-   let response;
-   const githubToken = decrypt(project.github_token);
+    let response;
+    const githubToken = decrypt(project.github_token);
     try {
       response = await axios.post(
         `https://api.github.com/repos/${repo}/hooks`,
@@ -71,19 +77,82 @@ class WebhookService {
             insecure_ssl: "0",
           },
         },
-        
+
         {
           headers: {
-            
-           Authorization: `Bearer ${githubToken}`,
+
+            Authorization: `Bearer ${githubToken}`,
 
             Accept: "application/vnd.github+json",
           },
         },
       );
     } catch (err) {
-      console.error(err.response?.status);
-      console.error(err.response?.data);
+
+      if (err.response?.status === 422) {
+
+        const hook = await axios.get(
+          `https://api.github.com/repos/${repo}/hooks`,
+          {
+            headers: {
+              Authorization: `Bearer ${githubToken}`,
+              Accept: "application/vnd.github+json",
+            },
+          }
+        );
+
+        const existing = hook.data.find(
+          h =>
+            h.config.url ===
+            `${config.PUBLIC_URL}/api/github/webhook`
+        );
+
+        if (existing) {
+
+          await db.query(
+            `
+UPDATE projects
+SET
+    webhook_id=$1,
+    webhook_secret=$2,
+    auto_deploy=true,
+    production_branch=COALESCE(default_branch,'main')
+WHERE id=$3
+`,
+            [
+              existing.id,
+              secret,
+              projectId,
+            ]
+          );
+
+          await axios.patch(
+            `https://api.github.com/repos/${repo}/hooks/${existing.id}`,
+            {
+              config: {
+                url: `${config.PUBLIC_URL}/api/github/webhook`,
+                content_type: "json",
+                secret,
+                insecure_ssl: "0",
+              },
+              events: ["push"],
+              active: true,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${githubToken}`,
+                Accept: "application/vnd.github+json",
+              },
+            }
+          );
+
+          return {
+            success: true,
+            webhookId: existing.id,
+          };
+        }
+      }
+
       throw err;
     }
 
@@ -95,13 +164,19 @@ class WebhookService {
 
     await db.query(
       `
-      UPDATE projects
-      SET
-        webhook_id=$1,
-        webhook_secret=$2
-      WHERE id=$3
-      `,
-      [response.data.id, secret, projectId],
+UPDATE projects
+SET
+    webhook_id=$1,
+    webhook_secret=$2,
+    auto_deploy=true,
+    production_branch=COALESCE(default_branch,'main')
+WHERE id=$3
+`,
+      [
+        response.data.id,
+        secret,
+        projectId,
+      ]
     );
 
     return {
