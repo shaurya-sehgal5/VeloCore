@@ -46,15 +46,15 @@ containerMonitor.start();
 app.use(
   "/api/github/webhook",
   express.raw({
-    type: "application/json",
+    type: "*/*",
   }),
 );
 
 app.use(
-    "/api/webhooks/github",
-    express.raw({
-        type: "application/json",
-    })
+  "/api/webhooks/github",
+  express.raw({
+    type: "application/json",
+  })
 );
 
 app.use(express.json());
