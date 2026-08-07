@@ -2,7 +2,7 @@ apiVersion: v2
 
 name: velocore
 
-description: VeloCore Platform
+description: VeloCore Platform 
 
 type: application
 
