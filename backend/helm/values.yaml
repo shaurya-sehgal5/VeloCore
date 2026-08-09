@@ -1,14 +1,12 @@
-deploymentId: test-app
+deploymentId: ""
 
-namespace: default
+namespace: ""
 
 slot: blue
 
 type: ""
 
 framework: ""
-
-replicas: 1
 
 image:
   repository: ""
@@ -27,16 +25,10 @@ ingress:
 
 env: {}
 
-healthCheck:
-  path: /health
-
-resources: {}
+podAnnotations: {}
 
 serviceAccount:
   create: true
-  name: velocore-app
+  name: ""
 
-vault:
-  enabled: false
-  role: ""
-  secretPath: ""
+resources: {}

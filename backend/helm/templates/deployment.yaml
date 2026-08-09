@@ -6,38 +6,25 @@ metadata:
   namespace: {{ .Values.namespace }}
 
 spec:
-  replicas: {{ .Values.replicas }}
-
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+  replicas: 1
 
   selector:
     matchLabels:
       app: {{ .Values.deploymentId }}
+      slot: {{ .Values.slot }}
 
   template:
     metadata:
       labels:
         app: {{ .Values.deploymentId }}
+        slot: {{ .Values.slot }}
 
-      {{- if .Values.vault.enabled }}
+      {{- with .Values.podAnnotations }}
       annotations:
-        vault.hashicorp.com/agent-inject: "true"
-        vault.hashicorp.com/role: "{{ .Values.vault.role }}"
-        vault.hashicorp.com/agent-inject-secret-app.env: "{{ .Values.vault.secretPath }}"
-        vault.hashicorp.com/agent-inject-template-app.env: |
-          {{`{{- with secret "`}}{{ .Values.vault.secretPath }}{{`" }}`}}
-          DATABASE_URL={{`{{ .Data.data.DATABASE_URL }}`}}
-          API_KEY={{`{{ .Data.data.API_KEY }}`}}
-          JWT_SECRET={{`{{ .Data.data.JWT_SECRET }}`}}
-          {{`{{- end }}`}}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
 
     spec:
-
       {{- if .Values.serviceAccount.name }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
@@ -47,18 +34,14 @@ spec:
 
           image: {{ .Values.image.repository | quote }}
 
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
+
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.deploymentId }}-config
 
           ports:
             - containerPort: {{ .Values.container.port }}
-
-          {{- if .Values.env }}
-          env:
-            {{- range $key, $value := .Values.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-          {{- end }}
 
           {{- if eq .Values.type "backend" }}
 
@@ -66,7 +49,7 @@ spec:
             httpGet:
               path: /health
               port: {{ .Values.container.port }}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
@@ -75,7 +58,7 @@ spec:
             httpGet:
               path: /health
               port: {{ .Values.container.port }}
-            initialDelaySeconds: 20
+            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
