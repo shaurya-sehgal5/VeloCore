@@ -238,7 +238,6 @@ class DeploymentOrchestrator {
   UPDATE projects
   SET
     current_deployment_id = $1,
-    updated_at = NOW()
   WHERE id = (
     SELECT project_id
     FROM deployments
