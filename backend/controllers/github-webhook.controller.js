@@ -110,6 +110,16 @@ exports.receive = async (req, res) => {
     ---------------------------------------------------------
     */
     const deploymentId = uuidv4();
+    const io = req.app.get("io");
+
+    if (io) {
+      io.emit("deployment_created", {
+        deploymentId,
+        projectId: project.id,
+        projectName: project.name,
+        status: "QUEUED",
+      });
+    }
     const deploymentUrl = `${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
     await db.query(

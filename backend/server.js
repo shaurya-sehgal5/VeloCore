@@ -22,7 +22,6 @@ const securityRoutes = require("./routes/security.routes");
 const containerMonitor = require("./services/runtime/container-monitor.service");
 const requestLogger = require("./middleware/request-logger");
 const logsRoutes = require("./routes/logs.routes");
-const webhookRoutes = require("./routes/webhook.routes")
 require("dotenv").config();
 const config = require("./config/env");
 
@@ -150,7 +149,6 @@ app.use("/api/github/webhook", githubWebhookRoutes);
 app.use("/api", kubernetesRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/logs", logsRoutes);
-app.use("/api/webhooks", webhookRoutes);
 
 // Health check BEFORE the 404 handler
 app.get("/api/health", (req, res) => {
