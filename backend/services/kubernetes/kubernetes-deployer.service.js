@@ -7,7 +7,6 @@ const helm = require("../helm/helm.service");
 const analyzer = require("./failure-analyzer.service");
 const config = require("../../config/env")
 const kubernetesMetrics = require("../monitoring/kubernetes-metrics.service");
-const vaultService = require("../security/vault.service");
 
 class KubernetesDeployer {
 
@@ -23,42 +22,9 @@ class KubernetesDeployer {
                 "HELM",
                 "Deploying Helm release..."
             );
-            const vaultPath =
-                buildPlan.vault?.secretPath ||
-                `secret/data/velocore/${buildPlan.projectName}`;
+           
             await namespaceService.ensure(buildPlan.namespace);
             try {
-                if (!rollback && buildPlan.env && Object.keys(buildPlan.env).length) {
-
-                    await logger.info(
-                        deploymentId,
-                        "VAULT",
-                        "Storing application secrets in Vault..."
-                    );
-
-                    await vaultService.putSecret(
-                        vaultPath,
-                        buildPlan.env
-                    );
-
-                    if (!buildPlan.vault) {
-                        buildPlan.vault = {};
-                    }
-
-                    buildPlan.vault.enabled = true;
-                    buildPlan.vault.secretPath = vaultPath;
-                    buildPlan.vault.role =
-                        buildPlan.vault.role || "velocore-app";
-
-                    buildPlan.vault.serviceAccount =
-                        buildPlan.vault.serviceAccount || "velocore-app";
-
-                    await logger.success(
-                        deploymentId,
-                        "VAULT",
-                        "Application secrets stored securely."
-                    );
-                }
                 await helm.install({
                     deploymentId,
                     buildPlan

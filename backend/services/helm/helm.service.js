@@ -29,12 +29,6 @@ class HelmService {
             env.NODE_ENV = "production";
         }
 
-        const vault = buildPlan.vault || {
-            enabled: false,
-            role: "",
-            secretPath: "",
-            serviceAccount: "",
-        };
 
         const values = `
 deploymentId: ${buildPlan.projectName}
@@ -78,10 +72,6 @@ serviceAccount:
   create: true
   name: ${vault.enabled ? vault.serviceAccount : "velocore-app"}
 
-vault:
-  enabled: ${vault.enabled ? "true" : "false"}
-  role: "${vault.role || ""}"
-  secretPath: "${vault.secretPath || ""}"
 `;
 
         await fs.writeFile(
