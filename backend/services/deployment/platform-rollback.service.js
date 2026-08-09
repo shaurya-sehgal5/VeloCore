@@ -7,6 +7,7 @@ const deploymentEvents = require("../deployment/deployment-event.service");
 const runtimeGroup = require("../runtime/runtime-group.service");
 const runtimeManager = require("../runtime/runtime-manager.service");
 const runtimeRegistry = require("../runtime/runtime-registry.service");
+const db = require("../../config/db");
 
 class PlatformRollbackService {
     async rollback(deploymentId) {
@@ -15,17 +16,14 @@ class PlatformRollbackService {
             "ROLLBACK",
             "Deleting failed namespace"
         );
-      
+
         const previous = await runtimeQuery.previousSuccessful(deploymentId);
 
         if (!previous) {
-            throw new Error(
-                "No previous successful deployment found."
-            );
+            throw new Error("No previous successful deployment found.");
         }
 
-        const runtimes =
-            await runtimeQuery.previousRuntime(previous.id);
+        const runtimes = await runtimeQuery.previousRuntime(previous.id);
 
         if (!runtimes.length) {
             throw new Error(
@@ -38,6 +36,7 @@ class PlatformRollbackService {
             "ROLLBACK",
             `Rolling back using deployment ${previous.id}`
         );
+
         const order = {
             backend: 1,
             worker: 2,
@@ -49,6 +48,7 @@ class PlatformRollbackService {
                 (order[a.type] || 99) -
                 (order[b.type] || 99)
         );
+
         for (const runtime of runtimes) {
             const buildPlan =
                 builderService.createRollbackPlan(runtime);
@@ -58,6 +58,7 @@ class PlatformRollbackService {
                 "ROLLBACK",
                 `Restoring ${runtime.name}`
             );
+
             const restored =
                 await kubernetesDeployer.deploy({
                     deploymentId: buildPlan.deploymentId,
@@ -65,26 +66,72 @@ class PlatformRollbackService {
                     rollback: true,
                 });
 
-            runtimeGroup.add(deploymentId, restored);
+          
+            runtimeGroup.add(previous.id, restored);
 
             runtimeManager.register(restored.runtime);
 
             await runtimeRegistry.register(restored.runtime);
         }
-        await deploymentEvents.emit({
-            deploymentId,
-            event: "ROLLBACK_COMPLETED",
-            message: `Recovered using deployment ${previous.id}`,
-        });
-        await statusService.update(
-            previous.id,
-            "SUCCESS"
-        );
 
         await statusService.update(
             deploymentId,
             "ROLLED_BACK"
         );
+
+        await statusService.update(
+            previous.id,
+            "SUCCESS"
+        );
+
+        await db.query(
+            `
+      UPDATE projects
+      SET
+        current_deployment_id = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+            [
+                previous.id,
+                previous.project_id,
+            ]
+        );
+
+        await deploymentEvents.emit({
+            deploymentId,
+            event: "ROLLBACK_COMPLETED",
+            message: `Recovered using deployment ${previous.id}`,
+        });
+
+        try {
+            const { getIO } = require("../../config/socket");
+            const io = getIO();
+
+            io.to(deploymentId).emit(
+                "rollback_completed",
+                {
+                    failedDeploymentId: deploymentId,
+                    activeDeploymentId: previous.id,
+                    status: "ROLLED_BACK",
+                }
+            );
+
+            io.emit(
+                "deployment_context_changed",
+                {
+                    failedDeploymentId: deploymentId,
+                    activeDeploymentId: previous.id,
+                    status: "ROLLED_BACK",
+                }
+            );
+        } catch (err) {
+            console.warn(
+                "Rollback websocket notification failed:",
+                err.message
+            );
+        }
+
         return previous.id;
     }
 }

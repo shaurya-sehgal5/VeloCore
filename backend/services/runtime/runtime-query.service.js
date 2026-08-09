@@ -3,15 +3,17 @@ const config = require("../../config/env")
 
 class RuntimeQueryService {
   async getByDeployment(deploymentId) {
-
     const { rows: deploymentRows } = await db.query(
       `
     SELECT
-      id,
-      project_id,
-      status
-    FROM deployments
-    WHERE id = $1
+      d.id,
+      d.project_id,
+      d.status,
+      p.current_deployment_id
+    FROM deployments d
+    JOIN projects p
+      ON p.id = d.project_id
+    WHERE d.id = $1
     `,
       [deploymentId]
     );
@@ -20,60 +22,39 @@ class RuntimeQueryService {
       return [];
     }
 
-    let targetDeploymentId = deploymentId;
-
     const deployment = deploymentRows[0];
 
-    if (
-      deployment.status === "FAILED" ||
-      deployment.status === "ROLLED_BACK"
-    ) {
-
-      const { rows } = await db.query(
-        `
-      SELECT id
-      FROM deployments
-      WHERE project_id = $1
-        AND status = 'SUCCESS'
-      ORDER BY created_at DESC
-      LIMIT 1
-      `,
-        [deployment.project_id]
-      );
-
-      if (rows.length) {
-        targetDeploymentId = rows[0].id;
-      }
-    }
+    let targetDeploymentId =
+      deployment.current_deployment_id || deploymentId;
 
     const { rows } = await db.query(
       `
-SELECT
-    deployment_id,
-    name,
-    type,
-    framework,
-    status,
-    engine,
-    route,
-    container_port,
-    image_name,
-    container_name,
-    slot,
-    namespace,
-    deployment_name,
-    service_name,
-    pod,
-    host,
-    created_at
-FROM deployment_services
-WHERE deployment_id = $1
-ORDER BY created_at ASC
-`,
+    SELECT
+      deployment_id,
+      name,
+      type,
+      framework,
+      status,
+      engine,
+      route,
+      container_port,
+      image_name,
+      container_name,
+      slot,
+      namespace,
+      deployment_name,
+      service_name,
+      pod,
+      host,
+      created_at
+    FROM deployment_services
+    WHERE deployment_id = $1
+    ORDER BY created_at ASC
+    `,
       [targetDeploymentId]
     );
 
-    return rows.map(runtime => ({
+    return rows.map((runtime) => ({
       ...runtime,
       url: runtime.route || null,
     }));
