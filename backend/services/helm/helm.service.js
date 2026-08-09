@@ -75,7 +75,7 @@ healthCheck:
 resources: {}
 
 serviceAccount:
-  create: ${vault.enabled ? "true" : "true"}
+  create: true
   name: ${vault.enabled ? vault.serviceAccount : "velocore-app"}
 
 vault:
