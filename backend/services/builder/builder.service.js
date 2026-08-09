@@ -1,7 +1,9 @@
 const buildPlanService = require("../docker/builder.service");
 
 class BuilderService {
+
   createBuildPlan(node, deploymentId, slot) {
+
     const plan = buildPlanService.createBuildPlan(
       node,
       deploymentId,
@@ -10,14 +12,28 @@ class BuilderService {
 
     plan.scaling = null;
 
+    plan.env = node.environment || node.env || {};
+
     plan.healthCheck = {
-      path: node.type === "frontend" ? "/" : "/health",
+      path: node.type === "frontend"
+        ? "/"
+        : "/health",
     };
 
+    const hasSecrets =
+      plan.env &&
+      Object.keys(plan.env).length > 0;
+
     plan.vault = {
-      enabled: true,
+      enabled:
+        node.type === "backend" &&
+        hasSecrets,
+
       role: "velocore-app",
-      secretPath: "secret/data/velocore-demo",
+
+      secretPath:
+        `secret/data/velocore/${node.projectName || plan.projectName}`,
+
       serviceAccount: "velocore-app",
     };
 
@@ -25,7 +41,9 @@ class BuilderService {
   }
 
   createRollbackPlan(runtime) {
+
     return {
+
       projectName: runtime.name,
 
       type: runtime.type,
@@ -57,16 +75,25 @@ class BuilderService {
       },
 
       healthCheck: {
-        path: runtime.type === "frontend" ? "/" : "/health",
+        path:
+          runtime.type === "frontend"
+            ? "/"
+            : "/health",
       },
 
       env: runtime.environment || {},
 
       vault: {
-        enabled: true,
+        enabled:
+          runtime.type === "backend",
+
         role: "velocore-app",
-        secretPath: "secret/data/velocore-demo",
-        serviceAccount: "velocore-app",
+
+        secretPath:
+          `secret/data/velocore/${runtime.name}`,
+
+        serviceAccount:
+          "velocore-app",
       },
     };
   }

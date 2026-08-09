@@ -8,6 +8,8 @@ type: ""
 
 framework: ""
 
+replicas: 1
+
 image:
   repository: ""
 
@@ -25,10 +27,16 @@ ingress:
 
 env: {}
 
-podAnnotations: {}
+healthCheck:
+  path: /health
+
+resources: {}
 
 serviceAccount:
   create: true
-  name: ""
+  name: velocore-app
 
-resources: {}
+vault:
+  enabled: false
+  role: ""
+  secretPath: ""

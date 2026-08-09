@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas | default 1 }}
 
   selector:
     matchLabels:
@@ -19,12 +19,24 @@ spec:
         app: {{ .Values.deploymentId }}
         slot: {{ .Values.slot }}
 
-      {{- with .Values.podAnnotations }}
+      {{- if .Values.vault.enabled }}
       annotations:
-        {{- toYaml . | nindent 8 }}
+        vault.hashicorp.com/agent-inject: "true"
+
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+
+        vault.hashicorp.com/agent-inject-secret-app.env: {{ .Values.vault.secretPath | quote }}
+
+        vault.hashicorp.com/agent-inject-template-app.env: |
+          {{`{{- with secret "`}}{{ .Values.vault.secretPath }}{{`" }}`}}
+          {{`{{- range $key, $value := .Data.data }}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end }}`}}
+          {{`{{- end }}`}}
       {{- end }}
 
     spec:
+
       {{- if .Values.serviceAccount.name }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
@@ -36,9 +48,13 @@ spec:
 
           imagePullPolicy: IfNotPresent
 
-          envFrom:
-            - configMapRef:
-                name: {{ .Values.deploymentId }}-config
+          {{- if .Values.env }}
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
 
           ports:
             - containerPort: {{ .Values.container.port }}
@@ -47,7 +63,7 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /health
+              path: {{ .Values.healthCheck.path | default "/health" }}
               port: {{ .Values.container.port }}
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -56,7 +72,7 @@ spec:
 
           livenessProbe:
             httpGet:
-              path: /health
+              path: {{ .Values.healthCheck.path | default "/health" }}
               port: {{ .Values.container.port }}
             initialDelaySeconds: 15
             periodSeconds: 10
