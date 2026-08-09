@@ -1,6 +1,5 @@
 import React from "react";
 import GrafanaViewer from "./GrafanaViewer";
-import { MONO } from "../config";
 import { KUBERNETES_DASHBOARD_URL, MONO } from "../config";
 
 const sectionLabelStyle = {
