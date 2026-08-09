@@ -138,7 +138,7 @@ WHERE id=$1
         env: envVars || {},
       },
       {
-        jobId: `project-${finalProjectId}`,
+        jobId: deploymentId,
         removeOnComplete: 20,
         removeOnFail: 20,
       }

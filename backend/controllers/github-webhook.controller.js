@@ -126,11 +126,11 @@ exports.receive = async (req, res) => {
         deploymentId,
         cloneUrl: project.repo_url,
         githubToken,
-        targetBranch, 
+        targetBranch,
         env: project.environment_variables || {},
       },
       {
-        jobId: `project-${project.id}`,
+        jobId: deploymentId,
         removeOnComplete: 20,
         removeOnFail: 20,
       }
