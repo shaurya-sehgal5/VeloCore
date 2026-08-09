@@ -66,13 +66,7 @@ ${Object.entries(env)
 healthCheck:
   path: "${buildPlan.healthCheck?.path || "/health"}"
 
-resources: {}
-
-serviceAccount:
-  create: true
-  name: ${vault.enabled ? vault.serviceAccount : "velocore-app"}
-
-`;
+resources: {}`;
 
         await fs.writeFile(
             valuesPath,
