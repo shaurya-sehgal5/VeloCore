@@ -1,6 +1,6 @@
 import React from "react";
 import GrafanaViewer from "./GrafanaViewer";
-
+import { MONO } from "../config";
 import { KUBERNETES_DASHBOARD_URL, MONO } from "../config";
 
 const sectionLabelStyle = {
@@ -93,9 +93,6 @@ function DashboardLinkCard({ href, accent, title, subtitle, icon }) {
     </a>
   );
 }
-import React from "react";
-import GrafanaViewer from "./GrafanaViewer";
-import { MONO } from "../config";
 
 export default function MonitoringTab({ deployment, metrics }) {
   const activeDeploymentId =
