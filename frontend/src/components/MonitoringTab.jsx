@@ -93,19 +93,61 @@ function DashboardLinkCard({ href, accent, title, subtitle, icon }) {
     </a>
   );
 }
+import React from "react";
+import GrafanaViewer from "./GrafanaViewer";
+import { MONO } from "../config";
+
 export default function MonitoringTab({ deployment, metrics }) {
+  const activeDeploymentId =
+    deployment?.current_deployment_id ||
+    deployment?.currentDeploymentId ||
+    deployment?.id;
+
+  const activeDeployment = {
+    ...deployment,
+    id: activeDeploymentId,
+  };
+
   return (
     <div>
-      <div style={sectionLabelStyle}>Monitoring</div>
-      <p style={mutedTextStyle}>
+      <div
+        style={{
+          fontSize: "11px",
+          fontFamily: MONO,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          color: "#a1a1aa",
+          fontWeight: 500,
+          marginBottom: "8px",
+        }}
+      >
+        Monitoring
+      </div>
+
+      <p
+        style={{
+          color: "#71717a",
+          fontSize: "13px",
+          fontFamily: MONO,
+          margin: "0 0 20px 0",
+        }}
+      >
         $ open the live monitoring dashboard for this deployment's runtime
         engine.
       </p>
 
-      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "14px",
+          flexWrap: "wrap",
+        }}
+      >
         <GrafanaViewer
-          deploymentId={deployment?.id}
-          deploymentName={deployment?.name}
+          deploymentId={activeDeployment.id}
+          deploymentName={
+            activeDeployment.name || activeDeployment.project_name
+          }
         />
       </div>
     </div>

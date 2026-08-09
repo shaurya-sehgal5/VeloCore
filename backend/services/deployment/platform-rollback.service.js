@@ -61,12 +61,11 @@ class PlatformRollbackService {
 
             const restored =
                 await kubernetesDeployer.deploy({
-                    deploymentId: buildPlan.deploymentId,
+                    deploymentId: previous.id,
                     buildPlan,
                     rollback: true,
                 });
 
-          
             runtimeGroup.add(previous.id, restored);
 
             runtimeManager.register(restored.runtime);
@@ -87,9 +86,7 @@ class PlatformRollbackService {
         await db.query(
             `
       UPDATE projects
-      SET
-        current_deployment_id = $1,
-        updated_at = NOW()
+      SET current_deployment_id = $1
       WHERE id = $2
       `,
             [
@@ -117,6 +114,7 @@ class PlatformRollbackService {
                 }
             );
 
+           
             io.emit(
                 "deployment_context_changed",
                 {

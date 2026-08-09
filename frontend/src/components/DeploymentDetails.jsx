@@ -716,8 +716,18 @@ export default function DeploymentDetails({
   const [actionInProgress, setActionInProgress] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const activeDeploymentId =
+    deployment.current_deployment_id ||
+    deployment.currentDeploymentId ||
+    deployment.id;
+
+  const activeDeployment = {
+    ...deployment,
+    id: activeDeploymentId,
+  };
+
   const { services, servicesLoading, servicesError, runtimeEngine, metrics } =
-    useDeploymentRuntime(deployment.id, {
+    useDeploymentRuntime(activeDeploymentId, {
       poll: tab === "overview" || tab === "monitoring",
     });
 
@@ -909,17 +919,17 @@ export default function DeploymentDetails({
           actionInProgress={actionInProgress}
         />
       )}
-      {tab === "logs" && <LokiLogsTab deploymentId={deployment.id} />}
+      {tab === "logs" && <LokiLogsTab deploymentId={activeDeploymentId} />}
 
       {tab === "monitoring" && (
-        <MonitoringTab deployment={deployment} metrics={metrics} />
+        <MonitoringTab deployment={activeDeployment} metrics={metrics} />
       )}
 
-      {tab === "timeline" && <TimelineTab deploymentId={deployment.id} />}
+      {tab === "timeline" && <TimelineTab deploymentId={activeDeploymentId} />}
 
-      {tab === "history" && <HistoryTab deploymentId={deployment.id} />}
+      {tab === "history" && <HistoryTab deploymentId={activeDeploymentId} />}
 
-      {tab === "events" && <EventsTab deploymentId={deployment.id} />}
+      {tab === "events" && <EventsTab deploymentId={activeDeploymentId} />}
 
       {tab === "rollback" && (
         <RollbackTab

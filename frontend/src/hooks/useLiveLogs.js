@@ -69,15 +69,25 @@ export default function useLiveLogs(onStatusChange) {
     socket.on("status_update", (data) => {
       if (!data) return;
 
-      console.log(
-        "📊 DEPLOYMENT STATUS:",
-        data.status
-      );
-
       setStatus(data.status);
 
       onStatusChange?.();
 
+      if (STATUS_META[data.status]?.terminal) {
+        socket.disconnect();
+      }
+    });
+
+    socket.on("deployment_context_changed", (data) => {
+      if (!data) return;
+
+      if (
+        data.failedDeploymentId === activeDeploymentId &&
+        data.activeDeploymentId
+      ) {
+        setActiveDeploymentId(data.activeDeploymentId);
+        setStatus("SUCCESS");
+      }
     });
 
     socket.on("disconnect", (reason) => {

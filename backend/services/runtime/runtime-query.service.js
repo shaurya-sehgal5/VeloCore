@@ -60,6 +60,27 @@ class RuntimeQueryService {
     }));
   }
   async latest(deploymentId) {
+    const { rows: deploymentRows } = await db.query(
+      `
+    SELECT
+      d.id,
+      p.current_deployment_id
+    FROM deployments d
+    JOIN projects p
+      ON p.id = d.project_id
+    WHERE d.id = $1
+    `,
+      [deploymentId]
+    );
+
+    if (!deploymentRows.length) {
+      return null;
+    }
+
+    const targetDeploymentId =
+      deploymentRows[0].current_deployment_id ||
+      deploymentId;
+
     const { rows } = await db.query(
       `
     SELECT *
@@ -68,7 +89,7 @@ class RuntimeQueryService {
     ORDER BY created_at DESC
     LIMIT 1
     `,
-      [deploymentId]
+      [targetDeploymentId]
     );
 
     return rows[0];
@@ -108,32 +129,51 @@ LIMIT 1
     return rows;
   }
   async group(deploymentId) {
+    const { rows: deploymentRows } = await db.query(
+      `
+    SELECT
+      d.id,
+      p.current_deployment_id
+    FROM deployments d
+    JOIN projects p
+      ON p.id = d.project_id
+    WHERE d.id = $1
+    `,
+      [deploymentId]
+    );
+
+    if (!deploymentRows.length) {
+      return [];
+    }
+
+    const targetDeploymentId =
+      deploymentRows[0].current_deployment_id ||
+      deploymentId;
+
     const { rows } = await db.query(
       `
-     SELECT
-id,
-name,
-type,
-framework,
-status,
-slot,
-route,
-container_port,
-image_name,
-container_name,
-created_at
-FROM deployment_services
-WHERE deployment_id = $1
-ORDER BY created_at ASC
-      `,
-      [deploymentId],
+    SELECT
+      id,
+      name,
+      type,
+      framework,
+      status,
+      slot,
+      route,
+      container_port,
+      image_name,
+      container_name,
+      created_at
+    FROM deployment_services
+    WHERE deployment_id = $1
+    ORDER BY created_at ASC
+    `,
+      [targetDeploymentId]
     );
 
     return rows.map((runtime) => ({
       ...runtime,
-      url: runtime.route
-        ? `${runtime.route}`
-        : null,
+      url: runtime.route || null,
     }));
   }
   async previousRuntime(deploymentId) {
