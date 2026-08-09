@@ -233,19 +233,19 @@ class DeploymentOrchestrator {
         "SUMMARY",
         "Deployment completed successfully."
       );
-      await db.query(
-        `
+    await db.query(
+  `
   UPDATE projects
   SET
-    current_deployment_id = $1,
+    current_deployment_id = $1
   WHERE id = (
     SELECT project_id
     FROM deployments
     WHERE id = $1
   )
   `,
-        [deploymentId]
-      );
+  [deploymentId]
+);
       metrics.runningDeployments.inc();
 
       timer({
