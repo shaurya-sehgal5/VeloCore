@@ -104,8 +104,3 @@ spec:
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-
-      volumes:
-        - name: vault-secrets
-          emptyDir:
-            medium: Memory

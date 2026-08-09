@@ -1,6 +1,6 @@
-deploymentId: ""
+deploymentId: test-app
 
-namespace: ""
+namespace: default
 
 slot: blue
 
