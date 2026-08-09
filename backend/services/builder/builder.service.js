@@ -34,7 +34,6 @@ class BuilderService {
       secretPath:
         `secret/data/velocore/${node.projectName || plan.projectName}`,
 
-      serviceAccount: "velocore-app",
     };
 
     return plan;

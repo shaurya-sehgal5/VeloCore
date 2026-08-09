@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas }}
 
   strategy:
     type: RollingUpdate
@@ -42,81 +42,26 @@ spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
 
-      initContainers:
-        - name: docker-config-init
-          image: busybox:1.36
-
-          command:
-            - sh
-            - -c
-            - |
-              mkdir -p /tmp/docker
-              cp /docker-host/config.json /tmp/docker/config.json
-              chmod 600 /tmp/docker/config.json
-
-          volumeMounts:
-            - name: docker-config-dir
-              mountPath: /tmp/docker
-
-            - name: docker-host-config
-              mountPath: /docker-host
-              readOnly: true
-
       containers:
-        - name: backend
+        - name: app
 
           image: {{ .Values.image.repository | quote }}
 
           imagePullPolicy: Always
 
-          command:
-            - sh
-            - -c
-            - |
-              cp /etc/rancher/k3s/k3s.yaml /tmp/kubeconfig
-              sed -i 's#https://127.0.0.1:6443#https://kubernetes.default.svc:443#g' /tmp/kubeconfig
-              export KUBECONFIG=/tmp/kubeconfig
-              exec npm start
-
           ports:
             - containerPort: {{ .Values.container.port }}
 
-          envFrom:
-            - configMapRef:
-                name: velocore-config
-
-            - secretRef:
-                name: velocore-secret
-
+          {{- if .Values.env }}
           env:
-            - name: KUBECONFIG
-              value: /tmp/kubeconfig
-
-            - name: K3S_CONTAINERD_SOCKET
-              value: /run/k3s/containerd/containerd.sock
-
-            - name: DOCKER_CONFIG
-              value: /tmp/docker
-
-          volumeMounts:
-            - name: docker-sock
-              mountPath: /var/run/docker.sock
-
-            - name: docker-config-dir
-              mountPath: /tmp/docker
-
-            - name: k3s-config
-              mountPath: /etc/rancher/k3s
-              readOnly: true
-
-            - name: k3s-data
-              mountPath: /var/lib/rancher/k3s
-              readOnly: true
-
-            - name: k3s-run
-              mountPath: /run/k3s
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
 
           {{- if eq .Values.type "backend" }}
+
           readinessProbe:
             httpGet:
               path: /api/health
@@ -134,7 +79,9 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
+
           {{- else }}
+
           readinessProbe:
             httpGet:
               path: /
@@ -152,36 +99,13 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
+
           {{- end }}
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 
       volumes:
-        - name: docker-sock
-          hostPath:
-            path: /var/run/docker.sock
-            type: Socket
-
-        - name: docker-config-dir
-          emptyDir: {}
-
-        - name: docker-host-config
-          hostPath:
-            path: /home/ubuntu/.docker
-            type: Directory
-
-        - name: k3s-config
-          hostPath:
-            path: /etc/rancher/k3s
-            type: Directory
-
-        - name: k3s-data
-          hostPath:
-            path: /var/lib/rancher/k3s
-            type: Directory
-
-        - name: k3s-run
-          hostPath:
-            path: /run/k3s
-            type: Directory
+        - name: vault-secrets
+          emptyDir:
+            medium: Memory
