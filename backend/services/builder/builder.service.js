@@ -14,8 +14,16 @@ class BuilderService {
       path: node.type === "frontend" ? "/" : "/health",
     };
 
+    plan.vault = {
+      enabled: true,
+      role: "velocore-app",
+      secretPath: "secret/data/velocore-demo",
+      serviceAccount: "velocore-app",
+    };
+
     return plan;
   }
+
   createRollbackPlan(runtime) {
     return {
       projectName: runtime.name,
@@ -53,6 +61,13 @@ class BuilderService {
       },
 
       env: runtime.environment || {},
+
+      vault: {
+        enabled: true,
+        role: "velocore-app",
+        secretPath: "secret/data/velocore-demo",
+        serviceAccount: "velocore-app",
+      },
     };
   }
 }

@@ -19,7 +19,16 @@ spec:
         app: {{ .Values.deploymentId }}
         slot: {{ .Values.slot }}
 
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
     spec:
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+
       containers:
         - name: app
 
@@ -34,7 +43,7 @@ spec:
           ports:
             - containerPort: {{ .Values.container.port }}
 
-{{- if eq .Values.type "backend" }}
+          {{- if eq .Values.type "backend" }}
 
           readinessProbe:
             httpGet:
@@ -54,7 +63,7 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 3
 
-{{- else }}
+          {{- else }}
 
           readinessProbe:
             httpGet:
@@ -74,7 +83,7 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 3
 
-{{- end }}
+          {{- end }}
 
           resources:
-{{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}

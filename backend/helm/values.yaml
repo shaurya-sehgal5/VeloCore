@@ -25,4 +25,10 @@ ingress:
 
 env: {}
 
+podAnnotations: {}
+
+serviceAccount:
+  create: true
+  name: ""
+
 resources: {}
