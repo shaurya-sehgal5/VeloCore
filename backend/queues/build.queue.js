@@ -27,7 +27,6 @@ const buildWorker = new Worker(
       deploymentId,
       cloneUrl,
       githubToken,
-      io,
       env = {},
     } = job.data;
     metrics.queueJobs
@@ -52,7 +51,6 @@ const buildWorker = new Worker(
         repoUrl: cloneUrl,
         githubToken,
         deploymentId,
-        io,
         env,
       }),
       timeout,
