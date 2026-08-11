@@ -248,7 +248,7 @@ class KubectlService {
     return spawn("kubectl", ["logs", "-f", pod, "-n", namespace]);
   }
   async waitDeletion(name, namespace = "default") {
-    const timeout = 30000;
+    const timeout = 90000;
     const started = Date.now();
 
     while (Date.now() - started < timeout) {

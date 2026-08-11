@@ -43,7 +43,7 @@ const buildWorker = new Worker(
     const timeout = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Deployment exceeded 5 minute timeout.")),
-        300000
+        900000
       )
     );
     return await Promise.race([
