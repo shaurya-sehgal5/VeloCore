@@ -17,6 +17,8 @@ class KubernetesDeployer {
         rollback = false,
     }) {
         try {
+            const workloadName =
+                `${buildPlan.projectName}-${deploymentId.substring(0, 8)}`;
             await logger.info(
                 deploymentId,
                 "HELM",
@@ -50,7 +52,7 @@ class KubernetesDeployer {
                 try {
 
                     await kubectl.rollout(
-                        buildPlan.projectName,
+                        workloadName,
                         buildPlan.namespace,
                         deploymentId,
                     );
@@ -78,9 +80,8 @@ class KubernetesDeployer {
             }
 
             const pod = await kubectl.getPod(
-                buildPlan.projectName,
-                buildPlan.namespace,
-                buildPlan.type !== "worker"
+                workloadName,
+                buildPlan.namespace
             );
 
             if (!pod) {
@@ -93,7 +94,7 @@ class KubernetesDeployer {
 
             if (buildPlan.type !== "worker") {
                 service = await kubectl.getService(
-                    buildPlan.projectName,
+                    workloadName,
                     buildPlan.namespace
                 );
             }
@@ -189,7 +190,7 @@ class KubernetesDeployer {
 
                     namespace: buildPlan.namespace,
 
-                    deployment: buildPlan.projectName,
+                    deployment: workloadName,
 
                     service: service?.metadata?.name || null,
 
