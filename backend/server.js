@@ -150,6 +150,7 @@ app.use("/api", kubernetesRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/logs", logsRoutes);
 
+
 // Health check BEFORE the 404 handler
 app.get("/api/health", (req, res) => {
   res.status(200).json({
