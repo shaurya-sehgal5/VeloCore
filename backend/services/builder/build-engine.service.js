@@ -42,6 +42,20 @@ class BuildEngine {
         "Generated default .dockerignore"
       );
     }
+    await logger.info(
+      deploymentId,
+      "BUILD",
+      `Build plan: ${JSON.stringify({
+        project: buildPlan.projectName,
+        type: buildPlan.type,
+        framework: buildPlan.framework,
+        language: buildPlan.language,
+        dockerfile: buildPlan.dockerfile,
+        context: buildPlan.buildContext,
+        port: buildPlan.containerPort,
+        startCommand: buildPlan.startCommand
+      })}`
+    );
     await dockerService.buildImage({
       imageName: buildPlan.imageName,
       dockerfile: buildPlan.dockerfile,

@@ -57,66 +57,126 @@ class BuilderService {
     ------------------------------------
     */
     switch (project.framework) {
+      // -----------------------------
+      // Frontend
+      // -----------------------------
       case "vite-react":
+      case "react":
+      case "vue":
         return {
           ...common,
+
           type: "frontend",
+
           dockerfile: path.join(
             __dirname,
             "../../templates/Frontend.Dockerfile"
           ),
-          buildContext: path.relative(project.repositoryRoot, project.path),
+
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
 
+
+      // -----------------------------
+      // Next.js
+      // -----------------------------
       case "nextjs":
         return {
           ...common,
+
           type: "frontend",
+
           containerPort: 3000,
+
           dockerfile: path.join(
             __dirname,
             "../../templates/Nextjs.Dockerfile"
           ),
-          buildContext: path.relative(project.repositoryRoot, project.path),
+
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
 
+
+      // -----------------------------
+      // Node.js Backend
+      // -----------------------------
       case "express":
       case "nestjs":
         return {
           ...common,
+
           type: "backend",
+
+          containerPort: project.containerPort || 8080,
+
           dockerfile: path.join(
             __dirname,
             "../../templates/Backend.Dockerfile"
           ),
-          buildContext: path.relative(project.repositoryRoot, project.path),
+
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
 
+
+      // -----------------------------
+      // Python Backend
+      // -----------------------------
       case "python":
+      case "fastapi":
+      case "flask":
         return {
           ...common,
+
           type: "backend",
-          containerPort: 8000,
+
+          containerPort: project.containerPort || 8000,
+
           dockerfile: path.join(
             __dirname,
             "../../templates/Python.Dockerfile"
           ),
-          buildContext: path.relative(project.repositoryRoot, project.path),
+
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
 
+
+      // -----------------------------
+      // Worker
+      // -----------------------------
       case "bullmq":
         return {
           ...common,
+
           type: "worker",
+
           dockerfile: path.join(
             __dirname,
             "../../templates/Backend.Dockerfile"
           ),
-          buildContext: path.relative(project.repositoryRoot, project.path),
+
+          buildContext: path.relative(
+            project.repositoryRoot,
+            project.path
+          ),
         };
 
+
       default:
-        throw new Error(`Unsupported framework: ${project.framework}`);
+        throw new Error(
+          `Unsupported framework: ${project.framework}`
+        );
     }
   }
   createRollbackPlan(runtime) {
