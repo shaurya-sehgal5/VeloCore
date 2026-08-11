@@ -2,25 +2,26 @@ class DeploymentPlanService {
   create(graph) {
     const plan = [];
 
-    const parallelNodes = [];
+
+    const applications = [];
 
     if (graph.backend) {
-      parallelNodes.push(graph.backend);
+      applications.push(graph.backend);
     }
 
     if (graph.frontend) {
-      parallelNodes.push(graph.frontend);
+      applications.push(graph.frontend);
     }
 
-    if (parallelNodes.length) {
+    if (applications.length) {
       plan.push({
         stage: "applications",
         parallel: true,
-        nodes: parallelNodes,
+        nodes: applications,
       });
     }
 
-    if (graph.workers.length) {
+    if (graph.workers?.length) {
       plan.push({
         stage: "workers",
         parallel: true,

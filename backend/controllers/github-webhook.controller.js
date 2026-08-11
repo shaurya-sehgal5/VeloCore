@@ -3,7 +3,6 @@ const { buildQueue } = require("../queues/build.queue");
 const signatureService = require("../services/git/signature.service");
 const { decrypt } = require("../utils/crypto");
 const { v4: uuidv4 } = require("uuid");
-const config = require("../config/env")
 
 exports.receive = async (req, res) => {
   try {
@@ -120,14 +119,39 @@ exports.receive = async (req, res) => {
         status: "QUEUED",
       });
     }
-    const deploymentUrl = `${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
     await db.query(
       `
-      INSERT INTO deployments (id, project_id, user_id, repo_name, repo_url, status, deploy_url, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, 'QUEUED', $6, NOW(), NOW())
+  INSERT INTO deployments (
+    id,
+    project_id,
+    user_id,
+    repo_name,
+    repo_url,
+    status,
+    deploy_url,
+    created_at,
+    updated_at
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    'QUEUED',
+    NULL,
+    NOW(),
+    NOW()
+)
       `,
-      [deploymentId, project.id, project.user_id, project.name, project.repo_url, deploymentUrl]
+     [
+    deploymentId,
+    project.id,
+    project.user_id,
+    project.name,
+    project.repo_url,
+]
     );
 
     await buildQueue.add(

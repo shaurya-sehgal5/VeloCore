@@ -6,7 +6,6 @@ const logger = require("../monitoring/logger.service");
 
 class HelmService {
     async install({ deploymentId, buildPlan }) {
-
         const valuesPath = path.join(
             __dirname,
             `../../helm/${buildPlan.projectName}-${deploymentId}.values.yaml`
@@ -29,9 +28,36 @@ class HelmService {
             env.NODE_ENV = "production";
         }
 
+        if (buildPlan.type === "worker") {
+            env.NODE_ENV = "production";
 
+            if (buildPlan.redisHost) {
+                env.REDIS_HOST = buildPlan.redisHost;
+            }
+
+            if (buildPlan.redisPort) {
+                env.REDIS_PORT = String(
+                    buildPlan.redisPort
+                );
+            }
+        }
+
+        const isWorker = buildPlan.type === "worker";
+        const isFrontend = buildPlan.type === "frontend";
+        const healthCheck =
+            buildPlan.type === "worker"
+                ? {
+                    enabled: false,
+                    path: ""
+                }
+                : {
+                    enabled: true,
+                    path:
+                        buildPlan.healthCheck?.path ||
+                        (isFrontend ? "/" : "/health")
+                };
         const values = `
-deploymentId: ${buildPlan.projectName}
+deploymentId: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}
 
 namespace: ${buildPlan.namespace}
 
@@ -47,14 +73,15 @@ image:
   repository: ${buildPlan.imageName}
 
 container:
-  port: ${buildPlan.containerPort}
+  port: ${buildPlan.containerPort || 0}
 
 service:
+  enabled: ${!isWorker}
   type: ClusterIP
-  port: ${buildPlan.containerPort}
+  port: ${buildPlan.containerPort || 0}
 
 ingress:
-  enabled: true
+  enabled: ${isFrontend}
   className: traefik
   host: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}
 
@@ -64,14 +91,13 @@ ${Object.entries(env)
                 .join("\n")}
 
 healthCheck:
-  path: "${buildPlan.healthCheck?.path || "/health"}"
+  enabled: ${healthCheck.enabled}
+  path: "${healthCheck.path}"
 
-resources: {}`;
+resources: {}
+`;
 
-        await fs.writeFile(
-            valuesPath,
-            values
-        );
+        await fs.writeFile(valuesPath, values);
 
         await logger.info(
             deploymentId,
@@ -83,20 +109,12 @@ resources: {}`;
             [
                 "upgrade",
                 "--install",
-
                 `${buildPlan.projectName}-${deploymentId.substring(0, 8)}`,
-
-                path.join(
-                    __dirname,
-                    "../../helm"
-                ),
-
+                path.join(__dirname, "../../helm"),
                 "-f",
                 valuesPath,
-
                 "-n",
                 buildPlan.namespace,
-
                 "--create-namespace",
             ],
             deploymentId
@@ -129,7 +147,7 @@ resources: {}`;
                     logger.success(
                         deploymentId,
                         "HELM",
-                        "Helm release installed."
+                        stdout.trim()
                     );
                 }
 

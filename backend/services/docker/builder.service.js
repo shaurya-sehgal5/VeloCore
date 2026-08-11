@@ -137,10 +137,15 @@ class BuilderService {
 
       deploymentId: runtime.deployment_id,   // <-- IMPORTANT
 
-      healthCheck: {
-        path: runtime.type === "frontend" ? "/" : "/health",
-      },
-
+      healthCheck:
+        runtime.type === "worker"
+          ? null
+          : {
+            path:
+              runtime.type === "frontend"
+                ? "/"
+                : "/health"
+          },
       secrets: {},
 
       customDomain: null,

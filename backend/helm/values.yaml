@@ -1,12 +1,14 @@
-deploymentId: ""
+deploymentId: "test"
 
-namespace: ""
+namespace: "default"
 
 slot: blue
 
 type: ""
 
 framework: ""
+
+replicas: 1
 
 image:
   repository: ""
@@ -15,15 +17,25 @@ container:
   port: 8080
 
 service:
+  enabled: true
   type: ClusterIP
   port: 8080
 
 ingress:
-  enabled: true
+  enabled: false
   className: traefik
   host: ""
 
+backend:
+  enabled: false
+  serviceName: ""
+  servicePort: 8080  
+
 env: {}
+
+healthCheck:
+  enabled: true
+  path: /health
 
 podAnnotations: {}
 

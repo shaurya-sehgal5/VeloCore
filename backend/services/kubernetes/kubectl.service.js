@@ -171,7 +171,7 @@ class KubectlService {
       "--timeout=30s"
     ]);
   }
-  async getPod(name, namespace = "default") {
+  async getPod(name, namespace = "default", requireReady = true) {
     const output = await this.execute([
       "get",
       "pods",
@@ -190,15 +190,21 @@ class KubectlService {
     }
 
     return (
-      pods.find(
-        (pod) =>
-          pod.status.phase === "Running" &&
-          pod.status.conditions?.some(
-            (condition) =>
-              condition.type === "Ready" &&
-              condition.status === "True"
-          )
-      ) || null
+      pods.find((pod) => {
+        if (pod.status.phase !== "Running") {
+          return false;
+        }
+
+        if (!requireReady) {
+          return true;
+        }
+
+        return pod.status.conditions?.some(
+          (condition) =>
+            condition.type === "Ready" &&
+            condition.status === "True"
+        );
+      }) || null
     );
   }
   async deleteDeployment(name, namespace) {

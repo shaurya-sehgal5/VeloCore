@@ -42,11 +42,15 @@ class BuilderService {
         cpu: 300,
       },
 
-      healthCheck: {
-        path: runtime.type === "frontend"
-          ? "/"
-          : "/health",
-      },
+      healthCheck:
+        runtime.type === "worker"
+          ? null
+          : {
+            path:
+              runtime.type === "frontend"
+                ? "/"
+                : "/health"
+          },
 
       env: runtime.environment || {},
     };

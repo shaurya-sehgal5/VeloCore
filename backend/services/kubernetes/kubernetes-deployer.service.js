@@ -22,7 +22,7 @@ class KubernetesDeployer {
                 "HELM",
                 "Deploying Helm release..."
             );
-           
+
             await namespaceService.ensure(buildPlan.namespace);
             try {
                 await helm.install({
@@ -77,16 +77,26 @@ class KubernetesDeployer {
 
             }
 
-            const [pod, service] = await Promise.all([
-                kubectl.getPod(
+            const pod = await kubectl.getPod(
+                buildPlan.projectName,
+                buildPlan.namespace,
+                buildPlan.type !== "worker"
+            );
+
+            if (!pod) {
+                throw new Error(
+                    `No READY pod found for ${buildPlan.projectName}`
+                );
+            }
+
+            let service = null;
+
+            if (buildPlan.type !== "worker") {
+                service = await kubectl.getService(
                     buildPlan.projectName,
                     buildPlan.namespace
-                ),
-                kubectl.getService(
-                    buildPlan.projectName,
-                    buildPlan.namespace
-                ),
-            ]);
+                );
+            }
 
             const info = await kubernetesMetrics.get(
                 pod.metadata.name,
@@ -118,16 +128,10 @@ class KubernetesDeployer {
             await logger.success(
                 deploymentId,
                 "HEALTH",
-                "Application passed health checks."
+                buildPlan.type === "worker"
+                    ? "Worker pod is running successfully."
+                    : "Application passed health checks."
             );
-
-            if (!pod) {
-
-                throw new Error(
-                    `No READY pod found for ${buildPlan.projectName}`
-                );
-
-            }
 
             setImmediate(() => {
                 try {
@@ -152,20 +156,21 @@ class KubernetesDeployer {
                     );
                 }
             });
-            const host = `${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
+            const host =
+                buildPlan.type === "frontend"
+                    ? `${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`
+                    : null;
 
             return {
-
                 deploymentId,
 
                 project: buildPlan.projectName,
 
                 engine: "kubernetes",
 
-                url: `http://${host}`,
+                url: host ? `http://${host}` : null,
 
                 runtime: {
-
                     deploymentId,
 
                     name: buildPlan.projectName,
@@ -174,7 +179,7 @@ class KubernetesDeployer {
 
                     type: buildPlan.type,
 
-                    route: `http://${host}`,
+                    route: host ? `http://${host}` : null,
 
                     framework: buildPlan.framework,
 
@@ -186,20 +191,23 @@ class KubernetesDeployer {
 
                     deployment: buildPlan.projectName,
 
-                    service: buildPlan.projectName,
+                    service: service?.metadata?.name || null,
 
                     pod: pod.metadata.name,
 
                     branch: buildPlan.branch,
 
-                    containerPort: service.spec.ports[0].port,
+                    containerPort:
+                        service?.spec?.ports?.[0]?.port ||
+                        (buildPlan.type === "worker"
+                            ? null
+                            : buildPlan.containerPort) ||
+                        null,
 
                     slot: buildPlan.slot,
 
                     engine: "kubernetes",
-
                 },
-
             };
 
         } catch (error) {

@@ -1,5 +1,4 @@
 const db = require("../config/db");
-const config = require("../config/env")
 const { v4: uuidv4 } = require("uuid");
 const axios = require("axios");
 const path = require("path");
@@ -53,7 +52,6 @@ exports.deployProject = async (req, res) => {
     }
 
     const deploymentId = uuidv4();
-    const deploymentUrl = `${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`;
 
     let finalProjectId = projectId;
 
@@ -103,30 +101,36 @@ WHERE id=$1
     }
     await db.query(
       `
-    INSERT INTO deployments (
-        id,
-        project_id,
-        user_id,
-        repo_name,
-        repo_url,
-        status,
-        deploy_url,
-        created_at,
-        updated_at
-    )
-    VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        'QUEUED',
-        $6,
-        NOW(),
-        NOW()
-    )
+   INSERT INTO deployments (
+    id,
+    project_id,
+    user_id,
+    repo_name,
+    repo_url,
+    status,
+    deploy_url,
+    created_at,
+    updated_at
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    'QUEUED',
+    NULL,
+    NOW(),
+    NOW()
+)
     `,
-      [deploymentId, finalProjectId, userId, repoName, cloneUrl, deploymentUrl],
+      [
+        deploymentId,
+        finalProjectId,
+        userId,
+        repoName,
+        cloneUrl,
+      ],
     );
 
     await buildQueue.add(
@@ -149,7 +153,7 @@ WHERE id=$1
 
       deploymentId,
 
-      url: deploymentUrl,
+      url: null,
 
       status: "QUEUED",
     });

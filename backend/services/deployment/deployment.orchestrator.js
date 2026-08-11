@@ -233,8 +233,8 @@ class DeploymentOrchestrator {
         "SUMMARY",
         "Deployment completed successfully."
       );
-    await db.query(
-  `
+      await db.query(
+        `
   UPDATE projects
   SET
     current_deployment_id = $1
@@ -244,8 +244,8 @@ class DeploymentOrchestrator {
     WHERE id = $1
   )
   `,
-  [deploymentId]
-);
+        [deploymentId]
+      );
       metrics.runningDeployments.inc();
 
       timer({
@@ -275,12 +275,28 @@ class DeploymentOrchestrator {
       const backend = deployments.find(
         d => d.runtime.runtime.type === "backend"
       );
+      const frontendUrl = frontend?.runtime?.url || null;
+      const backendUrl = null;
+
+      await db.query(
+        `
+    UPDATE deployments
+    SET
+        deploy_url = $1,
+        updated_at = NOW()
+    WHERE id = $2
+    `,
+        [
+          frontendUrl,
+          deploymentId,
+        ]
+      );
       return {
         success: true,
         deploymentId,
         graph,
-        frontendUrl: frontend?.runtime?.url,
-        backendUrl: backend?.runtime?.url,
+        frontendUrl,
+        backendUrl,
         deployments,
       };
     } catch (error) {
