@@ -26,6 +26,11 @@ class HelmService {
 
         if (buildPlan.type === "frontend") {
             env.NODE_ENV = "production";
+
+            if (buildPlan.startCommand?.includes("react-scripts start")) {
+                env.HOST = "0.0.0.0";
+                env.PORT = String(buildPlan.containerPort);
+            }
         }
 
         if (buildPlan.type === "worker") {
@@ -36,29 +41,31 @@ class HelmService {
             }
 
             if (buildPlan.redisPort) {
-                env.REDIS_PORT = String(
-                    buildPlan.redisPort
-                );
+                env.REDIS_PORT = String(buildPlan.redisPort);
             }
         }
 
         const isWorker = buildPlan.type === "worker";
         const isFrontend = buildPlan.type === "frontend";
+
         const healthCheck =
             buildPlan.type === "worker"
                 ? {
                     enabled: false,
-                    path: ""
+                    path: "",
                 }
                 : buildPlan.healthCheck
                     ? {
                         enabled: true,
-                        path: buildPlan.healthCheck.path
+                        path: buildPlan.healthCheck.path,
                     }
                     : {
                         enabled: false,
-                        path: ""
+                        path: "",
                     };
+
+        const startCommand = buildPlan.startCommand || "";
+
         const values = `
 deploymentId: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}
 
@@ -71,6 +78,8 @@ type: ${buildPlan.type}
 framework: ${buildPlan.framework}
 
 replicas: ${buildPlan.replicas || 1}
+
+startCommand: ${JSON.stringify(startCommand)}
 
 image:
   repository: ${buildPlan.imageName}
