@@ -8,13 +8,15 @@ const docker = require("./docker-runner.service");
 class TrivyScanner {
   async scan({
     deploymentId,
+    projectName,
     image,
     report,
   }) {
     await logger.info(
       deploymentId,
       "SECURITY",
-      `Running Trivy on ${image}`
+      `Running Trivy on ${image}`,
+      projectName,
     );
 
     let result;
@@ -22,12 +24,15 @@ class TrivyScanner {
     try {
       result = await this.execute(image);
       if (result.skipped) {
-        await logger.warning(
+        await logger.error(
           deploymentId,
           "SECURITY",
-          "Trivy scan failed."
+          "Trivy scan failed. Deployment blocked.",
+          projectName
         );
-        return;
+        throw new Error(
+          "Trivy security scan failed"
+        );
       }
     } catch (err) {
 
@@ -117,19 +122,22 @@ class TrivyScanner {
     await logger.success(
       deploymentId,
       "SECURITY",
-      `Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`
+      `Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`,
+      projectName,
     );
 
     await logger.success(
       deploymentId,
       "SECURITY",
-      `Packages scanned : ${result.Results.length}`
+      `Packages scanned : ${result.Results.length}`,
+      projectName
     );
 
     await logger.success(
       deploymentId,
       "SECURITY",
-      `Image scan completed`
+      `Image scan completed`,
+      projectName
     );
   }
   async execute(image) {

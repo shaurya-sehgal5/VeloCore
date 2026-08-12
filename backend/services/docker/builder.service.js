@@ -16,20 +16,43 @@ class BuilderService {
     const common = {
       projectName,
       imageName,
-      containerName: `${projectName}-${deploymentId.substring(0, 8)}-${slot}`,
+
+      containerName:
+        `${projectName}-${deploymentId.substring(0, 8)}-${slot}`,
+
       containerPort: project.containerPort,
+
       startCommand: project.startCommand,
+
       framework: project.framework,
+
       slot,
+
       deploymentId,
-      host: null,
-      persistentVolume: false,
-      storage: "1Gi",
+
       namespace: `velocore-${deploymentId}`,
+
+      serviceName:
+        `${projectName}-${deploymentId.substring(0, 8)}`,
+
+      backendServiceName:
+        project.backendServiceName
+          ? `${project.backendServiceName}-${deploymentId.substring(0, 8)}`
+          : null,
+
+      backendPort:
+        project.backendPort || null,
+
+      host: null,
+
+      persistentVolume: false,
+
+      storage: "1Gi",
+
       customDomain: null,
+
       enableTLS: true,
     };
-
     /*
     ------------------------------------
     Custom Dockerfile

@@ -9,6 +9,37 @@ const config = require("../../config/env")
 const kubernetesMetrics = require("../monitoring/kubernetes-metrics.service");
 
 class KubernetesDeployer {
+    async getFailureLogs(
+        deploymentId,
+        buildPlan,
+        pod
+    ) {
+        if (!pod?.metadata?.name) {
+            return;
+        }
+
+        try {
+            const output =
+                await kubernetesLogs.get(
+                    pod.metadata.name,
+                    buildPlan.namespace
+                );
+
+            await logger.error(
+                deploymentId,
+                "RUNTIME",
+                output.slice(-4000),
+                buildPlan.projectName
+            );
+        } catch (err) {
+            await logger.error(
+                deploymentId,
+                "RUNTIME",
+                `Unable to collect pod logs: ${err.message}`,
+                buildPlan.projectName
+            );
+        }
+    }
 
     async deploy({
 
@@ -22,7 +53,8 @@ class KubernetesDeployer {
             await logger.info(
                 deploymentId,
                 "HELM",
-                "Deploying Helm release..."
+                `Deploying ${buildPlan.projectName}`,
+                buildPlan.projectName
             );
 
             await namespaceService.ensure(buildPlan.namespace);
@@ -42,41 +74,51 @@ class KubernetesDeployer {
             await logger.info(
                 deploymentId,
                 "KUBERNETES",
-                "Waiting for rollout..."
+                `Waiting for ${buildPlan.projectName} rollout...`,
+                buildPlan.projectName
             );
 
             const rolloutStart = Date.now();
 
             try {
+                await kubectl.rollout(
+                    workloadName,
+                    buildPlan.namespace,
+                    deploymentId
+                );
+            } catch (err) {
 
-                try {
-
-                    await kubectl.rollout(
-                        workloadName,
-                        buildPlan.namespace,
-                        deploymentId,
-                    );
-
-                } catch (err) {
-
-                    if (rollback) {
-
-                        throw new Error(
-                            `Rollback deployment failed: ${err.message}`
-                        );
-
-                    }
-
-                    throw err;
-
-                }
-
-            } finally {
-
-                metrics.rolloutDuration.observe(
-                    (Date.now() - rolloutStart) / 1000
+                await logger.error(
+                    deploymentId,
+                    "KUBERNETES",
+                    `Rollout failed: ${err.message}`,
+                    buildPlan.projectName
                 );
 
+                try {
+                    const failedPod =
+                        await kubectl.getPod(
+                            workloadName,
+                            buildPlan.namespace
+                        );
+
+                    if (failedPod) {
+                        const logs =
+                            await kubernetesLogs.get(
+                                failedPod.metadata.name,
+                                buildPlan.namespace
+                            );
+
+                        await logger.error(
+                            deploymentId,
+                            "RUNTIME",
+                            logs.slice(-4000),
+                            buildPlan.projectName
+                        );
+                    }
+                } catch (_) { }
+
+                throw err;
             }
 
             const pod = await kubectl.getPod(
@@ -131,7 +173,8 @@ class KubernetesDeployer {
                 "HEALTH",
                 buildPlan.type === "worker"
                     ? "Worker pod is running successfully."
-                    : "Application passed health checks."
+                    : "Application passed health checks.",
+                buildPlan.projectName
             );
 
             setImmediate(() => {
@@ -139,7 +182,8 @@ class KubernetesDeployer {
                     const logStream = kubernetesLogs.stream(
                         pod.metadata.name,
                         deploymentId,
-                        buildPlan.namespace
+                        buildPlan.namespace,
+                        buildPlan.projectName
                     );
 
                     logStream.on("error", (err) => {

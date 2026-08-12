@@ -13,6 +13,12 @@ spec:
       app: {{ .Values.deploymentId }}
       slot: {{ .Values.slot }}
 
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
   template:
     metadata:
       labels:
@@ -41,12 +47,6 @@ spec:
             - configMapRef:
                 name: {{ .Values.deploymentId }}-config
 
-          {{/*
-          ------------------------------------
-          Application Start Command
-          ------------------------------------
-          */}}
-
           {{- if .Values.startCommand }}
           command:
             - /bin/sh
@@ -55,22 +55,12 @@ spec:
             - {{ .Values.startCommand | quote }}
           {{- end }}
 
-          {{/*
-          ------------------------------------
-          Container Port
-          ------------------------------------
-          */}}
-
           {{- if and .Values.container.port (ne .Values.type "worker") }}
           ports:
-            - containerPort: {{ .Values.container.port }}
+            - name: http
+              containerPort: {{ .Values.container.port }}
+              protocol: TCP
           {{- end }}
-
-          {{/*
-          ------------------------------------
-          Health Checks
-          ------------------------------------
-          */}}
 
           {{- if (.Values.healthCheck | default dict).enabled }}
 
@@ -78,21 +68,21 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /health
+              path: {{ .Values.healthCheck.path | default "/health" }}
               port: {{ .Values.container.port }}
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
-            timeoutSeconds: 2
-            failureThreshold: 3
+            timeoutSeconds: 3
+            failureThreshold: 6
 
           livenessProbe:
             httpGet:
-              path: /health
+              path: {{ .Values.healthCheck.path | default "/health" }}
               port: {{ .Values.container.port }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 3
+            timeoutSeconds: 3
+            failureThreshold: 6
 
           {{- else if eq .Values.type "frontend" }}
 
@@ -102,27 +92,20 @@ spec:
               port: {{ .Values.container.port }}
             initialDelaySeconds: 5
             periodSeconds: 5
-            timeoutSeconds: 2
-            failureThreshold: 3
+            timeoutSeconds: 3
+            failureThreshold: 6
 
           livenessProbe:
             httpGet:
               path: /
               port: {{ .Values.container.port }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 20
             periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 3
+            timeoutSeconds: 3
+            failureThreshold: 6
 
           {{- end }}
-
           {{- end }}
-
-          {{/*
-          ------------------------------------
-          Resources
-          ------------------------------------
-          */}}
 
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml (.Values.resources | default dict) | nindent 12 }}

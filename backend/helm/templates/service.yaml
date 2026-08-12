@@ -13,8 +13,10 @@ spec:
     slot: {{ .Values.slot }}
 
   ports:
-    - port: {{ .Values.service.port }}
+    - name: http
+      port: {{ .Values.service.port }}
       targetPort: {{ .Values.container.port }}
+      protocol: TCP
 
   type: {{ .Values.service.type }}
 

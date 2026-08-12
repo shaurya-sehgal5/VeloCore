@@ -6,47 +6,97 @@ const logger = require("../monitoring/logger.service");
 
 class HelmService {
     async install({ deploymentId, buildPlan }) {
+        const shortId = deploymentId.substring(0, 8);
+
+        const workloadName =
+            `${buildPlan.projectName}-${shortId}`;
+
         const valuesPath = path.join(
             __dirname,
-            `../../helm/${buildPlan.projectName}-${deploymentId}.values.yaml`
+            `../../helm/${workloadName}.values.yaml`
         );
 
         await logger.info(
             deploymentId,
             "HELM",
-            "Generating Helm values..."
+            `Generating values for ${buildPlan.projectName}`,
+            buildPlan.projectName
         );
 
-        const env = {};
+        const env = {
+            NODE_ENV: "production",
+        };
+
+        /*
+        ----------------------------------------
+        Backend
+        ----------------------------------------
+        */
 
         if (buildPlan.type === "backend") {
-            env.PORT = String(buildPlan.containerPort);
-            env.NODE_ENV = "production";
+            env.PORT = String(buildPlan.containerPort || 8080);
+
+            /*
+             * PostgreSQL created by VeloCore
+             */
+            if (buildPlan.postgres?.enabled) {
+                env.DATABASE_URL =
+                    `postgresql://${buildPlan.postgres.user}:` +
+                    `${buildPlan.postgres.password}@` +
+                    `${buildPlan.postgres.service}:5432/` +
+                    `${buildPlan.postgres.database}`;
+            }
+
+            /*
+             * Redis if required
+             */
+            if (buildPlan.redisHost) {
+                env.REDIS_URL =
+                    `redis://${buildPlan.redisHost}:` +
+                    `${buildPlan.redisPort || 6379}/0`;
+            }
         }
+
+        /*
+        ----------------------------------------
+        Frontend
+        ----------------------------------------
+        */
 
         if (buildPlan.type === "frontend") {
             env.NODE_ENV = "production";
 
-            if (buildPlan.startCommand?.includes("react-scripts start")) {
-                env.HOST = "0.0.0.0";
-                env.PORT = String(buildPlan.containerPort);
+            if (buildPlan.backendServiceName) {
+                env.BACKEND_HOST =
+                    buildPlan.backendServiceName;
+
+                env.BACKEND_PORT =
+                    String(buildPlan.backendPort || 8080);
             }
         }
 
-        if (buildPlan.type === "worker") {
-            env.NODE_ENV = "production";
+        /*
+        ----------------------------------------
+        Worker
+        ----------------------------------------
+        */
 
+        if (buildPlan.type === "worker") {
             if (buildPlan.redisHost) {
                 env.REDIS_HOST = buildPlan.redisHost;
             }
 
             if (buildPlan.redisPort) {
-                env.REDIS_PORT = String(buildPlan.redisPort);
+                env.REDIS_PORT =
+                    String(buildPlan.redisPort);
             }
         }
 
-        const isWorker = buildPlan.type === "worker";
-        const isFrontend = buildPlan.type === "frontend";
+        const isWorker =
+            buildPlan.type === "worker";
+
+        const isFrontend =
+            buildPlan.type === "frontend";
 
         const healthCheck =
             buildPlan.type === "worker"
@@ -57,15 +107,12 @@ class HelmService {
                 : buildPlan.healthCheck
                     ? {
                         enabled: true,
-                        path: buildPlan.healthCheck.path,
+                        path: buildPlan.healthCheck.path || "/",
                     }
                     : {
                         enabled: false,
                         path: "",
                     };
-
-        const startCommand = buildPlan.startCommand || "";
-
         const values = `
 deploymentId: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}
 
@@ -79,8 +126,6 @@ framework: ${buildPlan.framework}
 
 replicas: ${buildPlan.replicas || 1}
 
-startCommand: ${JSON.stringify(startCommand)}
-
 image:
   repository: ${buildPlan.imageName}
 
@@ -91,6 +136,11 @@ service:
   enabled: ${!isWorker}
   type: ClusterIP
   port: ${buildPlan.containerPort || 0}
+
+backend:
+  enabled: ${Boolean(buildPlan.backendServiceName)}
+  serviceName: ${buildPlan.backendServiceName || ""}
+  servicePort: ${buildPlan.backendPort || 0}
 
 ingress:
   enabled: ${isFrontend}
@@ -111,23 +161,34 @@ resources: {}
 
         await fs.writeFile(valuesPath, values);
 
+        await logger.success(
+            deploymentId,
+            "HELM",
+            `Values generated for ${buildPlan.projectName}`,
+            buildPlan.projectName
+        );
+
         await logger.info(
             deploymentId,
             "HELM",
-            "Installing Helm chart..."
+            `Installing ${workloadName}`,
+            buildPlan.projectName
         );
 
         return this.execute(
             [
                 "upgrade",
                 "--install",
-                `${buildPlan.projectName}-${deploymentId.substring(0, 8)}`,
+                workloadName,
                 path.join(__dirname, "../../helm"),
                 "-f",
                 valuesPath,
                 "-n",
                 buildPlan.namespace,
                 "--create-namespace",
+                "--wait",
+                "--timeout",
+                "5m",
             ],
             deploymentId
         );
@@ -152,7 +213,13 @@ resources: {}
 
             helm.on("close", (code) => {
                 if (code !== 0) {
-                    return reject(new Error(stderr));
+                    return reject(
+                        new Error(
+                            stderr.trim() ||
+                            stdout.trim() ||
+                            `Helm exited with code ${code}`
+                        )
+                    );
                 }
 
                 if (stdout.trim()) {

@@ -3,7 +3,7 @@ const logger = require("../monitoring/logger.service");
 const socket = require("./kubernetes-socket.service");
 
 class KubernetesLogService {
-  stream(pod, deploymentId, namespace = "default") {
+  stream(pod, deploymentId, namespace = "default", projectName) {
 
     const stream = kubectl.streamLogs(pod, namespace);
 
@@ -37,7 +37,8 @@ class KubernetesLogService {
         "KUBERNETES",
         "INFO",
         line,
-        true
+        true,
+        projectName
       );
       socket.broadcast("k8s:logs", {
         deploymentId,
@@ -58,11 +59,13 @@ class KubernetesLogService {
         "KUBERNETES",
         "ERROR",
         line,
-        true
+        true,
+        projectName
       );
       socket.broadcast("k8s:logs", {
         deploymentId,
         line,
+        projectName
       });
     });
 

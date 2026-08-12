@@ -32,17 +32,58 @@ class StackEngine {
     ------------------------------------
     */
 
+    const allNodes = graph.deploymentPlan.flatMap(
+      stage => stage.nodes
+    );
+
+    const backendNode = allNodes.find(
+      node => node.type === "backend"
+    );
+
+    const shortId = deploymentId.substring(0, 8);
+
+    const backendServiceName = backendNode
+      ? `${backendNode.name
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")}-${shortId}`
+      : null;
+
     for (const stage of graph.deploymentPlan) {
       for (const node of stage.nodes) {
+
         const slot = deploymentSlot.next(deploymentId);
 
-        jobs.push({
-          node,
-          buildPlan: builderService.createBuildPlan(
+        const buildPlan =
+          builderService.createBuildPlan(
             node,
             deploymentId,
             slot
-          ),
+          );
+
+        /*
+        ------------------------------------
+        Frontend → Backend service discovery
+        ------------------------------------
+        */
+
+        if (
+          node.type === "frontend" &&
+          backendNode
+        ) {
+          buildPlan.backend = {
+            enabled: true,
+
+            serviceName:
+              backendServiceName,
+
+            servicePort:
+              backendNode.containerPort || 8080,
+          };
+        }
+
+        jobs.push({
+          node,
+          buildPlan,
         });
       }
     }

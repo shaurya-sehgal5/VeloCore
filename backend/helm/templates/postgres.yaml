@@ -1,0 +1,93 @@
+{{- if (.Values.postgres | default dict).enabled }}
+
+apiVersion: v1
+kind: Secret
+
+metadata:
+  name: {{ .Values.deploymentId }}-postgres
+  namespace: {{ .Values.namespace }}
+
+type: Opaque
+
+stringData:
+  POSTGRES_USER: {{ .Values.postgres.user | quote }}
+  POSTGRES_PASSWORD: {{ .Values.postgres.password | quote }}
+  POSTGRES_DB: {{ .Values.postgres.database | quote }}
+
+---
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: {{ .Values.postgres.service }}
+  namespace: {{ .Values.namespace }}
+
+spec:
+  selector:
+    app: {{ .Values.postgres.service }}
+
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ .Values.postgres.service }}
+  namespace: {{ .Values.namespace }}
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: {{ .Values.postgres.service }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgres.service }}
+
+    spec:
+      containers:
+        - name: postgres
+
+          image: postgres:17-alpine
+
+          ports:
+            - containerPort: 5432
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.deploymentId }}-postgres
+                  key: POSTGRES_USER
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.deploymentId }}-postgres
+                  key: POSTGRES_PASSWORD
+
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.deploymentId }}-postgres
+                  key: POSTGRES_DB
+
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }}
+
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+{{- end }}

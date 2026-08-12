@@ -58,7 +58,8 @@ class LoggerService {
     stage,
     level,
     message,
-    details = false
+    details = false,
+    project = null
   ) {
     const log = this.create(
       level,
@@ -69,55 +70,99 @@ class LoggerService {
 
     this.console(log);
 
-    if (!this.hiddenStages.has(stage)) {
+    const payload = {
+      type: "log",
+      project,
+      ...log,
+    };
 
-      runtimeStatus.publish(deploymentId, {
-        type: "log",
-        ...log
-      });
+    if (!this.hiddenStages.has(stage)) {
+      runtimeStatus.publish(
+        deploymentId,
+        payload
+      );
 
       try {
         const io = getIO();
-        console.log("EMIT ROOM:", deploymentId);
-        io.to(deploymentId).emit("live_logs", log);
-      } catch (_) { }
 
+        io.to(deploymentId).emit(
+          "live_logs",
+          payload
+        );
+      } catch (_) { }
     }
+
     await loki.push({
       deploymentId,
-      project: deploymentId,
+      project: project || deploymentId,
       stage,
       level,
       message,
     });
   }
 
-  async event(deploymentId, event, message) {
-    if (!this.dbEvents.has(event)) {
-      return;
-    }
-
-    await events.emit({
+  async info(
+    deploymentId,
+    stage,
+    message,
+    project = null
+  ) {
+    await this.live(
       deploymentId,
-      event,
+      stage,
+      "INFO",
       message,
-    });
+      false,
+      project
+    );
   }
 
-  async info(deploymentId, stage, message) {
-    await this.live(deploymentId, stage, "INFO", message);
+  async success(
+    deploymentId,
+    stage,
+    message,
+    project = null
+  ) {
+    await this.live(
+      deploymentId,
+      stage,
+      "SUCCESS",
+      message,
+      false,
+      project
+    );
   }
 
-  async success(deploymentId, stage, message) {
-    await this.live(deploymentId, stage, "SUCCESS", message);
+  async warning(
+    deploymentId,
+    stage,
+    message,
+    project = null
+  ) {
+    await this.live(
+      deploymentId,
+      stage,
+      "WARNING",
+      message,
+      false,
+      project
+    );
   }
 
-  async warning(deploymentId, stage, message) {
-    await this.live(deploymentId, stage, "WARNING", message);
-  }
-
-  async error(deploymentId, stage, message) {
-    await this.live(deploymentId, stage, "ERROR", message);
+  async error(
+    deploymentId,
+    stage,
+    message,
+    project = null
+  ) {
+    await this.live(
+      deploymentId,
+      stage,
+      "ERROR",
+      message,
+      false,
+      project
+    );
   }
   async section(deploymentId, title) {
     await this.live(
