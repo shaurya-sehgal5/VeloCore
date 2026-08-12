@@ -50,12 +50,15 @@ class HelmService {
                     enabled: false,
                     path: ""
                 }
-                : {
-                    enabled: true,
-                    path:
-                        buildPlan.healthCheck?.path ||
-                        (isFrontend ? "/" : "/health")
-                };
+                : buildPlan.healthCheck
+                    ? {
+                        enabled: true,
+                        path: buildPlan.healthCheck.path
+                    }
+                    : {
+                        enabled: false,
+                        path: ""
+                    };
         const values = `
 deploymentId: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}
 

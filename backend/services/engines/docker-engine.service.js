@@ -8,6 +8,7 @@ const deploymentSlot = require("../deployment/deployment-slot.service");
 const deploymentLock = require("../deployment/deployment-lock.service");
 const runtimeStatus = require("../runtime/runtime-status.service");
 const runtimeLogService = require("../runtime/runtime-log.service");
+const dockerService = require("../docker/docker.service");
 
 class DockerEngine {
   async deploy({ deploymentId, workspace, buildPlan, repository, env }) {

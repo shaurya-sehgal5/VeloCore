@@ -12,11 +12,15 @@ class BuilderService {
 
     plan.env = node.environment || node.env || {};
 
-    plan.healthCheck = {
-      path: node.type === "frontend"
-        ? "/"
-        : "/health",
-    };
+    if (!node.useCustomDockerfile) {
+      plan.healthCheck = {
+        path: node.type === "frontend"
+          ? "/"
+          : "/health",
+      };
+    } else {
+      plan.healthCheck = null;
+    }
 
     return plan;
   }

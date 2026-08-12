@@ -66,6 +66,15 @@ class BuildEngine {
       buildContext: buildPlan.buildContext,
       deploymentId,
     });
+    const inspectAfterBuild = await execAsync(
+      `docker image inspect ${buildPlan.imageName} --format '{{json .Config.Cmd}} {{json .Config.Entrypoint}} {{json .Config.ExposedPorts}}'`
+    );
+
+    await logger.info(
+      deploymentId,
+      "BUILD",
+      `Built image config: ${inspectAfterBuild.stdout.trim()}`
+    );
     await dockerService.pushImage(
       buildPlan.imageName,
       deploymentId

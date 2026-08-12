@@ -106,6 +106,8 @@ class DockerService {
     buildContext,
     deploymentId,
   }) {
+    const fs = require("fs");
+
     logger.milestone(
       deploymentId,
       "BUILD_STARTED",
@@ -113,13 +115,47 @@ class DockerService {
       "Building Docker image..."
     );
 
+    logger.info(
+      deploymentId,
+      "BUILD",
+      `Dockerfile: ${dockerfile}`
+    );
+
+    logger.info(
+      deploymentId,
+      "BUILD",
+      `Build context: ${context}`
+    );
+
+    logger.info(
+      deploymentId,
+      "BUILD",
+      `Image: ${imageName}`
+    );
+
+    if (!dockerfile) {
+      throw new Error(
+        `No Dockerfile resolved for ${imageName}`
+      );
+    }
+
+    if (!fs.existsSync(dockerfile)) {
+      throw new Error(
+        `Dockerfile does not exist: ${dockerfile}`
+      );
+    }
+
+    if (!fs.existsSync(context)) {
+      throw new Error(
+        `Build context does not exist: ${context}`
+      );
+    }
+
     const logs = await this.execute(
       "docker",
       [
         "build",
-
         "--rm",
-
         "--pull=false",
 
         "--build-arg",
@@ -138,6 +174,7 @@ class DockerService {
       ],
       deploymentId,
     );
+
     return logs;
   }
 
@@ -274,8 +311,8 @@ class DockerService {
           (Date.now() - started) / 1000
         );
         metrics.runtimeStartupLatest
-    .labels(deploymentId)
-    .set((Date.now()-started)/1000);
+          .labels(deploymentId)
+          .set((Date.now() - started) / 1000);
         resolve({
           containerId,
           containerName,
