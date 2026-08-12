@@ -24,7 +24,57 @@ function getContainerPort(framework) {
       return 8080;
   }
 }
+function detectPythonStartCommand(projectPath) {
+  const candidates = [
+    {
+      file: "app/main.py",
+      command:
+        "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    },
+    {
+      file: "main.py",
+      command:
+        "uvicorn main:app --host 0.0.0.0 --port 8000",
+    },
+    {
+      file: "app.py",
+      command:
+        "uvicorn app:app --host 0.0.0.0 --port 8000",
+    },
+    {
+      file: "server.py",
+      command:
+        "uvicorn server:app --host 0.0.0.0 --port 8000",
+    },
+  ];
 
+  for (const candidate of candidates) {
+    const fullPath = path.join(
+      projectPath,
+      candidate.file
+    );
+
+    if (!fs.existsSync(fullPath)) {
+      continue;
+    }
+
+    const content = fs.readFileSync(
+      fullPath,
+      "utf8"
+    );
+
+    if (
+      content.includes("FastAPI(") ||
+      content.includes("from fastapi")
+    ) {
+      return candidate.command;
+    }
+
+    return `python ${candidate.file}`;
+  }
+
+  return null;
+}
 function detectFramework(projectPath, packageJson = {}) {
   const deps = {
     ...(packageJson.dependencies || {}),
@@ -92,16 +142,23 @@ function detectFramework(projectPath, packageJson = {}) {
     };
   }
 
-  // ---------- Python ----------
+  // ---------- Python requirements ----------
 
-  const requirements = fs.existsSync(
-    path.join(projectPath, "requirements.txt")
-  )
-    ? fs.readFileSync(
-        path.join(projectPath, "requirements.txt"),
-        "utf8"
-      )
-    : "";
+  const requirementFiles = [
+    path.join(projectPath, "requirements.txt"),
+    path.join(projectPath, "requirements", "base.txt"),
+    path.join(projectPath, "requirements", "dev.txt"),
+  ];
+
+  const existingRequirementFiles =
+    requirementFiles.filter(fs.existsSync);
+
+  const requirements = existingRequirementFiles
+    .map((file) =>
+      fs.readFileSync(file, "utf8")
+    )
+    .join("\n")
+    .toLowerCase();
 
   if (requirements.includes("fastapi")) {
     return {
@@ -120,8 +177,10 @@ function detectFramework(projectPath, packageJson = {}) {
   }
 
   if (
-    fs.existsSync(path.join(projectPath, "requirements.txt")) ||
-    fs.existsSync(path.join(projectPath, "pyproject.toml"))
+    existingRequirementFiles.length > 0 ||
+    fs.existsSync(
+      path.join(projectPath, "pyproject.toml")
+    )
   ) {
     return {
       framework: "python",
@@ -138,21 +197,47 @@ function detectFramework(projectPath, packageJson = {}) {
 }
 
 function detectPackageManager(projectPath) {
-  if (fs.existsSync(path.join(projectPath, "requirements.txt")))
+  if (
+    fs.existsSync(
+      path.join(projectPath, "requirements.txt")
+    ) ||
+    fs.existsSync(
+      path.join(
+        projectPath,
+        "requirements",
+        "base.txt"
+      )
+    )
+  ) {
     return "pip";
+  }
 
-  if (fs.existsSync(path.join(projectPath, "pyproject.toml")))
+  if (
+    fs.existsSync(
+      path.join(projectPath, "pyproject.toml")
+    )
+  ) {
     return "poetry";
+  }
 
-  if (fs.existsSync(path.join(projectPath, "pnpm-lock.yaml")))
+  if (
+    fs.existsSync(
+      path.join(projectPath, "pnpm-lock.yaml")
+    )
+  ) {
     return "pnpm";
+  }
 
-  if (fs.existsSync(path.join(projectPath, "yarn.lock")))
+  if (
+    fs.existsSync(
+      path.join(projectPath, "yarn.lock")
+    )
+  ) {
     return "yarn";
+  }
 
   return "npm";
 }
-
 function scanDirectory(rootPath, result) {
   const entries = fs.readdirSync(rootPath);
 
@@ -175,7 +260,10 @@ function scanDirectory(rootPath, result) {
       )
     );
 
-    const detected = detectFramework(rootPath, packageJson);
+    const detected = detectFramework(
+      rootPath,
+      packageJson
+    );
 
     if (detected.type !== "unknown") {
       result.projects.push({
@@ -191,53 +279,93 @@ function scanDirectory(rootPath, result) {
 
         language: detected.language,
 
-        outputDirectory: detected.output ?? null,
+        outputDirectory:
+          detected.output ?? null,
 
-        packageManager: detectPackageManager(rootPath),
+        packageManager:
+          detectPackageManager(rootPath),
 
-        scripts: packageJson.scripts || {},
+        scripts:
+          packageJson.scripts || {},
 
-        startCommand: packageJson.scripts?.start || null,
+        startCommand:
+          packageJson.scripts?.start || null,
 
-        containerPort: getContainerPort(detected.framework),
+        containerPort:
+          getContainerPort(
+            detected.framework
+          ),
       });
     }
   }
 
   // ---------- Python Projects ----------
 
+  const hasPythonRequirements =
+    entries.includes("requirements.txt") ||
+    entries.includes("pyproject.toml") ||
+    (
+      entries.includes("requirements") &&
+      fs.existsSync(
+        path.join(
+          rootPath,
+          "requirements",
+          "base.txt"
+        )
+      )
+    );
+
   if (
     !entries.includes("package.json") &&
-    (
-      entries.includes("requirements.txt") ||
-      entries.includes("pyproject.toml")
-    )
+    hasPythonRequirements
   ) {
     const detected = detectFramework(rootPath);
 
-    result.projects.push({
-      name: path.basename(rootPath),
+    if (detected.type !== "unknown") {
+      const startCommand =
+        detectPythonStartCommand(rootPath);
 
-      path: rootPath,
+      result.projects.push({
+        name: path.basename(rootPath),
 
-      repositoryRoot: result.repository,
+        path: rootPath,
 
-      framework: detected.framework,
+        repositoryRoot: result.repository,
 
-      type: detected.type,
+        framework: detected.framework,
 
-      language: detected.language,
+        type: detected.type,
 
-      outputDirectory: null,
+        language: detected.language,
 
-      packageManager: detectPackageManager(rootPath),
+        outputDirectory: null,
 
-      scripts: {},
+        packageManager:
+          detectPackageManager(rootPath),
 
-      startCommand: null,
+        scripts: {},
 
-      containerPort: getContainerPort(detected.framework),
-    });
+        startCommand,
+
+        containerPort:
+          getContainerPort(
+            detected.framework
+          ),
+      });
+
+      console.log(
+        "[PYTHON DETECTED]",
+        {
+          path: rootPath,
+          framework: detected.framework,
+          startCommand,
+          containerPort:
+            getContainerPort(
+              detected.framework
+            ),
+        }
+      );
+    }
   }
 
   // ---------- Recurse ----------
@@ -259,10 +387,18 @@ function scanDirectory(rootPath, result) {
       continue;
     }
 
-    const fullPath = path.join(rootPath, entry);
+    const fullPath = path.join(
+      rootPath,
+      entry
+    );
 
-    if (fs.statSync(fullPath).isDirectory()) {
-      scanDirectory(fullPath, result);
+    if (
+      fs.statSync(fullPath).isDirectory()
+    ) {
+      scanDirectory(
+        fullPath,
+        result
+      );
     }
   }
 }

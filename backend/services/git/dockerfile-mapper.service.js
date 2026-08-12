@@ -1,4 +1,14 @@
 const path = require("path");
+const fs = require("fs");
+
+function hasDockerCommand(dockerfilePath) {
+    if (!dockerfilePath) return false;
+    const content = fs.readFileSync(
+        dockerfilePath,
+        "utf8"
+    );
+    return /^\s*(CMD|ENTRYPOINT)\s+/mi.test(content);
+}
 
 class DockerfileMapper {
     map(repository) {
@@ -33,10 +43,15 @@ class DockerfileMapper {
                 project.useCustomDockerfile = true;
                 project.dockerfile = bestMatch.path;
                 project.buildContext = bestMatch.context;
+
+                project.hasDockerCommand = hasDockerCommand(
+                    bestMatch.path
+                );
             } else {
                 project.useCustomDockerfile = false;
                 project.dockerfile = null;
                 project.buildContext = project.path;
+                project.hasDockerCommand = false;
             }
         }
         return repository;

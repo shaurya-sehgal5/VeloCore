@@ -48,6 +48,10 @@ class BuilderService {
           project.repositoryRoot,
           project.buildContext,
         ),
+
+        startCommand: project.hasDockerCommand
+          ? null
+          : project.startCommand,
       };
     }
 
