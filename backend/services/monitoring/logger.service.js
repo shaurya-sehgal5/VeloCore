@@ -10,8 +10,9 @@ class LoggerService {
       "HELM_STDOUT",
       "KUBECTL_STDOUT",
       "NPM",
-      "GIT"
+      "GIT",
     ]);
+
     this.dbEvents = new Set([
       "DEPLOYMENT_STARTED",
       "WORKSPACE_READY",
@@ -28,6 +29,11 @@ class LoggerService {
       "RUNTIME_STOPPED",
       "ROLLBACK_STARTED",
       "ROLLBACK_COMPLETED",
+      "BUILD_PHASE_STARTED",
+      "BUILD_PHASE_COMPLETED",
+      "SECURITY_SCAN_STARTED",
+      "SECURITY_SCAN_COMPLETED",
+      "RUNTIME_RUNNING",
     ]);
   }
 
@@ -92,14 +98,52 @@ class LoggerService {
       } catch (_) { }
     }
 
-    await loki.push({
-      deploymentId,
-      project: project || deploymentId,
-      stage,
-      level,
-      message,
-    });
+    try {
+      await loki.push({
+        deploymentId,
+        project: project || deploymentId,
+        stage,
+        level,
+        message,
+      });
+    } catch (_) {
+      // Loki failure must never break deployment
+    }
   }
+
+  /*
+  ------------------------------------
+  Database Deployment Event
+  ------------------------------------
+  */
+
+  async event(
+    deploymentId,
+    event,
+    message
+  ) {
+    if (!this.dbEvents.has(event)) {
+      return;
+    }
+
+    try {
+      await events.emit({
+        deploymentId,
+        event,
+        message,
+      });
+    } catch (err) {
+      console.error(
+        `[EVENT] Failed to emit ${event}: ${err.message}`
+      );
+    }
+  }
+
+  /*
+  ------------------------------------
+  INFO
+  ------------------------------------
+  */
 
   async info(
     deploymentId,
@@ -117,6 +161,12 @@ class LoggerService {
     );
   }
 
+  /*
+  ------------------------------------
+  SUCCESS
+  ------------------------------------
+  */
+
   async success(
     deploymentId,
     stage,
@@ -132,6 +182,12 @@ class LoggerService {
       project
     );
   }
+
+  /*
+  ------------------------------------
+  WARNING
+  ------------------------------------
+  */
 
   async warning(
     deploymentId,
@@ -149,6 +205,12 @@ class LoggerService {
     );
   }
 
+  /*
+  ------------------------------------
+  ERROR
+  ------------------------------------
+  */
+
   async error(
     deploymentId,
     stage,
@@ -164,7 +226,17 @@ class LoggerService {
       project
     );
   }
-  async section(deploymentId, title) {
+
+  /*
+  ------------------------------------
+  SECTION
+  ------------------------------------
+  */
+
+  async section(
+    deploymentId,
+    title
+  ) {
     await this.live(
       deploymentId,
       "SECTION",
@@ -172,6 +244,12 @@ class LoggerService {
       title
     );
   }
+
+  /*
+  ------------------------------------
+  REPOSITORY
+  ------------------------------------
+  */
 
   async repository(
     deploymentId,
@@ -187,7 +265,16 @@ class LoggerService {
     );
   }
 
-  async summary(deploymentId, summary) {
+  /*
+  ------------------------------------
+  SUMMARY
+  ------------------------------------
+  */
+
+  async summary(
+    deploymentId,
+    summary
+  ) {
     await this.live(
       deploymentId,
       "SUMMARY",
@@ -196,11 +283,18 @@ class LoggerService {
     );
   }
 
+  /*
+  ------------------------------------
+  MILESTONE
+  ------------------------------------
+  */
+
   async milestone(
     deploymentId,
     event,
     stage,
-    message
+    message,
+    project = null
   ) {
     await this.event(
       deploymentId,
@@ -211,7 +305,8 @@ class LoggerService {
     await this.success(
       deploymentId,
       stage,
-      message
+      message,
+      project
     );
   }
 }
