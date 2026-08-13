@@ -353,7 +353,7 @@ export default function LogsTab({ status, logs, active }) {
           summary,
         };
       });
-  }, [logs, mode]);
+  }, [logs]);
 
   const curatedCount = useMemo(() => {
     let n = 0;
