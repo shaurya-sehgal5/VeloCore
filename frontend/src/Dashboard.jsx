@@ -11,7 +11,7 @@ import LogsTab from "./components/LogsTab";
 import SettingsTab from "./components/SettingsTab";
 import DeployModal from "./components/DeployModal";
 import Modal from "./components/Modal";
-import PlatformMonitoringTab from "./PlatformMonitoringTab";
+import PlatformMonitoringTab from "./components/PlatformMonitoringTab";
 
 const DEFAULT_ENV_ROWS = () => [
   { id: genId(), key: "VITE_API_URL", value: "" },
