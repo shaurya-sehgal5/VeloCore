@@ -2,188 +2,401 @@ const { spawn } = require("child_process");
 const logger = require("../monitoring/logger.service");
 
 class KubectlService {
-  execute(args) {
+
+  execute(
+    args,
+    deploymentId = null,
+    stage = "KUBECTL_STDOUT"
+  ) {
     return new Promise((resolve, reject) => {
-      const process = spawn("kubectl", args, {
-        windowsHide: true
-      });
+
+      const process = spawn(
+        "kubectl",
+        args,
+        {
+          windowsHide: true,
+        }
+      );
 
       let output = "";
-      const timeout = setTimeout(() => {
 
-        process.kill("SIGTERM");
+      const timeout =
+        setTimeout(() => {
 
-        reject(
-          new Error("kubectl command timed out after 120 seconds.")
-        );
+          process.kill("SIGTERM");
 
-      }, 120000);
-
-      process.stdout.on("data", (d) => {
-        output += d.toString();
-      });
-
-      process.stderr.on("data", (d) => {
-        output += d.toString();
-      });
-
-      process.on("error", (err) => {
-        if (err.code === "ENOENT") {
-          return reject(
+          reject(
             new Error(
-              "kubectl is not installed inside the backend container."
+              "kubectl command timed out after 120 seconds."
             )
           );
+
+        }, 120000);
+
+      process.stdout.on(
+        "data",
+        (data) => {
+
+          const text =
+            data.toString();
+
+          output += text;
+
+          if (deploymentId) {
+            const lines =
+              text
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter(Boolean);
+
+            for (const line of lines) {
+
+              logger.detail(
+                deploymentId,
+                stage,
+                "INFO",
+                line
+              );
+            }
+          }
         }
+      );
 
-        reject(err);
-      });
+      process.stderr.on(
+        "data",
+        (data) => {
 
-      process.on("close", (code) => {
-        clearTimeout(timeout);
+          const text =
+            data.toString();
 
-        if (code !== 0) {
-          return reject(new Error(output));
+          output += text;
+
+          if (deploymentId) {
+            const lines =
+              text
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter(Boolean);
+
+            for (const line of lines) {
+
+              logger.detail(
+                deploymentId,
+                stage,
+                "ERROR",
+                line
+              );
+            }
+          }
         }
+      );
 
-        resolve(output);
-      });
+      process.on(
+        "error",
+        (err) => {
+
+          if (err.code === "ENOENT") {
+            return reject(
+              new Error(
+                "kubectl is not installed inside the backend container."
+              )
+            );
+          }
+
+          reject(err);
+        }
+      );
+
+      process.on(
+        "close",
+        (code) => {
+
+          clearTimeout(timeout);
+
+          if (code !== 0) {
+            return reject(
+              new Error(
+                output
+              )
+            );
+          }
+
+          resolve(output);
+        }
+      );
     });
   }
 
-  apply(file) {
-    return this.execute([
-      "apply",
-      "--server-side",
-      "-f",
-      file,
-    ]);
+  apply(
+    file,
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "apply",
+        "--server-side",
+        "-f",
+        file,
+      ],
+      deploymentId
+    );
   }
 
-  delete(file) {
-    return this.execute(["delete", "-f", file]);
+  delete(
+    file,
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "delete",
+        "-f",
+        file,
+      ],
+      deploymentId
+    );
   }
 
-  logs(pod, namespace = "default", follow = false) {
-    const args = ["logs", pod, "-n", namespace];
+  logs(
+    pod,
+    namespace = "default",
+    follow = false,
+    deploymentId = null
+  ) {
+    const args = [
+      "logs",
+      pod,
+      "-n",
+      namespace,
+    ];
 
     if (follow) {
       args.push("-f");
     }
 
-    return this.execute(args);
-  }
-  describe(resource, name, namespace = "default") {
-    return this.execute(["describe", resource, name, "-n", namespace]);
-  }
-
-  get(resource, namespace = "default") {
-    return this.execute(["get", resource, "-n", namespace, "-o", "json"]);
+    return this.execute(
+      args,
+      deploymentId,
+      "KUBECTL_STDOUT"
+    );
   }
 
-  deleteResource(resource, name, namespace = "default") {
-    return this.execute(["delete", resource, name, "-n", namespace]);
-  }
-  deletePod(name, namespace = "default") {
-    return this.execute(["delete", "pod", name, "-n", namespace]);
+  describe(
+    resource,
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "describe",
+        resource,
+        name,
+        "-n",
+        namespace,
+      ],
+      deploymentId
+    );
   }
 
-
-  async pods() {
-    return this.execute(["get", "pods", "-o", "json"]);
+  get(
+    resource,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "get",
+        resource,
+        "-n",
+        namespace,
+        "-o",
+        "json",
+      ],
+      deploymentId
+    );
   }
 
-  async rollout(name, namespace = "default", deploymentId) {
+  deleteResource(
+    resource,
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "delete",
+        resource,
+        name,
+        "-n",
+        namespace,
+      ],
+      deploymentId
+    );
+  }
+
+  deletePod(
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "delete",
+        "pod",
+        name,
+        "-n",
+        namespace,
+      ],
+      deploymentId
+    );
+  }
+
+  async pods(deploymentId = null) {
+    return this.execute(
+      [
+        "get",
+        "pods",
+        "-o",
+        "json",
+      ],
+      deploymentId
+    );
+  }
+
+  async rollout(
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
 
     if (deploymentId) {
-
       await logger.info(
         deploymentId,
         "ROLLOUT",
         "Waiting for Kubernetes rollout..."
       );
-
     }
 
-    const result = await this.execute([
-      "rollout",
-      "status",
-      `deployment/${name}`,
-      "-n",
-      namespace,
-      "--timeout=60s"
-    ]);
+    const result =
+      await this.execute(
+        [
+          "rollout",
+          "status",
+          `deployment/${name}`,
+          "-n",
+          namespace,
+          "--timeout=60s",
+        ],
+        deploymentId,
+        "KUBECTL_STDOUT"
+      );
 
     if (deploymentId) {
-
       await logger.success(
         deploymentId,
         "ROLLOUT",
         "Deployment is available."
       );
-
     }
 
     return result;
-
-  }
-  restart(name, namespace = "default") {
-    return this.execute([
-      "rollout",
-      "restart",
-      `deployment/${name}`,
-      "-n",
-      namespace,
-    ]);
-  }
-  deleteIngress(name, namespace = "default") {
-    return this.execute([
-      "delete",
-      "ingress",
-      name,
-      "-n",
-      namespace,
-    ]);
   }
 
-
-  scale(name, replicas, namespace = "default") {
-    return this.execute([
-      "scale",
-      `deployment/${name}`,
-      `--replicas=${replicas}`,
-      "-n",
-      namespace,
-    ]);
+  restart(
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "rollout",
+        "restart",
+        `deployment/${name}`,
+        "-n",
+        namespace,
+      ],
+      deploymentId
+    );
   }
 
-
-  async waitReady(name, namespace = "default") {
-
-    return this.execute([
-      "wait",
-      "--for=condition=Ready",
-      "pod",
-      "-l",
-      `app=${name}`,
-      "-n",
-      namespace,
-      "--timeout=30s"
-    ]);
+  deleteIngress(
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "delete",
+        "ingress",
+        name,
+        "-n",
+        namespace,
+      ],
+      deploymentId
+    );
   }
-  async getPod(name, namespace = "default", requireReady = true) {
-    const output = await this.execute([
-      "get",
-      "pods",
-      "-n",
-      namespace,
-      "-l",
-      `app=${name}`,
-      "-o",
-      "json",
-    ]);
 
-    const pods = JSON.parse(output).items;
+  scale(
+    name,
+    replicas,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "scale",
+        `deployment/${name}`,
+        `--replicas=${replicas}`,
+        "-n",
+        namespace,
+      ],
+      deploymentId
+    );
+  }
+
+  async waitReady(
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "wait",
+        "--for=condition=Ready",
+        "pod",
+        "-l",
+        `app=${name}`,
+        "-n",
+        namespace,
+        "--timeout=30s",
+      ],
+      deploymentId
+    );
+  }
+
+  async getPod(
+    name,
+    namespace = "default",
+    requireReady = true,
+    deploymentId = null
+  ) {
+    const output =
+      await this.execute(
+        [
+          "get",
+          "pods",
+          "-n",
+          namespace,
+          "-l",
+          `app=${name}`,
+          "-o",
+          "json",
+        ],
+        deploymentId
+      );
+
+    const pods =
+      JSON.parse(output).items;
 
     if (!pods.length) {
       return null;
@@ -191,7 +404,11 @@ class KubectlService {
 
     return (
       pods.find((pod) => {
-        if (pod.status.phase !== "Running") {
+
+        if (
+          pod.status.phase !==
+          "Running"
+        ) {
           return false;
         }
 
@@ -207,52 +424,145 @@ class KubectlService {
       }) || null
     );
   }
-  async deleteDeployment(name, namespace) {
 
-    return this.execute([
-      "delete",
-      "deployment",
-      name,
-      "-n",
-      namespace,
-      "--ignore-not-found"
-    ]);
-
+  async deleteDeployment(
+    name,
+    namespace,
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "delete",
+        "deployment",
+        name,
+        "-n",
+        namespace,
+        "--ignore-not-found",
+      ],
+      deploymentId
+    );
   }
-  async deleteService(name, namespace) {
 
-    return this.execute([
-      "delete",
-      "service",
-      name,
-      "-n",
-      namespace,
-      "--ignore-not-found"
-    ]);
-
+  async deleteService(
+    name,
+    namespace,
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
+        "delete",
+        "service",
+        name,
+        "-n",
+        namespace,
+        "--ignore-not-found",
+      ],
+      deploymentId
+    );
   }
-  async getService(name, namespace = "default") {
-    const output = await this.execute([
-      "get",
-      "svc",
-      name,
-      "-n",
-      namespace,
-      "-o",
-      "json",
-    ]);
+
+  async getService(
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    const output =
+      await this.execute(
+        [
+          "get",
+          "svc",
+          name,
+          "-n",
+          namespace,
+          "-o",
+          "json",
+        ],
+        deploymentId
+      );
 
     return JSON.parse(output);
   }
-  streamLogs(pod, namespace = "default") {
-    return spawn("kubectl", ["logs", "-f", pod, "-n", namespace]);
+
+  streamLogs(
+    pod,
+    namespace = "default",
+    deploymentId = null
+  ) {
+
+    const child = spawn(
+      "kubectl",
+      [
+        "logs",
+        "-f",
+        pod,
+        "-n",
+        namespace,
+      ]
+    );
+
+    if (deploymentId) {
+
+      child.stdout.on(
+        "data",
+        (data) => {
+
+          const lines =
+            data
+              .toString()
+              .split(/\r?\n/)
+              .map((line) => line.trim())
+              .filter(Boolean);
+
+          for (const line of lines) {
+            logger.detail(
+              deploymentId,
+              "KUBECTL_STDOUT",
+              "INFO",
+              line
+            );
+          }
+        }
+      );
+
+      child.stderr.on(
+        "data",
+        (data) => {
+
+          const lines =
+            data
+              .toString()
+              .split(/\r?\n/)
+              .map((line) => line.trim())
+              .filter(Boolean);
+
+          for (const line of lines) {
+            logger.detail(
+              deploymentId,
+              "KUBECTL_STDOUT",
+              "ERROR",
+              line
+            );
+          }
+        }
+      );
+    }
+
+    return child;
   }
-  async waitDeletion(name, namespace = "default") {
+
+  async waitDeletion(
+    name,
+    namespace = "default"
+  ) {
     const timeout = 90000;
     const started = Date.now();
 
-    while (Date.now() - started < timeout) {
+    while (
+      Date.now() - started <
+      timeout
+    ) {
       try {
+
         await this.execute([
           "get",
           "deployment",
@@ -261,7 +571,11 @@ class KubectlService {
           namespace,
         ]);
 
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise(
+          (resolve) =>
+            setTimeout(resolve, 500)
+        );
+
       } catch {
         return true;
       }
@@ -281,33 +595,52 @@ class KubectlService {
       "--wait=true",
     ]);
   }
-  async getIngress(name, namespace) {
 
-    return this.execute([
-      "get",
-      "ingress",
-      name,
-      "-n",
-      namespace,
-      "-o",
-      "json"
-    ]);
-
-  }
-  async exists(resource, name, namespace = "default") {
-    try {
-      await this.execute([
+  async getIngress(
+    name,
+    namespace,
+    deploymentId = null
+  ) {
+    return this.execute(
+      [
         "get",
-        resource,
+        "ingress",
         name,
         "-n",
         namespace,
-      ]);
+        "-o",
+        "json",
+      ],
+      deploymentId
+    );
+  }
+
+  async exists(
+    resource,
+    name,
+    namespace = "default",
+    deploymentId = null
+  ) {
+    try {
+
+      await this.execute(
+        [
+          "get",
+          resource,
+          name,
+          "-n",
+          namespace,
+        ],
+        deploymentId
+      );
+
       return true;
+
     } catch {
       return false;
     }
   }
 }
 
-module.exports = new KubectlService();
+module.exports =
+  new KubectlService();

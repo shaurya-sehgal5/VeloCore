@@ -98,10 +98,13 @@ const TIMELINE_STAGE_LABELS = {
   workspace: "Workspace",
   clone: "Repository Clone",
   analysis: "Repository Analysis",
-  security: "Security Scan",
   build: "Application Build",
+  security: "Security Scan",
+  deploy: "Deploying Application",
+  rollout: "Kubernetes Rollout",
   running: "Application Running",
   failed: "Deployment Failed",
+  rollback: "Rollback",
 };
 const TIMELINE_STATUS_COLOR = {
   success: "#3ecf8e",
@@ -195,7 +198,7 @@ function formatTimestamp(value) {
   return isNaN(d.getTime()) ? String(value) : d.toLocaleString();
 }
 
-function TimelineTab({ deploymentId }) {
+function TimelineTab({ deploymentId, selectedService }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -715,22 +718,21 @@ export default function DeploymentDetails({
   const [tab, setTab] = useState("overview");
   const [actionInProgress, setActionInProgress] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedService, setSelectedService] = useState("all");
+  const activeDeploymentId = deployment.id;
 
-  const activeDeploymentId =
-    deployment.current_deployment_id ||
-    deployment.currentDeploymentId ||
-    deployment.id;
-
-  const activeDeployment = {
-    ...deployment,
-    id: activeDeploymentId,
-  };
+  const activeDeployment = deployment;
 
   const { services, servicesLoading, servicesError, runtimeEngine, metrics } =
     useDeploymentRuntime(activeDeploymentId, {
       poll: tab === "overview" || tab === "monitoring",
     });
+  const hasMultipleServices = services.length > 1;
 
+  const selectedRuntime =
+    selectedService === "all"
+      ? null
+      : services.find((service) => service.type === selectedService);
   const {
     rows: envRows,
     editing: envEditing,
@@ -842,7 +844,56 @@ export default function DeploymentDetails({
       >
         {deployment.project_name}
       </h3>
+      {hasMultipleServices && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "12px",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: "11px",
+              color: "#71717a",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Service
+          </span>
 
+          <select
+            value={selectedService}
+            onChange={(e) => setSelectedService(e.target.value)}
+            style={{
+              background: "#0c0d0e",
+              color: "#e4e4e7",
+              border: "1px solid rgba(62,207,142,0.25)",
+              borderRadius: "7px",
+              padding: "7px 30px 7px 10px",
+              fontFamily: MONO,
+              fontSize: "11.5px",
+              cursor: "pointer",
+              outline: "none",
+            }}
+          >
+            <option value="all">All Services</option>
+
+            {services.map((service) => (
+              <option key={service.id || service.name} value={service.type}>
+                {service.type === "frontend"
+                  ? "Frontend"
+                  : service.type === "backend"
+                    ? "Backend"
+                    : service.name || service.type}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div
         style={{
           display: "flex",
@@ -919,14 +970,27 @@ export default function DeploymentDetails({
           actionInProgress={actionInProgress}
         />
       )}
-      {tab === "logs" && <LokiLogsTab deploymentId={activeDeploymentId} />}
-
-      {tab === "monitoring" && (
-        <MonitoringTab deployment={activeDeployment} metrics={metrics} />
+      {tab === "logs" && (
+        <LokiLogsTab
+          deploymentId={activeDeploymentId}
+          selectedService={selectedRuntime}
+        />
       )}
 
-      {tab === "timeline" && <TimelineTab deploymentId={activeDeploymentId} />}
+      {tab === "monitoring" && (
+        <MonitoringTab
+          deployment={activeDeployment}
+          metrics={metrics}
+          selectedService={selectedRuntime}
+        />
+      )}
 
+      {tab === "timeline" && (
+        <TimelineTab
+          deploymentId={activeDeploymentId}
+          selectedService={selectedRuntime}
+        />
+      )}
       {tab === "history" && <HistoryTab deploymentId={activeDeploymentId} />}
 
       {tab === "events" && <EventsTab deploymentId={activeDeploymentId} />}

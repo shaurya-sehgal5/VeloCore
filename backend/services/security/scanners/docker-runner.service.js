@@ -1,38 +1,134 @@
 const { spawn } = require("child_process");
+const logger = require("../../monitoring/logger.service");
 
 class DockerRunner {
 
-    run(args) {
+    run(
+        args,
+        options = {}
+    ) {
 
-        return new Promise((resolve, reject) => {
+        const {
+            deploymentId = null,
+            projectName = null,
+            stage = "DOCKER"
+        } = options;
 
-            const docker = spawn("docker", ["run", "--rm", ...args], {
-                shell: false
-            });
+        return new Promise(
+            (resolve, reject) => {
 
-            let stdout = "";
-            let stderr = "";
+                const docker =
+                    spawn(
+                        "docker",
+                        [
+                            "run",
+                            "--rm",
+                            ...args
+                        ],
+                        {
+                            shell: false
+                        }
+                    );
 
-            docker.stdout.on("data", d => stdout += d.toString());
+                let stdout = "";
+                let stderr = "";
 
-            docker.stderr.on("data", d => stderr += d.toString());
+                docker.stdout.on(
+                    "data",
+                    (data) => {
 
-            docker.on("close", code => {
+                        const text =
+                            data.toString();
 
-                resolve({
-                    code,
-                    stdout,
-                    stderr
-                });
+                        stdout += text;
 
-            });
+                        if (
+                            deploymentId
+                        ) {
 
-            docker.on("error", reject);
+                            const lines =
+                                text
+                                    .split(/\r?\n/)
+                                    .map(line =>
+                                        line.trim()
+                                    )
+                                    .filter(Boolean);
 
-        });
+                            for (
+                                const line of lines
+                            ) {
 
+                                logger.detail(
+                                    deploymentId,
+                                    stage,
+                                    "INFO",
+                                    line,
+                                    projectName
+                                );
+                            }
+                        }
+                    }
+                );
+
+
+                docker.stderr.on(
+                    "data",
+                    (data) => {
+
+                        const text =
+                            data.toString();
+
+                        stderr += text;
+
+                        if (
+                            deploymentId
+                        ) {
+
+                            const lines =
+                                text
+                                    .split(/\r?\n/)
+                                    .map(line =>
+                                        line.trim()
+                                    )
+                                    .filter(Boolean);
+
+                            for (
+                                const line of lines
+                            ) {
+
+                                logger.detail(
+                                    deploymentId,
+                                    stage,
+                                    "ERROR",
+                                    line,
+                                    projectName
+                                );
+                            }
+                        }
+                    }
+                );
+
+                docker.on(
+                    "close",
+                    (code) => {
+
+                        resolve({
+                            code,
+                            stdout,
+                            stderr
+                        });
+
+                    }
+                );
+
+                docker.on(
+                    "error",
+                    reject
+                );
+            }
+        );
     }
-
 }
 
-module.exports = new DockerRunner();
+module.exports =
+    new DockerRunner();

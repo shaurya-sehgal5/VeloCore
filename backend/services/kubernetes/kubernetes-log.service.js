@@ -3,78 +3,123 @@ const logger = require("../monitoring/logger.service");
 const socket = require("./kubernetes-socket.service");
 
 class KubernetesLogService {
-  stream(pod, deploymentId, namespace = "default", projectName) {
 
-    const stream = kubectl.streamLogs(pod, namespace);
+  stream(
+    pod,
+    deploymentId,
+    namespace = "default",
+    projectName
+  ) {
 
-    stream.stdout.on("data", (data) => {
-      const line = data.toString().trim();
-      if (
-        !line ||
-
-        line.includes("kube-probe") ||
-
-        line.includes("GET /health") ||
-
-        line.includes("GET /ready") ||
-
-        line.includes("GET /live") ||
-
-        line.includes("127.0.0.1") ||
-
-        line.includes("Listening on") ||
-
-        line.includes("Server started") ||
-
-        line.includes("Application started") ||
-
-        line.includes("Ready in")
-      ) {
-        return;
-      }
-      logger.live(
-        deploymentId,
-        "KUBERNETES",
-        "INFO",
-        line,
-        true,
-        projectName
+    const stream =
+      kubectl.streamLogs(
+        pod,
+        namespace,
+        deploymentId
       );
-      socket.broadcast("k8s:logs", {
-        deploymentId,
-        line,
-      });
-    });
 
-    stream.stderr.on("data", (data) => {
-      const line = data.toString().trim();
-      if (
-        !line ||
-        line.includes("kube-probe")
-      ) {
-        return;
+    stream.stdout.on(
+      "data",
+      async (data) => {
+
+        const lines =
+          data
+            .toString()
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        for (const line of lines) {
+
+          if (
+            line.includes("kube-probe") ||
+            line.includes("GET /health") ||
+            line.includes("GET /ready") ||
+            line.includes("GET /live") ||
+            line.includes("127.0.0.1")
+          ) {
+            continue;
+          }
+
+          await logger.detail(
+            deploymentId,
+            "KUBERNETES",
+            "INFO",
+            line,
+            projectName
+          );
+
+          socket.broadcast(
+            "k8s:logs",
+            {
+              deploymentId,
+              projectName,
+              line,
+            }
+          );
+        }
       }
-      logger.live(
-        deploymentId,
-        "KUBERNETES",
-        "ERROR",
-        line,
-        true,
-        projectName
-      );
-      socket.broadcast("k8s:logs", {
-        deploymentId,
-        line,
-        projectName
-      });
-    });
+    );
 
-    stream.on("close", (code) => {
+    stream.stderr.on(
+      "data",
+      async (data) => {
 
-    });
+        const lines =
+          data
+            .toString()
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        for (const line of lines) {
+
+          if (
+            !line ||
+            line.includes("kube-probe")
+          ) {
+            continue;
+          }
+
+          await logger.detail(
+            deploymentId,
+            "KUBERNETES",
+            "ERROR",
+            line,
+            projectName
+          );
+
+          socket.broadcast(
+            "k8s:logs",
+            {
+              deploymentId,
+              projectName,
+              line,
+            }
+          );
+        }
+      }
+    );
+
+    stream.on(
+      "close",
+      (code) => {
+
+        if (code !== 0) {
+
+          logger.warning(
+            deploymentId,
+            "KUBERNETES",
+            `Runtime log stream closed with code ${code}`,
+            projectName
+          );
+        }
+      }
+    );
 
     return stream;
   }
 }
 
-module.exports = new KubernetesLogService();
+module.exports =
+  new KubernetesLogService();

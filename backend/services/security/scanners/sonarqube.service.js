@@ -1,67 +1,137 @@
 const axios = require("axios");
 const docker = require("./docker-runner.service");
+const logger = require("../../monitoring/logger.service");
 
 class SonarQubeService {
+
     async scan({
         deploymentId,
         projectKey,
         projectName,
         source,
     }) {
-        await this.ensureProject(projectKey, projectName);
+
+        await logger.info(
+            deploymentId,
+            "SONARQUBE",
+            `Starting SonarQube analysis for ${projectName}`,
+            projectName
+        );
+
+        await this.ensureProject(
+            projectKey,
+            projectName
+        );
 
         await this.runScanner({
+            deploymentId,
             projectKey,
             projectName,
             source,
         });
 
-        return await this.waitForQualityGate(projectKey);
+        return await this.waitForQualityGate(
+            deploymentId,
+            projectKey,
+            projectName
+        );
     }
 
     async runScanner({
+        deploymentId,
         projectKey,
         projectName,
         source,
     }) {
 
-        const result = await docker.run([
+        const result = await docker.run(
 
-            "--network",
-            "host",
+            [
 
-            "-v",
-            `${source}:/usr/src`,
+                "--network",
+                "host",
 
-            "-w",
-            "/usr/src",
+                "-v",
+                `${source}:/usr/src`,
 
-            "-e",
-            `SONAR_HOST_URL=${process.env.SONAR_URL}`,
+                "-w",
+                "/usr/src",
 
-            "-e",
-            `SONAR_TOKEN=${process.env.SONAR_TOKEN}`,
+                "-e",
+                `SONAR_HOST_URL=${process.env.SONAR_URL}`,
 
-            "sonarsource/sonar-scanner-cli:latest",
+                "-e",
+                `SONAR_TOKEN=${process.env.SONAR_TOKEN}`,
 
-            "sonar-scanner",
+                "sonarsource/sonar-scanner-cli:latest",
 
-            `-Dsonar.projectKey=${projectKey}`,
-            `-Dsonar.projectName=${projectName}`,
-            "-Dsonar.sources=.",
-            "-Dsonar.sourceEncoding=UTF-8",
-            "-Dsonar.qualitygate.wait=true",
-            `-Dsonar.host.url=${process.env.SONAR_URL}`,
-            `-Dsonar.token=${process.env.SONAR_TOKEN}`,
-        ]);
+                "sonar-scanner",
 
-        console.log("========== SONAR STDOUT ==========");
-        console.log(result.stdout);
+                `-Dsonar.projectKey=${projectKey}`,
+                `-Dsonar.projectName=${projectName}`,
+                "-Dsonar.sources=.",
+                "-Dsonar.sourceEncoding=UTF-8",
+                "-Dsonar.qualitygate.wait=true",
+                `-Dsonar.host.url=${process.env.SONAR_URL}`,
+                `-Dsonar.token=${process.env.SONAR_TOKEN}`,
 
-        console.log("========== SONAR STDERR ==========");
-        console.log(result.stderr);
+            ],
+
+            {
+                deploymentId,
+                projectName,
+                stage: "SONARQUBE",
+            }
+        );
+
+        /*
+        ------------------------------------------
+        Detailed scanner output
+        ------------------------------------------
+        */
+
+        if (result.stdout?.trim()) {
+
+            const lines =
+                result.stdout
+                    .split(/\r?\n/)
+                    .map(line => line.trim())
+                    .filter(Boolean);
+
+            for (const line of lines) {
+
+                await logger.detail(
+                    deploymentId,
+                    "SONARQUBE",
+                    "INFO",
+                    line,
+                    projectName
+                );
+            }
+        }
+
+        if (result.stderr?.trim()) {
+
+            const lines =
+                result.stderr
+                    .split(/\r?\n/)
+                    .map(line => line.trim())
+                    .filter(Boolean);
+
+            for (const line of lines) {
+
+                await logger.detail(
+                    deploymentId,
+                    "SONARQUBE",
+                    "ERROR",
+                    line,
+                    projectName
+                );
+            }
+        }
 
         if (result.code !== 0) {
+
             throw new Error(
                 [
                     result.stderr,
@@ -72,11 +142,23 @@ class SonarQubeService {
             );
         }
 
+        await logger.success(
+            deploymentId,
+            "SONARQUBE",
+            "SonarQube analysis completed.",
+            projectName
+        );
+
         return result;
     }
 
-    async ensureProject(projectKey, projectName) {
+    async ensureProject(
+        projectKey,
+        projectName
+    ) {
+
         try {
+
             await axios.post(
                 `${process.env.SONAR_URL}/api/projects/create`,
                 null,
@@ -86,19 +168,24 @@ class SonarQubeService {
                         name: projectName,
                     },
                     auth: {
-                        username: process.env.SONAR_TOKEN,
+                        username:
+                            process.env.SONAR_TOKEN,
                         password: "",
                     },
                 }
             );
+
         } catch (err) {
+
             if (
                 err.response &&
                 err.response.data &&
                 err.response.data.errors &&
                 err.response.data.errors[0] &&
                 err.response.data.errors[0].msg &&
-                err.response.data.errors[0].msg.includes("already exists")
+                err.response.data.errors[0].msg.includes(
+                    "already exists"
+                )
             ) {
                 return;
             }
@@ -107,85 +194,200 @@ class SonarQubeService {
         }
     }
 
-    async waitForQualityGate(projectKey) {
-        for (let i = 0; i < 20; i++) {
-            await new Promise(r => setTimeout(r, 3000));
+    async waitForQualityGate(
+        deploymentId,
+        projectKey,
+        projectName
+    ) {
+
+        await logger.info(
+            deploymentId,
+            "SONARQUBE",
+            "Waiting for SonarQube quality gate...",
+            projectName
+        );
+
+        for (
+            let i = 0;
+            i < 20;
+            i++
+        ) {
+
+            await new Promise(
+                r => setTimeout(r, 3000)
+            );
 
             try {
-                const quality = await axios.get(
-                    `${process.env.SONAR_URL}/api/qualitygates/project_status`,
+
+                const quality =
+                    await axios.get(
+                        `${process.env.SONAR_URL}/api/qualitygates/project_status`,
+                        {
+                            params: {
+                                projectKey,
+                            },
+                            auth: {
+                                username:
+                                    process.env.SONAR_TOKEN,
+                                password: "",
+                            },
+                        }
+                    );
+
+                if (
+                    quality.data &&
+                    quality.data.projectStatus
+                ) {
+
+                    const status =
+                        quality.data
+                            .projectStatus.status;
+
+                    await logger.info(
+                        deploymentId,
+                        "SONARQUBE",
+                        `Quality Gate status: ${status}`,
+                        projectName
+                    );
+
+                    return await this.metrics(
+                        deploymentId,
+                        projectKey,
+                        projectName,
+                        status
+                    );
+                }
+
+            } catch (error) {
+
+                if (i === 19) {
+
+                    throw new Error(
+                        "SonarQube timeout - analysis not ready"
+                    );
+                }
+
+                continue;
+            }
+        }
+
+        throw new Error(
+            "SonarQube timeout"
+        );
+    }
+
+    async metrics(
+        deploymentId,
+        projectKey,
+        projectName,
+        status
+    ) {
+
+        try {
+
+            const response =
+                await axios.get(
+                    `${process.env.SONAR_URL}/api/measures/component`,
                     {
                         params: {
-                            projectKey,
+                            component:
+                                projectKey,
+
+                            metricKeys:
+                                "bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density",
                         },
+
                         auth: {
-                            username: process.env.SONAR_TOKEN,
+                            username:
+                                process.env.SONAR_TOKEN,
                             password: "",
                         },
                     }
                 );
 
-                if (quality.data && quality.data.projectStatus) {
-                    return await this.metrics(projectKey, quality.data.projectStatus.status);
-                }
-            } catch (error) {
-                // If the analysis isn't ready yet, continue waiting
-                if (i === 19) {
-                    throw new Error("SonarQube timeout - analysis not ready");
-                }
-                continue;
-            }
-        }
-
-        throw new Error("SonarQube timeout");
-    }
-
-    async metrics(projectKey, status) {
-        try {
-            const response = await axios.get(
-                `${process.env.SONAR_URL}/api/measures/component`,
-                {
-                    params: {
-                        component: projectKey,
-                        metricKeys: "bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density",
-                    },
-                    auth: {
-                        username: process.env.SONAR_TOKEN,
-                        password: "",
-                    },
-                }
-            );
-
             const measures = {};
 
-            if (response.data && response.data.component && response.data.component.measures) {
-                for (const metric of response.data.component.measures) {
-                    measures[metric.metric] = Number(metric.value || 0);
+            if (
+                response.data &&
+                response.data.component &&
+                response.data.component.measures
+            ) {
+
+                for (
+                    const metric of
+                    response.data.component.measures
+                ) {
+
+                    measures[
+                        metric.metric
+                    ] =
+                        Number(
+                            metric.value || 0
+                        );
                 }
             }
 
-            return {
+            const result = {
+
                 scanner: "SonarQube",
-                passed: status === "OK",
-                bugs: measures.bugs || 0,
-                vulnerabilities: measures.vulnerabilities || 0,
-                codeSmells: measures.code_smells || 0,
-                coverage: measures.coverage || 0,
-                duplicatedLines: measures.duplicated_lines_density || 0,
+
+                passed:
+                    status === "OK",
+
+                bugs:
+                    measures.bugs || 0,
+
+                vulnerabilities:
+                    measures.vulnerabilities || 0,
+
+                codeSmells:
+                    measures.code_smells || 0,
+
+                coverage:
+                    measures.coverage || 0,
+
+                duplicatedLines:
+                    measures.duplicated_lines_density || 0,
             };
+
+            await logger.success(
+                deploymentId,
+                "SONARQUBE",
+                `Quality Gate: ${result.passed ? "PASSED" : "FAILED"} | Bugs:${result.bugs} Vulnerabilities:${result.vulnerabilities} Coverage:${result.coverage}%`,
+                projectName
+            );
+
+            return result;
+
         } catch (error) {
-            // If metrics aren't available yet, return default values
+
+            await logger.warning(
+                deploymentId,
+                "SONARQUBE",
+                "SonarQube metrics were not available.",
+                projectName
+            );
+
             return {
+
                 scanner: "SonarQube",
-                passed: status === "OK",
+
+                passed:
+                    status === "OK",
+
                 bugs: 0,
+
                 vulnerabilities: 0,
+
                 codeSmells: 0,
+
                 coverage: 0,
+
                 duplicatedLines: 0,
             };
         }
     }
 }
 
-module.exports = new SonarQubeService();
+module.exports =
+    new SonarQubeService();

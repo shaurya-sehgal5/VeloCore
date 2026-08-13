@@ -114,19 +114,39 @@ router.get("/deployment/:deploymentId/timeline", async (req, res) => {
 // 1. 📁 FETCH ALL USER DEPLOYMENTS (Fallback parameterized route)
 router.get('/deployments/:userId', async (req, res) => {
   const { userId } = req.params;
+
   try {
     const result = await db.query(
-      `SELECT d.*, COALESCE(p.name, d.repo_name) as project_name 
-       FROM deployments d 
-       LEFT JOIN projects p ON d.project_id = p.id 
-       WHERE d.user_id = $1 
-       ORDER BY d.created_at DESC`,
+      `
+            SELECT DISTINCT ON (d.project_id)
+                d.*,
+                COALESCE(p.name, d.repo_name) AS project_name
+            FROM deployments d
+            LEFT JOIN projects p
+                ON d.project_id = p.id
+            WHERE d.user_id = $1
+            ORDER BY d.project_id, d.created_at DESC
+            `,
       [userId]
     );
+
+    result.rows.sort(
+      (a, b) =>
+        new Date(b.created_at) -
+        new Date(a.created_at)
+    );
+
     res.json(result.rows);
+
   } catch (err) {
-    console.error("❌ [Dashboard Router Error]:", err.message);
-    res.status(500).json({ error: "Server failed to fetch deployment history" });
+    console.error(
+      "❌ [Dashboard Router Error]:",
+      err.message
+    );
+
+    res.status(500).json({
+      error: "Server failed to fetch deployment history"
+    });
   }
 });
 
@@ -163,12 +183,72 @@ router.post('/deploy', async (req, res) => {
 // 3. 🗑️ DELETE APPLICATION BUTTON ROUTE
 router.delete('/deployment/:deploymentId', async (req, res) => {
   const { deploymentId } = req.params;
+
   try {
-    await db.query('DELETE FROM deployments WHERE id = $1', [deploymentId]);
-    res.json({ success: true, message: "Application deleted from dashboard records." });
+    await db.query("BEGIN");
+
+    const { rows } = await db.query(
+      `
+            SELECT project_id
+            FROM deployments
+            WHERE id = $1
+            `,
+      [deploymentId]
+    );
+
+    if (!rows.length) {
+      await db.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Deployment not found"
+      });
+    }
+
+    const projectId = rows[0].project_id;
+
+    await db.query(
+      `
+            DELETE FROM deployments
+            WHERE id = $1
+            `,
+      [deploymentId]
+    );
+    await db.query(
+      `
+            UPDATE projects
+            SET current_deployment_id = (
+                SELECT id
+                FROM deployments
+                WHERE project_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            )
+            WHERE id = $1
+            AND current_deployment_id = $2
+            `,
+      [projectId, deploymentId]
+    );
+
+    await db.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: "Deployment deleted successfully."
+    });
+
   } catch (err) {
-    console.error("❌ [Dashboard Router Error]:", err.message);
-    res.status(500).json({ error: "Failed to delete the application" });
+    try {
+      await db.query("ROLLBACK");
+    } catch (_) { }
+
+    console.error(
+      "❌ [Dashboard Router Error]:",
+      err.message
+    );
+
+    res.status(500).json({
+      error: "Failed to delete the deployment"
+    });
   }
 });
 

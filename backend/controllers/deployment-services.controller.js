@@ -1,27 +1,17 @@
 const deploymentQueryService = require("../services/deployment/deployment-query.service");
 
 exports.getServices = async (req, res) => {
+  try {
+    const services = await deploymentQueryService.getServices(
+      req.params.deploymentId
+    );
 
-    try {
+    res.json(services);
+  } catch (error) {
+    console.error("[Deployment Services]", error);
 
-        const services = await deploymentQueryService.getServices(
-
-            req.params.deploymentId
-
-        );
-
-        res.json(services);
-
-    }
-
-    catch (error) {
-
-        res.status(500).json({
-
-            error: error.message
-
-        });
-
-    }
-
+    res.status(500).json({
+      error: error.message,
+    });
+  }
 };

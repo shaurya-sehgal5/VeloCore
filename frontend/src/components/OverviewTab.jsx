@@ -108,8 +108,6 @@ function ServiceDetailRow({ label, value }) {
   );
 }
 
-// Only render fields that actually have a value — avoids a wall of "—"
-// burying the working URL/status that ServiceRow already renders.
 function ServiceExtraDetails({ service, runtimeEngine }) {
   const fields = [
     ["Framework", service.framework],

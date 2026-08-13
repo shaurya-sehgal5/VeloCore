@@ -6,22 +6,29 @@ const metrics = require("../monitoring/metrics.service");
 const sonarqube = require("./scanners/sonarqube.service");
 
 class SecurityEngine {
+
   async run({
     deploymentId,
     workspace,
     graph,
     image,
   }) {
+
     await logger.milestone(
       deploymentId,
       "SECURITY_STARTED",
       "SECURITY",
       "Security pipeline started."
     );
-    const started = Date.now();
-    const securityStart = Date.now();
+
+    const started =
+      Date.now();
+
+    const securityStart =
+      Date.now();
 
     const report = {
+
       score: 100,
 
       scanners: [],
@@ -39,12 +46,13 @@ class SecurityEngine {
     };
 
     /*
-    ----------------------------------
-    Gitleaks
-    ----------------------------------
+    ==========================================
+    GITLEAKS
+    ==========================================
     */
 
-    let gitleaksStatus = "SUCCESS";
+    let gitleaksStatus =
+      "SUCCESS";
 
     await logger.info(
       deploymentId,
@@ -53,24 +61,39 @@ class SecurityEngine {
     );
 
     try {
-      const secretResult = await gitleaks.scan(workspace.path);
 
-      report.secrets = secretResult.findings || [];
+      const secretResult =
+        await gitleaks.scan(
+          workspace.path,
+          deploymentId
+        );
+
+      report.secrets =
+        secretResult.findings || [];
 
       report.scanners.push({
         scanner: "Gitleaks",
-        findings: report.secrets.length,
+        findings:
+          report.secrets.length,
       });
 
-      if (secretResult.skipped) {
-        gitleaksStatus = "SKIPPED";
+      if (
+        secretResult.skipped
+      ) {
+
+        gitleaksStatus =
+          "SKIPPED";
 
         await logger.warning(
           deploymentId,
           "SECURITY",
-          "Gitleaks not installed. Skipping scan."
+          "Gitleaks scan skipped."
         );
-      } else if (report.secrets.length > 0) {
+
+      } else if (
+        report.secrets.length > 0
+      ) {
+
         await logger.error(
           deploymentId,
           "SECURITY",
@@ -78,38 +101,62 @@ class SecurityEngine {
         );
 
         report.findings.push(
-          ...report.secrets.map((f) => ({
-            scanner: "Gitleaks",
-            severity: "CRITICAL",
-            title: f.RuleID,
-            file: f.File,
-            line: f.StartLine,
-          }))
+          ...report.secrets.map(
+            (f) => ({
+              scanner:
+                "Gitleaks",
+
+              severity:
+                "CRITICAL",
+
+              title:
+                f.RuleID,
+
+              file:
+                f.File,
+
+              line:
+                f.StartLine,
+            })
+          )
         );
+
       } else {
+
         await logger.success(
           deploymentId,
           "SECURITY",
           "Gitleaks passed."
         );
       }
-    } catch (err) {
-      gitleaksStatus = "FAILED";
 
-      await logger.warning(
+    } catch (err) {
+
+      gitleaksStatus =
+        "FAILED";
+
+      await logger.error(
         deploymentId,
         "SECURITY",
         `Gitleaks failed: ${err.message}`
       );
+
+      await logger.detail(
+        deploymentId,
+        "GITLEAKS",
+        "ERROR",
+        err.stack || err.message
+      );
     }
 
     /*
-----------------------------------
-SonarQube
-----------------------------------
-*/
+    ==========================================
+    SONARQUBE
+    ==========================================
+    */
 
-    let sonarStatus = "SUCCESS";
+    let sonarStatus =
+      "SUCCESS";
 
     await logger.info(
       deploymentId,
@@ -119,66 +166,78 @@ SonarQube
 
     try {
 
-      const sonar = await sonarqube.scan({
+      const sonar =
+        await sonarqube.scan({
 
-        deploymentId,
+          deploymentId,
 
-        projectKey: `${process.env.SONAR_PROJECT_PREFIX}-${deploymentId}`,
+          projectKey:
+            `${process.env.SONAR_PROJECT_PREFIX}-${deploymentId}`,
 
-        projectName: graph.frontend?.name ||
-          graph.backend?.name ||
-          "application",
+          projectName:
+            graph.frontend?.name ||
+            graph.backend?.name ||
+            "application",
 
-        source: workspace.path,
+          source:
+            workspace.path,
+        });
 
-      });
-
-      report.scanners.push(sonar);
+      report.scanners.push(
+        sonar
+      );
 
       report.findings.push({
 
-        scanner: "SonarQube",
+        scanner:
+          "SonarQube",
 
-        severity: sonar.passed ? "INFO" : "HIGH",
+        severity:
+          sonar.passed
+            ? "INFO"
+            : "HIGH",
 
-        title: "Quality Gate",
-
+        title:
+          "Quality Gate",
       });
 
       if (!sonar.passed) {
-
         report.high++;
-
       }
 
       await logger.success(
-
         deploymentId,
-
         "SECURITY",
-
-        `Quality Gate : ${sonar.passed ? "PASSED" : "FAILED"} | Bugs:${sonar.bugs} Vulnerabilities:${sonar.vulnerabilities} Coverage:${sonar.coverage}%`
-
+        `Quality Gate: ${sonar.passed ? "PASSED" : "FAILED"} | Bugs:${sonar.bugs} Vulnerabilities:${sonar.vulnerabilities} Coverage:${sonar.coverage}%`
       );
 
     } catch (err) {
 
-      sonarStatus = "FAILED";
+      sonarStatus =
+        "FAILED";
 
-      await logger.warning(
+      await logger.error(
         deploymentId,
         "SECURITY",
-        `SonarQube failed:\n${err.stack || err.stderr || JSON.stringify(err, null, 2)}`
+        `SonarQube failed: ${err.message}`
+      );
+
+      await logger.detail(
+        deploymentId,
+        "SONARQUBE",
+        "ERROR",
+        err.stack || err.message
       );
     }
 
     /*
-    ----------------------------------
-    npm audit
-    ----------------------------------
+    ==========================================
+    NPM AUDIT
+    ==========================================
     */
 
-    let npmStatus = "SUCCESS";
+    let npmStatus =
+      "SUCCESS";
 
     await logger.info(
       deploymentId,
@@ -186,45 +245,83 @@ SonarQube
       "Running npm audit..."
     );
 
-    for (const node of graph.nodes) {
+    for (
+      const node of graph.nodes
+    ) {
+
       try {
-        const audit = await npmAudit.scan(node);
 
-        if (!audit) continue;
+        const audit =
+          await npmAudit.scan(
+            node,
+            deploymentId
+          );
 
-        report.critical += audit.critical || 0;
-        report.high += audit.high || 0;
-        report.medium += audit.medium || 0;
-        report.low += audit.low || 0;
+        if (!audit) {
+          continue;
+        }
 
-        report.scanners.push(audit);
+        report.critical +=
+          audit.critical || 0;
+
+        report.high +=
+          audit.high || 0;
+
+        report.medium +=
+          audit.medium || 0;
+
+        report.low +=
+          audit.low || 0;
+
+        report.scanners.push(
+          audit
+        );
+
+        /*
+        NORMAL SUMMARY ONLY
+        */
 
         await logger.success(
           deploymentId,
           "SECURITY",
-          `${node.name} | Critical:${audit.critical} High:${audit.high} Medium:${audit.medium} Low:${audit.low}`
+          `${node.name} | Critical:${audit.critical} High:${audit.high} Medium:${audit.medium} Low:${audit.low}`,
+          node.name
         );
-      } catch (err) {
-        npmStatus = "FAILED";
 
-        await logger.warning(
+      } catch (err) {
+
+        npmStatus =
+          "FAILED";
+
+        await logger.error(
           deploymentId,
           "SECURITY",
-          `${node.name}: npm audit failed (${err.message})`
+          `${node.name}: npm audit failed`
+        );
+
+        await logger.detail(
+          deploymentId,
+          "NPM_AUDIT",
+          "ERROR",
+          err.stack || err.message,
+          node.name
         );
       }
     }
 
     /*
-    ----------------------------------
-    Trivy
-    ----------------------------------
+    ==========================================
+    TRIVY
+    ==========================================
     */
 
-    let trivyStatus = "SUCCESS";
+    let trivyStatus =
+      "SUCCESS";
 
     if (image) {
+
       try {
+
         await logger.info(
           deploymentId,
           "SECURITY",
@@ -232,8 +329,11 @@ SonarQube
         );
 
         await trivy.scan({
+
           deploymentId,
+
           image,
+
           report,
         });
 
@@ -242,74 +342,113 @@ SonarQube
           "SECURITY",
           "Trivy scan completed."
         );
+
         metrics.securityDuration
           .labels("trivy")
           .observe(
-            (Date.now() - started) / 1000
+            (Date.now() - started) /
+            1000
           );
-      } catch (err) {
-        trivyStatus = "SKIPPED";
 
-        await logger.warning(
+      } catch (err) {
+
+        trivyStatus =
+          "FAILED";
+
+        await logger.error(
           deploymentId,
           "SECURITY",
-          `Trivy skipped: ${err.message}`
+          `Trivy scan failed: ${err.message}`
+        );
+
+        await logger.detail(
+          deploymentId,
+          "TRIVY",
+          "ERROR",
+          err.stack || err.message
         );
       }
     }
 
     /*
-    ----------------------------------
-    Calculate Score
-    ----------------------------------
+    ==========================================
+    SCORE
+    ==========================================
     */
 
-    report.score -= report.secrets.length * 20;
-    report.score -= report.critical * 20;
-    report.score -= report.high * 10;
-    report.score -= report.medium * 5;
-    report.score -= report.low;
+    report.score -=
+      report.secrets.length * 20;
 
-    const sonarReport = report.scanners.find(
-      s => s.scanner === "SonarQube"
-    );
+    report.score -=
+      report.critical * 20;
+
+    report.score -=
+      report.high * 10;
+
+    report.score -=
+      report.medium * 5;
+
+    report.score -=
+      report.low;
+
+    const sonarReport =
+      report.scanners.find(
+        s =>
+          s.scanner ===
+          "SonarQube"
+      );
 
     if (sonarReport) {
-      if (!sonarReport.passed) report.score -= 15;
-      if (sonarReport.coverage < 80) report.score -= 5;
+
+      if (
+        !sonarReport.passed
+      ) {
+        report.score -= 15;
+      }
+
+      if (
+        sonarReport.coverage < 80
+      ) {
+        report.score -= 5;
+      }
     }
 
-    report.score = Math.max(report.score, 0);
+    report.score =
+      Math.max(
+        report.score,
+        0
+      );
 
     /*
-    ----------------------------------
-    Security Gate
-    ----------------------------------
+    ==========================================
+    SECURITY GATE
+    ==========================================
     */
 
     if (
-
       report.secrets.length > 0 ||
-
       report.critical > 0 ||
-
-      (sonarReport && !sonarReport.passed)
-
+      (
+        sonarReport &&
+        !sonarReport.passed
+      )
     ) {
-      report.passed = false;
+
+      report.passed =
+        false;
     }
 
     /*
-    ----------------------------------
-    Summary
-    ----------------------------------
+    ==========================================
+    SUMMARY
+    ==========================================
     */
 
     await logger.milestone(
       deploymentId,
       "SECURITY_COMPLETED",
       "SECURITY",
-      `Security Score : ${report.score}/100`
+      `Security Score: ${report.score}/100`
     );
 
     await logger.success(
@@ -323,19 +462,31 @@ SonarQube
       .set(report.score);
 
     metrics.securityCritical
-      .labels(graph.frontend?.name || "project")
+      .labels(
+        graph.frontend?.name ||
+        "project"
+      )
       .set(report.critical);
 
     metrics.securityHigh
-      .labels(graph.frontend?.name || "project")
+      .labels(
+        graph.frontend?.name ||
+        "project"
+      )
       .set(report.high);
 
     metrics.securityMedium
-      .labels(graph.frontend?.name || "project")
+      .labels(
+        graph.frontend?.name ||
+        "project"
+      )
       .set(report.medium);
 
     metrics.securityLow
-      .labels(graph.frontend?.name || "project")
+      .labels(
+        graph.frontend?.name ||
+        "project"
+      )
       .set(report.low);
 
     metrics.securityScans.inc({
@@ -347,6 +498,7 @@ SonarQube
       scanner: "npm-audit",
       status: npmStatus,
     });
+
     metrics.securityScans.inc({
       scanner: "sonarqube",
       status: sonarStatus,
@@ -359,10 +511,14 @@ SonarQube
 
     metrics.securityDuration
       .labels("pipeline")
-      .observe((Date.now() - securityStart) / 1000);
+      .observe(
+        (Date.now() - securityStart) /
+        1000
+      );
 
     return report;
   }
 }
 
-module.exports = new SecurityEngine();
+module.exports =
+  new SecurityEngine();

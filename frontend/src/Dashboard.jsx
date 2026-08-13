@@ -11,6 +11,7 @@ import LogsTab from "./components/LogsTab";
 import SettingsTab from "./components/SettingsTab";
 import DeployModal from "./components/DeployModal";
 import Modal from "./components/Modal";
+import PlatformMonitoringTab from "./PlatformMonitoringTab";
 
 const DEFAULT_ENV_ROWS = () => [
   { id: genId(), key: "VITE_API_URL", value: "" },
@@ -24,6 +25,7 @@ const TABS = [
   { key: "repos", label: "Repos" },
   { key: "logs", label: "Live Logs" },
   { key: "settings", label: "Settings" },
+  { key: "platform-monitoring", label: "Platform Monitoring" },
 ];
 
 export default function Dashboard({
@@ -159,7 +161,7 @@ export default function Dashboard({
               marginBottom: "6px",
             }}
           >
-            velocore // dashboard
+            VeloCore // dashboard
           </div>
           <h2
             style={{
@@ -326,6 +328,7 @@ export default function Dashboard({
           <LogsTab status={status} logs={logs} active={!!activeDeploymentId} />
         </div>
       )}
+      {activeTab === "platform-monitoring" && <PlatformMonitoringTab />}
 
       {activeTab === "settings" && (
         <SettingsTab

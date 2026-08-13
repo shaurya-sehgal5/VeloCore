@@ -2,28 +2,326 @@ import StatusBadge from "./StatusBadge";
 import { MONO } from "../config";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+const LEVEL_TEXT_COLOR = {
+  ERROR: "#f87171",
+  SUCCESS: "#3ecf8e",
+  WARNING: "#facc15",
+};
+const LEVEL_TAG_COLOR = {
+  ERROR: "#f87171",
+  SUCCESS: "#3ecf8e",
+  WARNING: "#facc15",
+};
+
+const STATUS_COLOR = {
+  SUCCESS: "#3ecf8e",
+  ERROR: "#f87171",
+  WARNING: "#facc15",
+  INFO: "#38bdf8",
+};
+
+const STATUS_LABEL = {
+  SUCCESS: "Success",
+  ERROR: "Failed",
+  WARNING: "Warning",
+  INFO: "Running",
+};
+
+const STAGE_DEFS = [
+  { key: "DEPLOYMENT", label: "Deployment", match: ["DEPLOYMENT"] },
+  { key: "WORKSPACE", label: "Workspace", match: ["WORKSPACE"] },
+  {
+    key: "REPOSITORY",
+    label: "Repository",
+    match: ["REPOSITORY", "CLONE", "GIT"],
+  },
+  { key: "ANALYSIS", label: "Analysis", match: ["ANALYSIS"] },
+  { key: "SECURITY", label: "Security", match: ["SECURITY"] },
+  { key: "BUILD", label: "Build", match: ["BUILD", "DOCKER", "NPM"] },
+  { key: "REGISTRY", label: "Registry", match: ["REGISTRY"] },
+  {
+    key: "KUBERNETES",
+    label: "Deployment / Kubernetes",
+    match: ["KUBERNETES", "HELM", "HELM_STDOUT", "KUBECTL_STDOUT"],
+  },
+  { key: "ROLLOUT", label: "Rollout", match: ["ROLLOUT"] },
+  { key: "RUNTIME", label: "Runtime", match: ["RUNTIME"] },
+];
+
+const STAGE_LOOKUP = {};
+STAGE_DEFS.forEach((def) => {
+  def.match.forEach((raw) => {
+    STAGE_LOOKUP[raw] = def.key;
+  });
+});
+
+function canonicalStageKey(rawStage) {
+  const s = (rawStage || "").toString().toUpperCase().trim();
+  return STAGE_LOOKUP[s] || "OTHER";
+}
+
+function computeStageStatus(allLogs) {
+  let hasError = false;
+  let hasSuccess = false;
+  let hasWarning = false;
+  for (const log of allLogs) {
+    if (log.level === "ERROR") hasError = true;
+    else if (log.level === "SUCCESS") hasSuccess = true;
+    else if (log.level === "WARNING") hasWarning = true;
+  }
+  if (hasError) return "ERROR";
+  if (hasSuccess) return "SUCCESS";
+  if (hasWarning) return "WARNING";
+  return "INFO";
+}
+
+function truncate(str, max) {
+  if (!str) return str;
+  return str.length > max ? str.slice(0, max - 1).trimEnd() + "…" : str;
+}
+
+function computeStageSummary(bucket, status, label) {
+  if (status === "ERROR") {
+    const lastError = [...bucket.all]
+      .reverse()
+      .find((l) => l.level === "ERROR");
+    if (lastError) return truncate(lastError.message, 140);
+  }
+  const source = bucket.curated.length ? bucket.curated : bucket.all;
+  if (source.length) return truncate(source[source.length - 1].message, 140);
+  return `${label} completed`;
+}
+
+function buildGroups(logs, mode) {
+  const buckets = {};
+  for (const log of logs) {
+    const key = canonicalStageKey(log.stage);
+    if (!buckets[key]) buckets[key] = { all: [], curated: [] };
+    buckets[key].all.push(log);
+    if (!log.detailed) buckets[key].curated.push(log);
+  }
+
+  const orderedKeys = [...STAGE_DEFS.map((d) => d.key), "OTHER"];
+
+  return orderedKeys
+    .filter((key) => buckets[key] && buckets[key].all.length > 0)
+    .map((key) => {
+      const def = STAGE_DEFS.find((d) => d.key === key);
+      const label = def ? def.label : "Other";
+      const bucket = buckets[key];
+      const status = computeStageStatus(bucket.all);
+      const displayLogs = mode === "details" ? bucket.all : bucket.curated;
+      const summary = computeStageSummary(bucket, status, label);
+      return {
+        key,
+        label,
+        status,
+        allCount: bucket.all.length,
+        displayLogs,
+        summary,
+      };
+    });
+}
+
+function StatusIcon({ status }) {
+  const color = STATUS_COLOR[status];
+  if (status === "INFO") {
+    return (
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          border: `2px solid ${color}`,
+          borderTopColor: "transparent",
+          display: "inline-block",
+          animation: "vc-spin 0.8s linear infinite",
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+  const glyph = status === "SUCCESS" ? "✓" : status === "ERROR" ? "✕" : "⚠";
+  return (
+    <span
+      style={{
+        width: 14,
+        height: 14,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color,
+        fontSize: 11,
+        fontWeight: 700,
+        flexShrink: 0,
+      }}
+    >
+      {glyph}
+    </span>
+  );
+}
+
+const StageLogLine = React.memo(function StageLogLine({ log }) {
+  return (
+    <div
+      style={{
+        marginBottom: "3px",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        color: LEVEL_TEXT_COLOR[log.level] || "#d4d4d8",
+      }}
+    >
+      <span style={{ color: "#52525b" }}>[{log.timestamp}]</span>{" "}
+      <span
+        style={{
+          color: LEVEL_TAG_COLOR[log.level] || "#60a5fa",
+          fontWeight: 600,
+        }}
+      >
+        [{log.level}]
+      </span>{" "}
+      {log.message}
+    </div>
+  );
+});
+
+function StageRow({ group, open, onToggle }) {
+  const color = STATUS_COLOR[group.status];
+  return (
+    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "9px 16px",
+          textAlign: "left",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            style={{
+              display: "inline-block",
+              transform: open ? "rotate(90deg)" : "rotate(0deg)",
+              transition: "transform 0.15s ease",
+              color: "#71717a",
+              fontSize: 9,
+            }}
+          >
+            ▶
+          </span>
+          <StatusIcon status={group.status} />
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: "12.5px",
+              color: "#e4e4e7",
+              fontWeight: 600,
+            }}
+          >
+            {group.label}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span
+            style={{ fontFamily: MONO, fontSize: "10.5px", color: "#71717a" }}
+          >
+            {group.allCount} log{group.allCount !== 1 ? "s" : ""}
+          </span>
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: "10.5px",
+              color,
+              fontWeight: 600,
+            }}
+          >
+            {STATUS_LABEL[group.status]}
+          </span>
+        </div>
+      </button>
+
+      {!open && (
+        <div
+          style={{
+            padding: "0 16px 10px 34px",
+            fontFamily: MONO,
+            fontSize: "11.5px",
+            color: "#a1a1aa",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {group.summary}
+        </div>
+      )}
+
+      {open && (
+        <div style={{ padding: "2px 16px 14px 34px" }}>
+          {group.displayLogs.length === 0 ? (
+            <div
+              style={{
+                color: "#52525b",
+                fontFamily: MONO,
+                fontSize: "11.5px",
+                fontStyle: "italic",
+              }}
+            >
+              No curated logs for this stage yet — switch to Detailed to see raw
+              output.
+            </div>
+          ) : (
+            group.displayLogs.map((log, i) => (
+              <StageLogLine key={i} log={log} />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LogsTab({ status, logs, active }) {
   const endRef = useRef(null);
   const [mode, setMode] = useState("normal");
+  const [manualOpen, setManualOpen] = useState({});
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
-  const filteredLogs = useMemo(() => {
-    if (mode === "details") return logs;
-
-    return logs.filter((log) => {
-      return (
-        log.stage !== "KUBERNETES" &&
-        log.stage !== "DOCKER" &&
-        log.stage !== "NPM" &&
-        log.stage !== "HELM_STDOUT" &&
-        log.stage !== "KUBECTL_STDOUT"
-      );
+    const id = requestAnimationFrame(() => {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
     });
-  }, [logs, mode]);
+    return () => cancelAnimationFrame(id);
+  }, [logs]);
+
+  const groups = useMemo(() => buildGroups(logs, mode), [logs, mode]);
+
+  const viewLogCount = useMemo(
+    () =>
+      mode === "details" ? logs.length : logs.filter((l) => !l.detailed).length,
+    [logs, mode],
+  );
+
+  function isOpen(group) {
+    if (manualOpen[group.key] !== undefined) return manualOpen[group.key];
+    return group.status === "ERROR" || group.status === "INFO";
+  }
+
+  function toggleStage(group) {
+    setManualOpen((prev) => ({ ...prev, [group.key]: !isOpen(group) }));
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
+      <style>{`
+        @keyframes vc-spin { to { transform: rotate(360deg); } }
+        @keyframes blink { 50% { opacity: 0; } }
+      `}</style>
+
       <div
         style={{
           display: "flex",
@@ -37,6 +335,7 @@ export default function LogsTab({ status, logs, active }) {
             display: "flex",
             alignItems: "center",
             gap: 10,
+            flexWrap: "wrap",
           }}
         >
           <h3
@@ -50,7 +349,7 @@ export default function LogsTab({ status, logs, active }) {
               fontWeight: 500,
             }}
           >
-            Build & Runtime Logs
+            Deployment Logs
           </h3>
 
           <button
@@ -84,6 +383,15 @@ export default function LogsTab({ status, logs, active }) {
           >
             Detailed
           </button>
+
+          {logs.length > 0 && (
+            <span
+              style={{ fontFamily: MONO, fontSize: "10.5px", color: "#52525b" }}
+            >
+              {groups.length} stage{groups.length !== 1 ? "s" : ""} ·{" "}
+              {viewLogCount} log{viewLogCount !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
         <StatusBadge status={status} />
       </div>
@@ -91,8 +399,6 @@ export default function LogsTab({ status, logs, active }) {
       <div
         style={{
           backgroundColor: "#050505",
-          color: "#3ecf8e",
-          padding: "16px",
           borderRadius: "10px",
           fontFamily: MONO,
           fontSize: "12.5px",
@@ -104,69 +410,25 @@ export default function LogsTab({ status, logs, active }) {
         }}
       >
         {logs.length === 0 ? (
-          <div style={{ color: "#3f3f46", fontStyle: "italic" }}>
-            {active
-              ? "$ starting container process..."
-              : "$ waiting for deployment trigger..."}
+          <div
+            style={{ color: "#3f3f46", fontStyle: "italic", padding: "16px" }}
+          >
+            {mode === "details"
+              ? "$ waiting for detailed deployment output..."
+              : "$ waiting for deployment logs..."}
             <span style={{ animation: "blink 1s step-start infinite" }}>▍</span>
           </div>
         ) : (
-          filteredLogs.map((log, index) => (
-            <div
-              key={index}
-              style={{
-                marginBottom: "4px",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                color:
-                  log.level === "ERROR"
-                    ? "#f87171"
-                    : log.level === "SUCCESS"
-                      ? "#3ecf8e"
-                      : log.level === "WARNING"
-                        ? "#facc15"
-                        : "#d4d4d8",
-              }}
-            >
-              <span
-                style={{
-                  color: "#3ecf8e",
-                  marginRight: "10px",
-                  userSelect: "none",
-                  opacity: 0.6,
-                }}
-              >
-                {(index + 1).toString().padStart(2, "0")}
-              </span>
-              <>
-                <span style={{ color: "#52525b" }}>[{log.timestamp}]</span>{" "}
-                <span
-                  style={{
-                    color: "#38bdf8",
-                    fontWeight: 600,
-                  }}
-                >
-                  [{log.stage}]
-                </span>{" "}
-                <span
-                  style={{
-                    color:
-                      log.level === "SUCCESS"
-                        ? "#3ecf8e"
-                        : log.level === "ERROR"
-                          ? "#f87171"
-                          : log.level === "WARNING"
-                            ? "#facc15"
-                            : "#60a5fa",
-                    fontWeight: 600,
-                  }}
-                >
-                  [{log.level}]
-                </span>{" "}
-                {log.message}
-              </>
-            </div>
-          ))
+          <>
+            {groups.map((group) => (
+              <StageRow
+                key={group.key}
+                group={group}
+                open={isOpen(group)}
+                onToggle={() => toggleStage(group)}
+              />
+            ))}
+          </>
         )}
         <div ref={endRef} />
       </div>

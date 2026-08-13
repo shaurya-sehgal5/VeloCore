@@ -1,7 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { STATUS_META } from "../statusMeta";
+
+
+const MAX_LOGS = 2000;
+
+const LOG_FLUSH_INTERVAL_MS = 80;
 
 export default function useLiveLogs(onStatusChange) {
   const [activeDeploymentId, setActiveDeploymentId] = useState(null);
@@ -9,6 +14,33 @@ export default function useLiveLogs(onStatusChange) {
   const [status, setStatus] = useState("IDLE");
 
   const socketRef = useRef(null);
+
+  // Buffer for incoming log lines between flushes.
+  const pendingLogsRef = useRef([]);
+  const flushTimerRef = useRef(null);
+
+  const flushPendingLogs = useCallback(() => {
+    flushTimerRef.current = null;
+    if (pendingLogsRef.current.length === 0) return;
+
+    const batch = pendingLogsRef.current;
+    pendingLogsRef.current = [];
+
+    setLogs((prev) => {
+      const next = prev.length ? prev.concat(batch) : batch;
+      return next.length > MAX_LOGS
+        ? next.slice(next.length - MAX_LOGS)
+        : next;
+    });
+  }, []);
+
+  const scheduleFlush = useCallback(() => {
+    if (flushTimerRef.current) return;
+    flushTimerRef.current = setTimeout(
+      flushPendingLogs,
+      LOG_FLUSH_INTERVAL_MS
+    );
+  }, [flushPendingLogs]);
 
   useEffect(() => {
     const socket = io(SOCKET_URL, {
@@ -45,6 +77,13 @@ export default function useLiveLogs(onStatusChange) {
         deployment.deploymentId
       );
 
+      // Drop anything not yet flushed for the previous deployment.
+      pendingLogsRef.current = [];
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+
       setLogs([]);
       setStatus(deployment.status || "QUEUED");
       setActiveDeploymentId(deployment.deploymentId);
@@ -55,15 +94,14 @@ export default function useLiveLogs(onStatusChange) {
 
       console.log("📥 LIVE LOG:", payload);
 
-      setLogs((prev) => [
-        ...prev,
-        {
-          timestamp: payload.timestamp,
-          level: payload.level,
-          stage: payload.stage,
-          message: payload.message,
-        },
-      ]);
+      pendingLogsRef.current.push({
+        timestamp: payload.timestamp,
+        level: payload.level,
+        stage: payload.stage,
+        message: payload.message,
+        detailed: payload.detailed || false,
+      });
+      scheduleFlush();
     });
 
     socket.on("status_update", (data) => {
@@ -117,6 +155,12 @@ export default function useLiveLogs(onStatusChange) {
       if (socketRef.current === socket) {
         socketRef.current = null;
       }
+
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      pendingLogsRef.current = [];
     };
   }, [onStatusChange]);
 
@@ -161,6 +205,12 @@ export default function useLiveLogs(onStatusChange) {
       "👀 Watching deployment:",
       deploymentId
     );
+
+    pendingLogsRef.current = [];
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
 
     setLogs([]);
     setStatus(initialStatus);

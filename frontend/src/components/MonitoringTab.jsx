@@ -93,7 +93,11 @@ function DashboardLinkCard({ href, accent, title, subtitle, icon }) {
   );
 }
 
-export default function MonitoringTab({ deployment, metrics }) {
+export default function MonitoringTab({
+  deployment,
+  metrics,
+  selectedService,
+}) {
   const activeDeploymentId =
     deployment?.current_deployment_id ||
     deployment?.currentDeploymentId ||
@@ -142,8 +146,11 @@ export default function MonitoringTab({ deployment, metrics }) {
         <GrafanaViewer
           deploymentId={activeDeployment.id}
           deploymentName={
-            activeDeployment.name || activeDeployment.project_name
+            selectedService?.name ||
+            activeDeployment.name ||
+            activeDeployment.project_name
           }
+          selectedService={selectedService}
         />
       </div>
     </div>

@@ -147,38 +147,6 @@ class BuildEngine {
         securityReport,
     });
 
-    /*
-    ==========================================
-    4. BLOCK CRITICAL VULNERABILITIES
-    ==========================================
-    */
-
-    // if (securityReport.critical > 0) {
-
-    //   await logger.error(
-    //     deploymentId,
-    //     "SECURITY",
-    //     `Deployment blocked: ${securityReport.critical} CRITICAL vulnerabilities found.`,
-    //     buildPlan.projectName
-    //   );
-
-    //   await deploymentEvents.emit({
-    //     deploymentId,
-    //     event: "DEPLOYMENT_FAILED",
-    //     message:
-    //       "Deployment blocked by security scan"
-    //   });
-
-    //   await statusService.update(
-    //     deploymentId,
-    //     "FAILED"
-    //   );
-
-    //   throw new Error(
-    //     `Security scan failed: ${securityReport.critical} CRITICAL vulnerabilities found`
-    //   );
-    // }
-
     await logger.success(
       deploymentId,
       "SECURITY",

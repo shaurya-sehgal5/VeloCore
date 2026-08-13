@@ -2,82 +2,138 @@ const runtimeAdapter = require("./runtime-adapter.service");
 const logger = require("../monitoring/logger.service");
 
 class RuntimeLogService {
-  async stream(runtime, deploymentId) {
-     logger.info(
+
+  async stream(
+    runtime,
+    deploymentId
+  ) {
+
+    /*
+    ------------------------------------------
+    Normal dashboard message
+    ------------------------------------------
+    */
+
+    await logger.info(
       deploymentId,
       "RUNTIME",
       "Runtime log streaming started."
     );
 
-    const logs = await runtimeAdapter.logs(runtime);
+    const logs =
+      await runtimeAdapter.logs(runtime);
 
-    logs.stdout.on("data", (data) => {
-      const lines = data
-        .toString()
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
+    /*
+    ==========================================
+    STDOUT
+    ==========================================
+    */
 
-      for (const line of lines) {
-        if (
-          line.startsWith(">") ||
-          line.includes("npm notice") ||
-          line.includes("Debugger attached")
-        ) {
-          continue;
+    logs.stdout.on(
+      "data",
+      (data) => {
+
+        const lines = data
+          .toString()
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        for (const line of lines) {
+
+          if (
+            line.startsWith(">") ||
+            line.includes("npm notice") ||
+            line.includes("Debugger attached")
+          ) {
+            continue;
+          }
+
+          logger.detail(
+            deploymentId,
+            "RUNTIME",
+            "INFO",
+            line
+          );
         }
-        logger.live(
+      }
+    );
+
+    /*
+    ==========================================
+    STDERR
+    ==========================================
+    */
+
+    logs.stderr.on(
+      "data",
+      (data) => {
+
+        const lines = data
+          .toString()
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        for (const line of lines) {
+
+          if (
+            line.startsWith(">") ||
+            line.includes("npm notice") ||
+            line.includes("Debugger attached")
+          ) {
+            continue;
+          }
+
+          logger.detail(
+            deploymentId,
+            "RUNTIME",
+            "ERROR",
+            line
+          );
+        }
+      }
+    );
+
+    /*
+    ==========================================
+    STREAM ERROR
+    ==========================================
+    */
+
+    logs.on(
+      "error",
+      (err) => {
+
+        logger.error(
           deploymentId,
           "RUNTIME",
-          "INFO",
-          line
+          err.message
         );
       }
-    });
+    );
 
-    logs.stderr.on("data", (data) => {
-      const lines = data
-        .toString()
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
+    /*
+    ==========================================
+    STREAM CLOSED
+    ==========================================
+    */
 
-      for (const line of lines) {
-        if (
-          line.startsWith(">") ||
-          line.includes("npm notice") ||
-          line.includes("Debugger attached")
-        ) {
-          continue;
-        }
+    logs.on(
+      "close",
+      async (code) => {
 
-        logger.live(
+        await logger.info(
           deploymentId,
           "RUNTIME",
-          "ERROR",
-          line
+          `Runtime log stream closed (${code})`
         );
       }
-    });
-
-    logs.on("error", (err) => {
-      logger.error(
-        deploymentId,
-        "RUNTIME",
-        err.message
-      );
-    });
-
-    logs.on("close", async (code) => {
-       logger.info(
-        deploymentId,
-        "RUNTIME",
-        `Runtime log stream closed (${code})`
-      );
-    });
+    );
 
     return logs;
   }
 }
 
-module.exports = new RuntimeLogService();
+module.exports =
+  new RuntimeLogService();

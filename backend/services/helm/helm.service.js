@@ -5,16 +5,23 @@ const config = require("../../config/env");
 const logger = require("../monitoring/logger.service");
 
 class HelmService {
-    async install({ deploymentId, buildPlan }) {
-        const shortId = deploymentId.substring(0, 8);
+
+    async install({
+        deploymentId,
+        buildPlan
+    }) {
+
+        const shortId =
+            deploymentId.substring(0, 8);
 
         const workloadName =
             `${buildPlan.projectName}-${shortId}`;
 
-        const valuesPath = path.join(
-            __dirname,
-            `../../helm/${workloadName}.values.yaml`
-        );
+        const valuesPath =
+            path.join(
+                __dirname,
+                `../../helm/${workloadName}.values.yaml`
+            );
 
         await logger.info(
             deploymentId,
@@ -33,13 +40,20 @@ class HelmService {
         ----------------------------------------
         */
 
-        if (buildPlan.type === "backend") {
-            env.PORT = String(buildPlan.containerPort || 8080);
+        if (
+            buildPlan.type === "backend"
+        ) {
 
-            /*
-             * PostgreSQL created by VeloCore
-             */
-            if (buildPlan.postgres?.enabled) {
+            env.PORT =
+                String(
+                    buildPlan.containerPort ||
+                    8080
+                );
+
+            if (
+                buildPlan.postgres?.enabled
+            ) {
+
                 env.DATABASE_URL =
                     `postgresql://${buildPlan.postgres.user}:` +
                     `${buildPlan.postgres.password}@` +
@@ -47,10 +61,8 @@ class HelmService {
                     `${buildPlan.postgres.database}`;
             }
 
-            /*
-             * Redis if required
-             */
             if (buildPlan.redisHost) {
+
                 env.REDIS_URL =
                     `redis://${buildPlan.redisHost}:` +
                     `${buildPlan.redisPort || 6379}/0`;
@@ -63,15 +75,25 @@ class HelmService {
         ----------------------------------------
         */
 
-        if (buildPlan.type === "frontend") {
-            env.NODE_ENV = "production";
+        if (
+            buildPlan.type === "frontend"
+        ) {
 
-            if (buildPlan.backendServiceName) {
+            env.NODE_ENV =
+                "production";
+
+            if (
+                buildPlan.backendServiceName
+            ) {
+
                 env.BACKEND_HOST =
                     buildPlan.backendServiceName;
 
                 env.BACKEND_PORT =
-                    String(buildPlan.backendPort || 8080);
+                    String(
+                        buildPlan.backendPort ||
+                        8080
+                    );
             }
         }
 
@@ -81,14 +103,20 @@ class HelmService {
         ----------------------------------------
         */
 
-        if (buildPlan.type === "worker") {
+        if (
+            buildPlan.type === "worker"
+        ) {
+
             if (buildPlan.redisHost) {
-                env.REDIS_HOST = buildPlan.redisHost;
+                env.REDIS_HOST =
+                    buildPlan.redisHost;
             }
 
             if (buildPlan.redisPort) {
                 env.REDIS_PORT =
-                    String(buildPlan.redisPort);
+                    String(
+                        buildPlan.redisPort
+                    );
             }
         }
 
@@ -107,12 +135,15 @@ class HelmService {
                 : buildPlan.healthCheck
                     ? {
                         enabled: true,
-                        path: buildPlan.healthCheck.path || "/",
+                        path:
+                            buildPlan.healthCheck.path ||
+                            "/",
                     }
                     : {
                         enabled: false,
                         path: "",
                     };
+
         const values = `
 deploymentId: ${buildPlan.projectName}-${deploymentId.substring(0, 8)}
 
@@ -149,7 +180,10 @@ ingress:
 
 env:
 ${Object.entries(env)
-                .map(([key, value]) => `  ${key}: "${value}"`)
+                .map(
+                    ([key, value]) =>
+                        `  ${key}: "${value}"`
+                )
                 .join("\n")}
 
 healthCheck:
@@ -159,7 +193,10 @@ healthCheck:
 resources: {}
 `;
 
-        await fs.writeFile(valuesPath, values);
+        await fs.writeFile(
+            valuesPath,
+            values
+        );
 
         await logger.success(
             deploymentId,
@@ -180,7 +217,10 @@ resources: {}
                 "upgrade",
                 "--install",
                 workloadName,
-                path.join(__dirname, "../../helm"),
+                path.join(
+                    __dirname,
+                    "../../helm"
+                ),
                 "-f",
                 valuesPath,
                 "-n",
@@ -194,91 +234,215 @@ resources: {}
         );
     }
 
-    execute(args, deploymentId) {
-        return new Promise((resolve, reject) => {
-            const helm = spawn("helm", args, {
-                shell: true,
-            });
+    /*
+    ==================================================
+    HELM COMMAND
+    ==================================================
+    */
 
-            let stdout = "";
-            let stderr = "";
+    execute(
+        args,
+        deploymentId = null
+    ) {
 
-            helm.stdout.on("data", (data) => {
-                stdout += data.toString();
-            });
+        return new Promise(
+            (resolve, reject) => {
 
-            helm.stderr.on("data", (data) => {
-                stderr += data.toString();
-            });
-
-            helm.on("close", (code) => {
-                if (code !== 0) {
-                    return reject(
-                        new Error(
-                            stderr.trim() ||
-                            stdout.trim() ||
-                            `Helm exited with code ${code}`
-                        )
+                const helm =
+                    spawn(
+                        "helm",
+                        args,
+                        {
+                            shell: false,
+                        }
                     );
-                }
 
-                if (stdout.trim()) {
-                    logger.success(
-                        deploymentId,
-                        "HELM",
-                        stdout.trim()
-                    );
-                }
+                let stdout = "";
+                let stderr = "";
 
-                resolve(stdout);
-            });
+                /*
+                ------------------------------------------
+                RAW STDOUT
+                ------------------------------------------
+                */
 
-            helm.on("error", reject);
-        });
+                helm.stdout.on(
+                    "data",
+                    (data) => {
+
+                        const text =
+                            data.toString();
+
+                        stdout += text;
+
+                        if (deploymentId) {
+
+                            const lines =
+                                text
+                                    .split(/\r?\n/)
+                                    .map((line) =>
+                                        line.trim()
+                                    )
+                                    .filter(Boolean);
+
+                            for (const line of lines) {
+
+                                logger.detail(
+                                    deploymentId,
+                                    "HELM_STDOUT",
+                                    "INFO",
+                                    line
+                                );
+                            }
+                        }
+                    }
+                );
+
+                /*
+                ------------------------------------------
+                RAW STDERR
+                ------------------------------------------
+                */
+
+                helm.stderr.on(
+                    "data",
+                    (data) => {
+
+                        const text =
+                            data.toString();
+
+                        stderr += text;
+
+                        if (deploymentId) {
+
+                            const lines =
+                                text
+                                    .split(/\r?\n/)
+                                    .map((line) =>
+                                        line.trim()
+                                    )
+                                    .filter(Boolean);
+
+                            for (const line of lines) {
+
+                                logger.detail(
+                                    deploymentId,
+                                    "HELM_STDOUT",
+                                    "ERROR",
+                                    line
+                                );
+                            }
+                        }
+                    }
+                );
+
+                helm.on(
+                    "close",
+                    async (code) => {
+
+                        if (code !== 0) {
+
+                            return reject(
+                                new Error(
+                                    stderr.trim() ||
+                                    stdout.trim() ||
+                                    `Helm exited with code ${code}`
+                                )
+                            );
+                        }
+
+                        /*
+                        --------------------------------------
+                        DO NOT put raw Helm stdout into
+                        normal logs.
+                        --------------------------------------
+                        */
+
+                        resolve(stdout);
+                    }
+                );
+
+                helm.on(
+                    "error",
+                    reject
+                );
+            }
+        );
     }
 
-    async rollback(releaseName, namespace, revision) {
-        return this.execute([
-            "rollback",
-            releaseName,
-            revision.toString(),
-            "-n",
-            namespace,
-        ]);
+    async rollback(
+        releaseName,
+        namespace,
+        revision,
+        deploymentId = null
+    ) {
+
+        return this.execute(
+            [
+                "rollback",
+                releaseName,
+                revision.toString(),
+                "-n",
+                namespace,
+            ],
+            deploymentId
+        );
     }
 
-    async history(releaseName, namespace) {
-        const output = await this.execute([
-            "history",
-            releaseName,
-            "-n",
-            namespace,
-            "-o",
-            "json",
-        ]);
+    async history(
+        releaseName,
+        namespace,
+        deploymentId = null
+    ) {
+
+        const output =
+            await this.execute(
+                [
+                    "history",
+                    releaseName,
+                    "-n",
+                    namespace,
+                    "-o",
+                    "json",
+                ],
+                deploymentId
+            );
 
         return JSON.parse(output);
     }
 
-    async rollbackPrevious(releaseName, namespace) {
-        const history = await this.history(
-            releaseName,
-            namespace
-        );
+    async rollbackPrevious(
+        releaseName,
+        namespace,
+        deploymentId = null
+    ) {
+
+        const history =
+            await this.history(
+                releaseName,
+                namespace,
+                deploymentId
+            );
 
         if (history.length < 2) {
-            throw new Error("No previous revision.");
+            throw new Error(
+                "No previous revision."
+            );
         }
 
         const previous =
-            history[history.length - 2];
+            history[
+            history.length - 2
+            ];
 
         return this.rollback(
             releaseName,
             namespace,
-            previous.revision
+            previous.revision,
+            deploymentId
         );
     }
 }
 
-module.exports = new HelmService();
+module.exports =
+    new HelmService();

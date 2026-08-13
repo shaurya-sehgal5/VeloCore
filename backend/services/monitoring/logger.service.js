@@ -5,34 +5,61 @@ const loki = require("./loki/loki.service");
 
 class LoggerService {
   constructor() {
-    this.hiddenStages = new Set([
+    /*
+    --------------------------------------------------
+    INTERNAL / RAW STAGES
+    --------------------------------------------------
+    These are NOT normal dashboard logs.
+    They are intended for Detailed Logs.
+    --------------------------------------------------
+    */
+
+    this.rawStages = new Set([
       "DOCKER",
       "HELM_STDOUT",
       "KUBECTL_STDOUT",
       "NPM",
       "GIT",
+      "TRIVY",
+      "GITLEAKS",
+      "SONARQUBE",
+      "AUDIT",
     ]);
+
+    /*
+    --------------------------------------------------
+    IMPORTANT DB EVENTS
+    --------------------------------------------------
+    */
 
     this.dbEvents = new Set([
       "DEPLOYMENT_STARTED",
       "WORKSPACE_READY",
       "REPOSITORY_CLONED",
       "REPOSITORY_ANALYZED",
+
       "SECURITY_STARTED",
       "SECURITY_COMPLETED",
+
       "BUILD_STARTED",
       "BUILD_COMPLETED",
+
       "DEPLOYMENT_STARTED_RUNTIME",
       "DEPLOYMENT_COMPLETED",
       "DEPLOYMENT_FAILED",
+
       "RUNTIME_STARTED",
       "RUNTIME_STOPPED",
+
       "ROLLBACK_STARTED",
       "ROLLBACK_COMPLETED",
+
       "BUILD_PHASE_STARTED",
       "BUILD_PHASE_COMPLETED",
+
       "SECURITY_SCAN_STARTED",
       "SECURITY_SCAN_COMPLETED",
+
       "RUNTIME_RUNNING",
     ]);
   }
@@ -59,6 +86,22 @@ class LoggerService {
     );
   }
 
+  /*
+  ==================================================
+  NORMAL LOG
+  ==================================================
+  Used by VeloCore's clean dashboard logs.
+
+  Goes to:
+    - console
+    - SSE
+    - Socket.IO
+    - Loki
+
+  Does NOT contain noisy raw tool output.
+  ==================================================
+  */
+
   async live(
     deploymentId,
     stage,
@@ -79,10 +122,17 @@ class LoggerService {
     const payload = {
       type: "log",
       project,
+      detailed: false,
       ...log,
     };
 
-    if (!this.hiddenStages.has(stage)) {
+    /*
+    ------------------------------------------
+    Normal dashboard stream
+    ------------------------------------------
+    */
+
+    if (!this.rawStages.has(stage)) {
       runtimeStatus.publish(
         deploymentId,
         payload
@@ -98,23 +148,123 @@ class LoggerService {
       } catch (_) { }
     }
 
-    try {
-      await loki.push({
-        deploymentId,
-        project: project || deploymentId,
-        stage,
-        level,
-        message,
-      });
-    } catch (_) {
-      // Loki failure must never break deployment
+    /*
+    ------------------------------------------
+    Loki
+    ------------------------------------------
+
+    Only meaningful VeloCore logs go to Loki.
+    Raw tool output never reaches Loki.
+    ------------------------------------------
+    */
+
+    if (!this.rawStages.has(stage)) {
+      try {
+        await loki.push({
+          deploymentId,
+          project: project || deploymentId,
+          stage,
+          level,
+          message,
+        });
+      } catch (_) {
+        // Loki must never break deployment
+      }
     }
   }
 
   /*
-  ------------------------------------
-  Database Deployment Event
-  ------------------------------------
+  ==================================================
+  DETAILED LOG
+  ==================================================
+
+  Used for:
+    Docker
+    npm
+    Git
+    Helm
+    kubectl
+    Trivy
+    Gitleaks
+    SonarQube
+    Runtime output
+    etc.
+
+  Goes ONLY to:
+    - console
+    - Socket.IO detailed_logs
+
+  NEVER goes to Loki.
+  NEVER goes to normal dashboard logs.
+  ==================================================
+  */
+
+  async detail(
+    deploymentId,
+    stage,
+    level,
+    message,
+    project = null
+  ) {
+    const log = this.create(
+      level,
+      stage,
+      message,
+      true
+    );
+
+    this.console(log);
+
+    const payload = {
+      type: "detailed_log",
+      detailed: true,
+      project,
+      ...log,
+    };
+
+    try {
+      const io = getIO();
+
+      io.to(deploymentId).emit(
+        "detailed_logs",
+        payload
+      );
+    } catch (_) { }
+
+    /*
+    ------------------------------------------
+    Detailed logs are intentionally NOT
+    written to Loki.
+    ------------------------------------------
+    */
+  }
+
+  /*
+  ==================================================
+  RAW ALIAS
+  ==================================================
+  */
+
+  async raw(
+    deploymentId,
+    stage,
+    level,
+    message,
+    project = null
+  ) {
+    await this.detail(
+      deploymentId,
+      stage,
+      level,
+      message,
+      project
+    );
+  }
+
+  /*
+  ==================================================
+  DATABASE DEPLOYMENT EVENT
+  ==================================================
   */
 
   async event(
@@ -140,9 +290,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   INFO
-  ------------------------------------
+  ==================================================
   */
 
   async info(
@@ -162,9 +312,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   SUCCESS
-  ------------------------------------
+  ==================================================
   */
 
   async success(
@@ -184,9 +334,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   WARNING
-  ------------------------------------
+  ==================================================
   */
 
   async warning(
@@ -206,9 +356,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   ERROR
-  ------------------------------------
+  ==================================================
   */
 
   async error(
@@ -228,9 +378,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   SECTION
-  ------------------------------------
+  ==================================================
   */
 
   async section(
@@ -246,9 +396,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   REPOSITORY
-  ------------------------------------
+  ==================================================
   */
 
   async repository(
@@ -266,9 +416,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   SUMMARY
-  ------------------------------------
+  ==================================================
   */
 
   async summary(
@@ -284,9 +434,9 @@ class LoggerService {
   }
 
   /*
-  ------------------------------------
+  ==================================================
   MILESTONE
-  ------------------------------------
+  ==================================================
   */
 
   async milestone(

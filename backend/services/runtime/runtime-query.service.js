@@ -24,8 +24,7 @@ class RuntimeQueryService {
 
     const deployment = deploymentRows[0];
 
-    let targetDeploymentId =
-      deployment.current_deployment_id || deploymentId;
+    const targetDeploymentId = deploymentId;
 
     const { rows } = await db.query(
       `
@@ -77,9 +76,7 @@ class RuntimeQueryService {
       return null;
     }
 
-    const targetDeploymentId =
-      deploymentRows[0].current_deployment_id ||
-      deploymentId;
+    const targetDeploymentId = deploymentId;
 
     const { rows } = await db.query(
       `
@@ -146,9 +143,7 @@ LIMIT 1
       return [];
     }
 
-    const targetDeploymentId =
-      deploymentRows[0].current_deployment_id ||
-      deploymentId;
+    const targetDeploymentId = deploymentId;
 
     const { rows } = await db.query(
       `

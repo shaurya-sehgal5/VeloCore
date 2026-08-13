@@ -2,6 +2,7 @@ const axios = require("axios");
 const config = require("./loki.config");
 
 class LokiService {
+
     async query({
         query,
         start,
@@ -24,12 +25,23 @@ class LokiService {
             );
 
             return data.data.result || [];
+
         } catch (err) {
-            console.error("[LOKI QUERY]", err.message);
+
+            console.error(
+                "[LOKI QUERY]",
+                err.message
+            );
+
             return [];
         }
     }
-    async error(error, deploymentId = "system") {
+
+    async error(
+        error,
+        deploymentId = "system"
+    ) {
+
         return this.push({
             deploymentId,
             stage: "ERROR",
@@ -40,6 +52,22 @@ class LokiService {
                 String(error),
         });
     }
+
+    /*
+    ==================================================
+    PUSH VALUABLE LOG
+    ==================================================
+
+    IMPORTANT:
+
+    This function should ONLY be called by
+    VeloCore's normal/important logger.
+
+    Raw Docker/npm/kubectl output must NOT
+    be sent here.
+    ==================================================
+    */
+
     async push({
         deploymentId,
         project = "unknown",
@@ -47,7 +75,16 @@ class LokiService {
         level = "INFO",
         message,
     }) {
+
+        if (
+            !deploymentId ||
+            !message
+        ) {
+            return;
+        }
+
         try {
+
             const payload = {
                 streams: [
                     {
@@ -56,15 +93,17 @@ class LokiService {
                             service_name: "velocore",
                             component: config.labels.component,
                             environment: config.labels.environment,
+
                             deployment: deploymentId,
                             project,
                             stage,
                             level,
                         },
+
                         values: [
                             [
                                 `${Date.now()}000000`,
-                                message,
+                                String(message),
                             ],
                         ],
                     },
@@ -76,18 +115,24 @@ class LokiService {
                 payload,
                 {
                     headers: {
-                        "Content-Type": "application/json",
+                        "Content-Type":
+                            "application/json",
                     },
+
                     timeout: 5000,
                 }
             );
 
         } catch (err) {
-            console.error("========== LOKI ERROR ==========");
-            console.error(err.response?.status);
-            console.error(err.response?.data);
-            console.error(err.message);
-            console.error("===============================");
+
+            /*
+            Loki must NEVER break a deployment.
+            */
+
+            console.error(
+                "[LOKI PUSH]",
+                err.message
+            );
         }
     }
 }

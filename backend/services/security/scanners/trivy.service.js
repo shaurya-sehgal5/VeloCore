@@ -1,58 +1,81 @@
 const logger = require("../../monitoring/logger.service");
-const path = require("path");
-const os = require("os");
-const fs = require("fs");
 const securityMetrics = require("../../monitoring/security-metadata.service");
 const docker = require("./docker-runner.service");
 
 class TrivyScanner {
+
   async scan({
     deploymentId,
     projectName,
     image,
     report,
   }) {
+
+    /*
+    ------------------------------------------
+    NORMAL LOG
+    ------------------------------------------
+    */
+
     await logger.info(
       deploymentId,
       "SECURITY",
       `Running Trivy on ${image}`,
-      projectName,
+      projectName
     );
 
     let result;
 
     try {
-      result = await this.execute(image);
+
+      result =
+        await this.execute(
+          image,
+          deploymentId,
+          projectName
+        );
+
       if (result.skipped) {
+
         await logger.error(
           deploymentId,
           "SECURITY",
           "Trivy scan failed. Deployment blocked.",
           projectName
         );
+
         throw new Error(
           "Trivy security scan failed"
         );
       }
+
     } catch (err) {
 
-      await logger.warning(
+      await logger.error(
         deploymentId,
         "SECURITY",
-        `Trivy skipped: ${err.message}`
+        `Trivy scan failed: ${err.message}`,
+        projectName
       );
 
-      return;
+      throw err;
     }
 
-    if (!result || !Array.isArray(result.Results)) {
+    if (
+      !result ||
+      !Array.isArray(result.Results)
+    ) {
+
       await logger.success(
         deploymentId,
         "SECURITY",
-        "Trivy scan completed. No vulnerabilities found."
+        "Trivy scan completed. No vulnerabilities found.",
+        projectName
       );
+
       return;
     }
+
     securityMetrics.securityInfo
       .labels(
         deploymentId,
@@ -61,27 +84,91 @@ class TrivyScanner {
       )
       .set(1);
 
-
     let totalFindings = 0;
 
-    for (const target of result.Results) {
-      if (!target.Vulnerabilities) continue;
+    /*
+    ==================================================
+    PROCESS FINDINGS
+    ==================================================
+    */
 
-      totalFindings += target.Vulnerabilities.length;
+    for (
+      const target of result.Results
+    ) {
 
-      for (const vuln of target.Vulnerabilities) {
+      if (
+        !target.Vulnerabilities
+      ) {
+        continue;
+      }
+
+      totalFindings +=
+        target.Vulnerabilities.length;
+
+      /*
+      ------------------------------------------
+      Detailed target information
+      ------------------------------------------
+      */
+
+      await logger.detail(
+        deploymentId,
+        "TRIVY",
+        "INFO",
+        `Target: ${target.Target || "unknown"}`,
+        projectName
+      );
+
+      for (
+        const vuln of
+        target.Vulnerabilities
+      ) {
+
         report.findings.push({
           scanner: "Trivy",
           severity: vuln.Severity,
           package: vuln.PkgName,
           installed: vuln.InstalledVersion,
-          fixed: vuln.FixedVersion || "Not Available",
+          fixed:
+            vuln.FixedVersion ||
+            "Not Available",
           cve: vuln.VulnerabilityID,
           title: vuln.Title || "",
           target: target.Target,
         });
 
-        switch (vuln.Severity) {
+        /*
+        ------------------------------------------
+        DETAILED VULNERABILITY
+        ------------------------------------------
+        */
+
+        await logger.detail(
+          deploymentId,
+          "TRIVY",
+          vuln.Severity === "CRITICAL" ||
+            vuln.Severity === "HIGH"
+            ? "ERROR"
+            : "INFO",
+          [
+            vuln.Severity,
+            vuln.VulnerabilityID,
+            vuln.PkgName,
+            `installed=${vuln.InstalledVersion}`,
+            `fixed=${vuln.FixedVersion || "N/A"}`,
+            vuln.Title
+              ? `title=${vuln.Title}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" | "),
+          projectName
+        );
+
+        switch (
+        vuln.Severity
+        ) {
+
           case "CRITICAL":
             report.critical++;
             break;
@@ -99,50 +186,87 @@ class TrivyScanner {
         }
       }
     }
+
+    /*
+    ==================================================
+    METRICS
+    ==================================================
+    */
+
     securityMetrics.vulnerabilities
-      .labels(deploymentId, "CRITICAL")
+      .labels(
+        deploymentId,
+        "CRITICAL"
+      )
       .set(report.critical);
 
     securityMetrics.vulnerabilities
-      .labels(deploymentId, "HIGH")
+      .labels(
+        deploymentId,
+        "HIGH"
+      )
       .set(report.high);
 
     securityMetrics.vulnerabilities
-      .labels(deploymentId, "MEDIUM")
+      .labels(
+        deploymentId,
+        "MEDIUM"
+      )
       .set(report.medium);
 
     securityMetrics.vulnerabilities
-      .labels(deploymentId, "LOW")
+      .labels(
+        deploymentId,
+        "LOW"
+      )
       .set(report.low);
+
     report.scanners.push({
       scanner: "Trivy",
       findings: totalFindings,
     });
 
+    /*
+    ==================================================
+    NORMAL SUMMARY
+    ==================================================
+    */
+
     await logger.success(
       deploymentId,
       "SECURITY",
       `Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`,
-      projectName,
-    );
-
-    await logger.success(
-      deploymentId,
-      "SECURITY",
-      `Packages scanned : ${result.Results.length}`,
       projectName
     );
 
     await logger.success(
       deploymentId,
       "SECURITY",
-      `Image scan completed`,
+      `Packages scanned: ${result.Results.length}`,
+      projectName
+    );
+
+    await logger.success(
+      deploymentId,
+      "SECURITY",
+      "Image scan completed",
       projectName
     );
   }
-  async execute(image) {
-    const result = await docker.run([
 
+  /*
+  ==================================================
+  RUN TRIVY
+  ==================================================
+  */
+
+  async execute(
+    image,
+    deploymentId,
+    projectName
+  ) {
+
+    const result = await docker.run([
       "-v",
       "/var/run/docker.sock:/var/run/docker.sock",
 
@@ -168,22 +292,54 @@ class TrivyScanner {
 
       image
     ]);
+
+    if (
+      deploymentId &&
+      result.stderr?.trim()
+    ) {
+
+      const lines =
+        result.stderr
+          .split(/\r?\n/)
+          .map((line) =>
+            line.trim()
+          )
+          .filter(Boolean);
+
+      for (const line of lines) {
+
+        await logger.detail(
+          deploymentId,
+          "TRIVY",
+          "INFO",
+          line,
+          projectName
+        );
+      }
+    }
+
     if (result.code !== 0) {
+
       return {
         skipped: true,
-        Results: []
+        Results: [],
       };
     }
 
-    if (!result.stdout.trim()) {
+    if (
+      !result.stdout.trim()
+    ) {
+
       return {
-        Results: []
-
+        Results: [],
       };
     }
-    return JSON.parse(result.stdout);
 
+    return JSON.parse(
+      result.stdout
+    );
   }
 }
 
-module.exports = new TrivyScanner();
+module.exports =
+  new TrivyScanner();

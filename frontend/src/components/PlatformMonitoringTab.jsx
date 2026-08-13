@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { KUBERNETES_DASHBOARD_URL } from "../config";
 import { MONO } from "../config";
+
+const GRAFANA_URL = import.meta.env.VITE_GRAFANA_URL;
+
+const DASHBOARD_UID = "velocore-platform";
 
 const headerStyle = {
   display: "flex",
@@ -93,27 +96,22 @@ function CollapseIcon() {
   );
 }
 
-export default function GrafanaViewer({
-  deploymentId,
-  deploymentName,
-  selectedService,
-}) {
+export default function PlatformMonitoringTab() {
   const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
 
-  const varValue = deploymentName || deploymentId;
-  const serviceValue = selectedService?.name || selectedService?.type || "";
   const src =
-    `${import.meta.env.VITE_GRAFANA_URL}` +
-    `/d/velocore-user-dashboard-1/velocore-deployment-dashboard` +
-    `?orgId=1&theme=dark&kiosk=tv&refresh=30s` +
-    `&var-deployment=${encodeURIComponent(deploymentId)}` +
-    (serviceValue ? `&var-service=${encodeURIComponent(serviceValue)}` : "");
+    `${GRAFANA_URL}` +
+    `/d/${DASHBOARD_UID}/velocore-platform-monitoring` +
+    `?orgId=1` +
+    `&theme=dark` +
+    `&kiosk=tv` +
+    `&refresh=10s`;
 
   const handleRefresh = useCallback(() => {
     setLoaded(false);
-    setReloadKey((k) => k + 1);
+    setReloadKey((key) => key + 1);
   }, []);
 
   const header = (
@@ -129,43 +127,61 @@ export default function GrafanaViewer({
               ? "0 0 0 3px rgba(62,207,142,0.18)"
               : "0 0 0 3px rgba(250,204,21,0.18)",
             flexShrink: 0,
-            animation: loaded ? "none" : "grafPulse 1.3s ease-in-out infinite",
+            animation: loaded
+              ? "none"
+              : "grafPulsePlatform 1.3s ease-in-out infinite",
           }}
         />
-        Grafana{" "}
-        <span style={{ color: "#52525b", fontWeight: 400 }}>
-          // kubernetes monitoring
-          {varValue ? ` // ${varValue}` : ""}
+
+        Platform Monitoring
+
+        <span
+          style={{
+            color: "#52525b",
+            fontWeight: 400,
+          }}
+        >
+          // VeloCore infrastructure
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+        }}
+      >
         <button
           onClick={handleRefresh}
-          title="Refresh metrics"
+          title="Refresh monitoring"
           style={iconBtnStyle}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = "#3ecf8e";
-            e.currentTarget.style.borderColor = "rgba(62,207,142,0.35)";
+            e.currentTarget.style.borderColor =
+              "rgba(62,207,142,0.35)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = "#a1a1aa";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            e.currentTarget.style.borderColor =
+              "rgba(255,255,255,0.1)";
           }}
         >
           <RefreshIcon />
         </button>
+
         <button
-          onClick={() => setFullscreen((v) => !v)}
+          onClick={() => setFullscreen((value) => !value)}
           title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
           style={iconBtnStyle}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = "#fafafa";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
+            e.currentTarget.style.borderColor =
+              "rgba(255,255,255,0.25)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = "#a1a1aa";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            e.currentTarget.style.borderColor =
+              "rgba(255,255,255,0.1)";
           }}
         >
           {fullscreen ? <CollapseIcon /> : <ExpandIcon />}
@@ -199,6 +215,7 @@ export default function GrafanaViewer({
             fontSize: "12.5px",
             backgroundImage:
               "radial-gradient(circle at 50% 40%, rgba(62,207,142,0.05) 0%, transparent 55%)",
+            zIndex: 1,
           }}
         >
           <div
@@ -208,15 +225,18 @@ export default function GrafanaViewer({
               borderRadius: "50%",
               border: "2px solid rgba(255,255,255,0.08)",
               borderTopColor: "#3ecf8e",
-              animation: "grafSpin 0.8s linear infinite",
+              animation:
+                "grafSpinPlatform 0.8s linear infinite",
             }}
           />
-          <span>$ connecting to dashboard...</span>
+
+          <span>$ connecting to platform telemetry...</span>
         </div>
       )}
+
       <iframe
         key={reloadKey}
-        title="Grafana"
+        title="VeloCore Platform Monitoring"
         src={src}
         width="100%"
         height="100%"
@@ -227,7 +247,6 @@ export default function GrafanaViewer({
           display: "block",
           opacity: loaded ? 1 : 0,
           transition: "opacity 0.4s ease",
-          pointerEvents: "auto",
         }}
       />
     </div>
@@ -238,10 +257,7 @@ export default function GrafanaViewer({
       <div
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          inset: 0,
           width: "100vw",
           height: "100vh",
           zIndex: 9999,
@@ -252,36 +268,80 @@ export default function GrafanaViewer({
       >
         {header}
         {iframeArea}
+
         <style>{`
-          @keyframes grafPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-          @keyframes grafSpin { to { transform: rotate(360deg); } }
+          @keyframes grafPulsePlatform {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+          }
+
+          @keyframes grafSpinPlatform {
+            to { transform: rotate(360deg); }
+          }
         `}</style>
       </div>,
-      document.body,
+      document.body
     );
   }
 
   return (
     <div
       style={{
-        borderRadius: "14px",
-        border: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(255,255,255,0.025)",
-        backdropFilter: "blur(12px)",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
         width: "100%",
-        maxWidth: "980px",
-        height: "min(78vh, 820px)",
-        margin: "0 auto",
       }}
     >
-      {header}
-      {iframeArea}
+      {/* Section heading */}
+      <div
+        style={{
+          fontSize: "11px",
+          fontFamily: MONO,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          color: "#a1a1aa",
+          fontWeight: 500,
+          marginBottom: "8px",
+        }}
+      >
+        App Platform Monitoring
+      </div>
+
+      <p
+        style={{
+          color: "#71717a",
+          fontSize: "13px",
+          fontFamily: MONO,
+          margin: "0 0 20px 0",
+        }}
+      >
+        $ real-time health and infrastructure telemetry for VeloCore
+      </p>
+
+      <div
+        style={{
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.025)",
+          backdropFilter: "blur(12px)",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "min(82vh, 900px)",
+        }}
+      >
+        {header}
+        {iframeArea}
+      </div>
+
       <style>{`
-        @keyframes grafPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-        @keyframes grafSpin { to { transform: rotate(360deg); } }
+        @keyframes grafPulsePlatform {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.35; }
+        }
+
+        @keyframes grafSpinPlatform {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
     </div>
   );

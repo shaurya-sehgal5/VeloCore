@@ -7,6 +7,13 @@ class DockerService {
   constructor() {
     this.lastMessage = new Map();
   }
+
+  /*
+  ==================================================
+  DOCKER COMMAND EXECUTION
+  ==================================================
+  */
+
   execute(command, args, deploymentId) {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
@@ -16,9 +23,10 @@ class DockerService {
           DOCKER_BUILDKIT: "1",
         },
       });
+
       let output = "";
 
-      const stream = (data) => {
+      const stream = (data, level = "INFO") => {
         const text = data.toString();
 
         output += text;
@@ -26,49 +34,89 @@ class DockerService {
         const lines = text.split(/\r?\n/);
 
         for (const line of lines) {
-          const text = line.trim();
+          const value = line.trim();
 
-          if (!text) continue;
+          if (!value) continue;
 
-          if (text.startsWith("=>")) continue;
-          const parsed = logParser.parse(text);
+          /*
+          ------------------------------------------
+          RAW DOCKER OUTPUT
+          ------------------------------------------
 
-          if (!parsed) continue;
+          Everything goes to Detailed Logs.
+          Nothing goes to Loki.
+          */
 
-          if (parsed && this.lastMessage.get(deploymentId) !== parsed) {
+          if (deploymentId) {
+            logger.detail(
+              deploymentId,
+              "DOCKER",
+              level,
+              value
+            );
+          }
 
+          /*
+          ------------------------------------------
+          NORMAL BUILD SUMMARY
+          ------------------------------------------
+
+          Parser extracts only useful high-level
+          Docker build milestones.
+          */
+
+          if (value.startsWith("=>")) continue;
+
+          const parsed = logParser.parse(value);
+
+          if (
+            parsed &&
+            this.lastMessage.get(deploymentId) !== parsed
+          ) {
             this.lastMessage.set(
               deploymentId,
               parsed
             );
 
-            logger.live(
+            logger.info(
               deploymentId,
               "BUILD",
-              "INFO",
               parsed
             );
-
           }
         }
       };
 
-      child.stdout.on("data", stream);
+      child.stdout.on(
+        "data",
+        (data) => stream(data, "INFO")
+      );
 
-      child.stderr.on("data", stream);
+      child.stderr.on(
+        "data",
+        (data) => stream(data, "ERROR")
+      );
 
       child.on("error", reject);
 
       child.on("close", (code) => {
         if (code !== 0) {
-          return reject(new Error(output));
+          return reject(
+            new Error(output)
+          );
         }
 
         resolve(output);
       });
-
     });
   }
+
+  /*
+  ==================================================
+  SILENT COMMAND
+  ==================================================
+  */
+
   executeSilent(command, args) {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
@@ -93,12 +141,22 @@ class DockerService {
 
       child.on("close", (code) => {
         if (code !== 0) {
-          return reject(new Error(output));
+          return reject(
+            new Error(output)
+          );
         }
+
         resolve(output);
       });
     });
   }
+
+  /*
+  ==================================================
+  BUILD IMAGE
+  ==================================================
+  */
+
   async buildImage({
     imageName,
     dockerfile,
@@ -108,26 +166,26 @@ class DockerService {
   }) {
     const fs = require("fs");
 
-    logger.milestone(
+    await logger.milestone(
       deploymentId,
       "BUILD_STARTED",
       "BUILD",
       "Building Docker image..."
     );
 
-    logger.info(
+    await logger.info(
       deploymentId,
       "BUILD",
       `Dockerfile: ${dockerfile}`
     );
 
-    logger.info(
+    await logger.info(
       deploymentId,
       "BUILD",
       `Build context: ${context}`
     );
 
-    logger.info(
+    await logger.info(
       deploymentId,
       "BUILD",
       `Image: ${imageName}`
@@ -151,7 +209,7 @@ class DockerService {
       );
     }
 
-    const logs = await this.execute(
+    return this.execute(
       "docker",
       [
         "build",
@@ -172,11 +230,15 @@ class DockerService {
 
         context,
       ],
-      deploymentId,
+      deploymentId
     );
-
-    return logs;
   }
+
+  /*
+  ==================================================
+  RUN CONTAINER
+  ==================================================
+  */
 
   async runContainer({
     imageName,
@@ -191,7 +253,6 @@ class DockerService {
     const args = [
       "run",
       "-d",
-
       "--init",
 
       "--name",
@@ -200,6 +261,7 @@ class DockerService {
       "--restart",
       "unless-stopped",
     ];
+
     args.push(
       "--label",
       "velocore.build=true",
@@ -239,15 +301,21 @@ class DockerService {
       args.push("--network", network);
     }
 
-    args.push("-p", `${hostPort}:${containerPort}`);
+    args.push(
+      "-p",
+      `${hostPort}:${containerPort}`
+    );
 
     for (const [key, value] of Object.entries(env || {})) {
-      if (value === undefined || value === null || value === "") {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ""
+      ) {
         continue;
       }
 
       args.push("-e");
-
       args.push(`${key}=${value}`);
     }
 
@@ -271,48 +339,85 @@ class DockerService {
       "RUNTIME",
       "Preparing runtime environment..."
     );
-    return new Promise((resolve, reject) => {
 
+    return new Promise((resolve, reject) => {
       const started = Date.now();
-      const child = spawn("docker", args);
+
+      const child = spawn(
+        "docker",
+        args,
+        {
+          shell: false,
+        }
+      );
 
       let output = "";
+      let stderr = "";
 
       child.stdout.on("data", (data) => {
         output += data.toString();
+
+        logger.detail(
+          deploymentId,
+          "DOCKER",
+          "INFO",
+          data.toString().trim()
+        );
       });
-      let stderr = "";
 
       child.stderr.on("data", (data) => {
-        stderr += data.toString();
+        const text = data.toString();
+
+        stderr += text;
+
+        logger.detail(
+          deploymentId,
+          "DOCKER",
+          "ERROR",
+          text.trim()
+        );
       });
+
       child.on("close", async (code) => {
         if (code !== 0) {
-
           await logger.error(
             deploymentId,
             "RUNTIME",
-            stderr || "Failed to start container."
+            "Failed to start container."
           );
 
-          return reject(new Error(stderr));
+          return reject(
+            new Error(
+              stderr ||
+              "Failed to start container."
+            )
+          );
         }
-        const containerId = output.trim();
-        logger.milestone(
+
+        const containerId =
+          output.trim();
+
+        await logger.milestone(
           deploymentId,
           "DEPLOYMENT_COMPLETED",
           "RUNTIME",
           "Application is now running."
         );
+
         metrics.runtimeEvents
           .labels("START")
           .inc();
+
         metrics.runtimeStartupDuration.observe(
           (Date.now() - started) / 1000
         );
+
         metrics.runtimeStartupLatest
           .labels(deploymentId)
-          .set((Date.now() - started) / 1000);
+          .set(
+            (Date.now() - started) / 1000
+          );
+
         resolve({
           containerId,
           containerName,
@@ -321,39 +426,50 @@ class DockerService {
           containerPort,
         });
       });
+
+      child.on("error", reject);
     });
   }
-  async pushImage(imageName, deploymentId) {
 
+  /*
+  ==================================================
+  PUSH IMAGE
+  ==================================================
+  */
+
+  async pushImage(
+    imageName,
+    deploymentId
+  ) {
     await logger.info(
       deploymentId,
-      "BUILD",
-      "Pushing image to Docker Hub..."
+      "REGISTRY",
+      `Pushing ${imageName} to Docker Hub...`
     );
 
     await this.execute(
       "docker",
       [
         "push",
-        imageName
+        imageName,
       ],
       deploymentId
     );
 
     await logger.success(
       deploymentId,
-      "BUILD",
+      "REGISTRY",
       "Image pushed successfully."
     );
-
   }
+
   async stopContainer(name) {
     return this.execute(
       "docker",
-
-      ["stop", name],
+      ["stop", name]
     );
   }
+
   async imageExists(image) {
     try {
       await this.executeSilent(
@@ -361,9 +477,10 @@ class DockerService {
         [
           "image",
           "inspect",
-          image
+          image,
         ]
       );
+
       return true;
     } catch {
       return false;
@@ -373,50 +490,62 @@ class DockerService {
   async removeContainer(name) {
     return this.execute(
       "docker",
-
-      ["rm", "-f", name],
+      ["rm", "-f", name]
     );
   }
 
   async removeImage(image) {
     return this.execute(
       "docker",
-
-      ["rmi", "-f", image],
+      ["rmi", "-f", image]
     );
   }
 
   async createNetwork(network) {
     return this.execute(
       "docker",
-
-      ["network", "create", network],
+      ["network", "create", network]
     );
   }
 
   async removeNetwork(network) {
     return this.execute(
       "docker",
-
-      ["network", "rm", network],
+      ["network", "rm", network]
     );
   }
-  async listContainers() {
-    const output = await this.executeSilent("docker", [
-      "ps",
-      "-q",
-      "--filter",
-      "label=velocore=true",
-    ]);
 
-    return output.trim().split("\n").filter(Boolean);
+  async listContainers() {
+    const output =
+      await this.executeSilent(
+        "docker",
+        [
+          "ps",
+          "-q",
+          "--filter",
+          "label=velocore=true",
+        ]
+      );
+
+    return output
+      .trim()
+      .split("\n")
+      .filter(Boolean);
   }
 
   async inspectContainer(containerId) {
-    const output = await this.executeSilent("docker", ["inspect", containerId]);
+    const output =
+      await this.executeSilent(
+        "docker",
+        [
+          "inspect",
+          containerId,
+        ]
+      );
 
     return JSON.parse(output)[0];
   }
 }
 
-module.exports = new DockerService();
+module.exports =
+  new DockerService();
