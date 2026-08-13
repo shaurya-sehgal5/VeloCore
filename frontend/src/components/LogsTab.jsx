@@ -28,24 +28,65 @@ const STATUS_LABEL = {
 };
 
 const STAGE_DEFS = [
-  { key: "DEPLOYMENT", label: "Deployment", match: ["DEPLOYMENT"] },
-  { key: "WORKSPACE", label: "Workspace", match: ["WORKSPACE"] },
+  {
+    key: "WORKSPACE",
+    label: "Workspace",
+    match: ["WORKSPACE"],
+  },
+
   {
     key: "REPOSITORY",
     label: "Repository",
     match: ["REPOSITORY", "CLONE", "GIT"],
   },
-  { key: "ANALYSIS", label: "Analysis", match: ["ANALYSIS"] },
-  { key: "SECURITY", label: "Security", match: ["SECURITY"] },
-  { key: "BUILD", label: "Build", match: ["BUILD", "DOCKER", "NPM"] },
-  { key: "REGISTRY", label: "Registry", match: ["REGISTRY"] },
+
+  {
+    key: "ANALYSIS",
+    label: "Analysis",
+    match: ["ANALYSIS"],
+  },
+
+  {
+    key: "SECURITY",
+    label: "Security",
+    match: ["SECURITY"],
+  },
+
+  {
+    key: "BUILD",
+    label: "Build",
+    match: ["BUILD", "DOCKER", "NPM"],
+  },
+
+  {
+    key: "REGISTRY",
+    label: "Registry",
+    match: ["REGISTRY"],
+  },
+
   {
     key: "KUBERNETES",
-    label: "Deployment / Kubernetes",
+    label: "Kubernetes",
     match: ["KUBERNETES", "HELM", "HELM_STDOUT", "KUBECTL_STDOUT"],
   },
-  { key: "ROLLOUT", label: "Rollout", match: ["ROLLOUT"] },
-  { key: "RUNTIME", label: "Runtime", match: ["RUNTIME"] },
+
+  {
+    key: "ROLLOUT",
+    label: "Rollout",
+    match: ["ROLLOUT"],
+  },
+
+  {
+    key: "RUNTIME",
+    label: "Runtime",
+    match: ["RUNTIME"],
+  },
+
+  {
+    key: "DEPLOYMENT",
+    label: "Deployment",
+    match: ["DEPLOYMENT"],
+  },
 ];
 
 const STAGE_LOOKUP = {};
@@ -60,67 +101,9 @@ function canonicalStageKey(rawStage) {
   return STAGE_LOOKUP[s] || "OTHER";
 }
 
-function computeStageStatus(allLogs) {
-  let hasError = false;
-  let hasSuccess = false;
-  let hasWarning = false;
-  for (const log of allLogs) {
-    if (log.level === "ERROR") hasError = true;
-    else if (log.level === "SUCCESS") hasSuccess = true;
-    else if (log.level === "WARNING") hasWarning = true;
-  }
-  if (hasError) return "ERROR";
-  if (hasSuccess) return "SUCCESS";
-  if (hasWarning) return "WARNING";
-  return "INFO";
-}
-
 function truncate(str, max) {
   if (!str) return str;
   return str.length > max ? str.slice(0, max - 1).trimEnd() + "…" : str;
-}
-
-function computeStageSummary(bucket, status, label) {
-  if (status === "ERROR") {
-    const lastError = [...bucket.all]
-      .reverse()
-      .find((l) => l.level === "ERROR");
-    if (lastError) return truncate(lastError.message, 140);
-  }
-  const source = bucket.curated.length ? bucket.curated : bucket.all;
-  if (source.length) return truncate(source[source.length - 1].message, 140);
-  return `${label} completed`;
-}
-
-function buildGroups(logs, mode) {
-  const buckets = {};
-  for (const log of logs) {
-    const key = canonicalStageKey(log.stage);
-    if (!buckets[key]) buckets[key] = { all: [], curated: [] };
-    buckets[key].all.push(log);
-    if (!log.detailed) buckets[key].curated.push(log);
-  }
-
-  const orderedKeys = [...STAGE_DEFS.map((d) => d.key), "OTHER"];
-
-  return orderedKeys
-    .filter((key) => buckets[key] && buckets[key].all.length > 0)
-    .map((key) => {
-      const def = STAGE_DEFS.find((d) => d.key === key);
-      const label = def ? def.label : "Other";
-      const bucket = buckets[key];
-      const status = computeStageStatus(bucket.all);
-      const displayLogs = mode === "details" ? bucket.all : bucket.curated;
-      const summary = computeStageSummary(bucket, status, label);
-      return {
-        key,
-        label,
-        status,
-        allCount: bucket.all.length,
-        displayLogs,
-        summary,
-      };
-    });
 }
 
 function StatusIcon({ status }) {
@@ -165,7 +148,7 @@ const StageLogLine = React.memo(function StageLogLine({ log }) {
   return (
     <div
       style={{
-        marginBottom: "3px",
+        marginBottom: "5px",
         whiteSpace: "pre-wrap",
         wordBreak: "break-word",
         color: LEVEL_TEXT_COLOR[log.level] || "#d4d4d8",
@@ -185,7 +168,7 @@ const StageLogLine = React.memo(function StageLogLine({ log }) {
   );
 });
 
-function StageRow({ group, open, onToggle }) {
+const StageRow = React.memo(function StageRow({ group, open, onToggle }) {
   const color = STATUS_COLOR[group.status];
   return (
     <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -199,7 +182,7 @@ function StageRow({ group, open, onToggle }) {
           background: "transparent",
           border: "none",
           cursor: "pointer",
-          padding: "9px 16px",
+          padding: "12px 16px",
           textAlign: "left",
         }}
       >
@@ -272,8 +255,7 @@ function StageRow({ group, open, onToggle }) {
                 fontStyle: "italic",
               }}
             >
-              No curated logs for this stage yet — switch to Detailed to see raw
-              output.
+              No logs available for this stage yet.
             </div>
           ) : (
             group.displayLogs.map((log, i) => (
@@ -284,11 +266,10 @@ function StageRow({ group, open, onToggle }) {
       )}
     </div>
   );
-}
+});
 
 export default function LogsTab({ status, logs, active }) {
   const endRef = useRef(null);
-  const [mode, setMode] = useState("normal");
   const [manualOpen, setManualOpen] = useState({});
 
   useEffect(() => {
@@ -298,13 +279,91 @@ export default function LogsTab({ status, logs, active }) {
     return () => cancelAnimationFrame(id);
   }, [logs]);
 
-  const groups = useMemo(() => buildGroups(logs, mode), [logs, mode]);
+  const groupCacheRef = useRef({ len: 0, buckets: {} });
 
-  const viewLogCount = useMemo(
-    () =>
-      mode === "details" ? logs.length : logs.filter((l) => !l.detailed).length,
-    [logs, mode],
-  );
+  const groups = useMemo(() => {
+    const cache = groupCacheRef.current;
+    const reset = logs.length < cache.len;
+
+    const startIdx = reset ? 0 : cache.len;
+    const buckets = reset ? {} : cache.buckets;
+
+    for (let i = startIdx; i < logs.length; i++) {
+      const log = logs[i];
+      const key = canonicalStageKey(log.stage);
+      if (!buckets[key]) {
+        buckets[key] = {
+          all: [],
+          curated: [],
+          hasError: false,
+          hasSuccess: false,
+          hasWarning: false,
+          lastErrorMsg: null,
+        };
+      }
+      const b = buckets[key];
+      b.all.push(log);
+      if (!log.detailed) b.curated.push(log);
+
+      if (log.level === "ERROR") {
+        b.hasError = true;
+        b.lastErrorMsg = truncate(log.message, 140);
+      } else if (log.level === "SUCCESS") {
+        b.hasSuccess = true;
+      } else if (log.level === "WARNING") {
+        b.hasWarning = true;
+      }
+    }
+
+    groupCacheRef.current = { len: logs.length, buckets };
+
+    const orderedKeys = [...STAGE_DEFS.map((d) => d.key), "OTHER"];
+
+    return orderedKeys
+      .filter((key) => buckets[key] && buckets[key].all.length > 0)
+      .map((key) => {
+        const def = STAGE_DEFS.find((d) => d.key === key);
+        const label = def ? def.label : "Other";
+        const bucket = buckets[key];
+        const status = bucket.hasError
+          ? "ERROR"
+          : bucket.hasSuccess
+            ? "SUCCESS"
+            : bucket.hasWarning
+              ? "WARNING"
+              : "INFO";
+        const displayLogs = bucket.curated.length ? bucket.curated : bucket.all;
+
+        let summary;
+        if (status === "ERROR" && bucket.lastErrorMsg) {
+          summary = bucket.lastErrorMsg;
+        } else {
+          const source = bucket.curated.length ? bucket.curated : bucket.all;
+          summary = source.length
+            ? truncate(source[source.length - 1].message, 140)
+            : `${label} completed`;
+        }
+
+        return {
+          key,
+          label,
+          status,
+          allCount: bucket.all.length,
+          displayLogs,
+          summary,
+        };
+      });
+  }, [logs, mode]);
+
+  const curatedCount = useMemo(() => {
+    let n = 0;
+    for (const key in groupCacheRef.current.buckets) {
+      n += groupCacheRef.current.buckets[key].curated.length;
+    }
+    return n;
+  }, [groups]);
+
+  const viewLogCount = curatedCount;
 
   function isOpen(group) {
     if (manualOpen[group.key] !== undefined) return manualOpen[group.key];
@@ -352,38 +411,6 @@ export default function LogsTab({ status, logs, active }) {
             Deployment Logs
           </h3>
 
-          <button
-            onClick={() => setMode("normal")}
-            style={{
-              background: mode === "normal" ? "#3ecf8e" : "#161616",
-              color: mode === "normal" ? "#000" : "#d4d4d8",
-              border: "none",
-              borderRadius: 6,
-              padding: "4px 10px",
-              cursor: "pointer",
-              fontFamily: MONO,
-              fontSize: 11,
-            }}
-          >
-            Normal
-          </button>
-
-          <button
-            onClick={() => setMode("details")}
-            style={{
-              background: mode === "details" ? "#3ecf8e" : "#161616",
-              color: mode === "details" ? "#000" : "#d4d4d8",
-              border: "none",
-              borderRadius: 6,
-              padding: "4px 10px",
-              cursor: "pointer",
-              fontFamily: MONO,
-              fontSize: 11,
-            }}
-          >
-            Detailed
-          </button>
-
           {logs.length > 0 && (
             <span
               style={{ fontFamily: MONO, fontSize: "10.5px", color: "#52525b" }}
@@ -413,9 +440,7 @@ export default function LogsTab({ status, logs, active }) {
           <div
             style={{ color: "#3f3f46", fontStyle: "italic", padding: "16px" }}
           >
-            {mode === "details"
-              ? "$ waiting for detailed deployment output..."
-              : "$ waiting for deployment logs..."}
+            $ waiting for deployment logs...
             <span style={{ animation: "blink 1s step-start infinite" }}>▍</span>
           </div>
         ) : (

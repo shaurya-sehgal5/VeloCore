@@ -108,7 +108,7 @@ class BuildEngine {
     await logger.info(
       deploymentId,
       "BUILD",
-      `Image config: ${inspectAfterBuild.stdout.trim()}`,
+      `Image configuration verified.`,
       buildPlan.projectName
     );
 

@@ -1,38 +1,58 @@
 class LogParser {
-
   parse(line) {
-
     if (!line) return null;
 
-    const text = line.trim();
+    const text = line
+      .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+      .trim();
 
-    // Ignore BuildKit noise
+    if (!text) return null;
+
+    // Dockerfile loading
     if (
-      text.startsWith("#") ||
-      text.startsWith("=>") ||
-      text.includes("sha256:") ||
-      text.includes("writing image") ||
-      text.includes("exporting layers") ||
-      text.includes("exporting manifest") ||
-      text.includes("exporting config") ||
-      text.includes("exporting attestation") ||
-      text.includes("naming to") ||
-      text.includes("DONE") ||
-      text.includes("CACHED")
+      /load build definition from dockerfile/i.test(text)
     ) {
-      return null;
+      return "Loading Dockerfile...";
     }
 
-    // Dependency install
+    // Base image metadata
     if (
-      /npm install/i.test(text) ||
+      /load metadata for/i.test(text)
+    ) {
+      const match = text.match(/load metadata for\s+(.+)/i);
+
+      return match
+        ? `Resolving base image: ${match[1]}`
+        : "Resolving base image...";
+    }
+
+    // Dockerignore
+    if (
+      /load .dockerignore/i.test(text)
+    ) {
+      return "Loading .dockerignore...";
+    }
+
+    // Pulling base image
+    if (
+      /resolve image config/i.test(text) ||
+      /pulling from/i.test(text)
+    ) {
+      return "Preparing base image...";
+    }
+
+    if (
+      /npm (ci|install)/i.test(text) ||
       /pnpm install/i.test(text) ||
       /yarn install/i.test(text)
     ) {
       return "Installing dependencies...";
     }
 
-    // Application build
+    if (/npm audit/i.test(text)) {
+      return "Running dependency audit...";
+    }
+
     if (
       /npm run build/i.test(text) ||
       /pnpm build/i.test(text) ||
@@ -41,41 +61,79 @@ class LogParser {
       return "Building application...";
     }
 
-    // Copy files
-    if (/COPY|ADD/i.test(text)) {
-      return "Preparing application files...";
-    }
-
-    // Vite
     if (/vite v/i.test(text)) {
-      return "Compiling frontend...";
+      return "Compiling frontend with Vite...";
     }
 
-    // Next.js
-    if (/Creating an optimized production build/i.test(text)) {
-      return "Optimizing Next.js application...";
+    if (/creating an optimized production build/i.test(text)) {
+      return "Building optimized Next.js application...";
     }
 
-    // Python
-    if (/Collecting/i.test(text)) {
+    if (/next build/i.test(text)) {
+      return "Building Next.js application...";
+    }
+
+    if (/pip install/i.test(text)) {
       return "Installing Python dependencies...";
     }
 
-    // Fatal errors only
+    if (/collecting\s+\w+/i.test(text)) {
+      return "Resolving Python dependencies...";
+    }
+
+    if (/^\[.*\]\s*(copy|add)\s+/i.test(text)) {
+      return "Preparing application files...";
+    }
+
+    if (/\bCOPY\s+/i.test(text) || /\bADD\s+/i.test(text)) {
+      return "Preparing application files...";
+    }
+
+    if (/exporting layers/i.test(text)) {
+      return "Exporting image layers...";
+    }
+
+    if (/exporting manifest/i.test(text)) {
+      return "Creating image manifest...";
+    }
+
+    if (/exporting config/i.test(text)) {
+      return "Finalizing image configuration...";
+    }
+
+    if (/naming to/i.test(text)) {
+      const match = text.match(/naming to\s+(.+)/i);
+
+      return match
+        ? `Tagging image: ${match[1]}`
+        : "Tagging Docker image...";
+    }
+
+    if (/writing image/i.test(text)) {
+      return "Writing Docker image...";
+    }
+
+    if (/cached/i.test(text)) {
+      return null;
+    }
+
     if (
-      /ERR!/i.test(text) ||
-      /Error:/i.test(text) ||
-      /failed/i.test(text)
+      /exporting to image/i.test(text)
+    ) {
+      return "Packaging Docker image...";
+    }
+
+    if (
+      /npm err!/i.test(text) ||
+      /\berror:/i.test(text) ||
+      /\bfailed\b/i.test(text) ||
+      /\bfatal\b/i.test(text)
     ) {
       return text;
     }
 
     return null;
-
   }
-
 }
-
-
 
 module.exports = new LogParser();

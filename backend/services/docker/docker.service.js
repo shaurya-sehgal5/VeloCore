@@ -26,64 +26,39 @@ class DockerService {
 
       let output = "";
 
-      const stream = (data, level = "INFO") => {
+      const stream = (data) => {
         const text = data.toString();
 
         output += text;
 
-        const lines = text.split(/\r?\n/);
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
 
         for (const line of lines) {
-          const value = line.trim();
+          const cleaned = line
+            .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+            .trim();
 
-          if (!value) continue;
+          if (!cleaned) continue;
 
-          /*
-          ------------------------------------------
-          RAW DOCKER OUTPUT
-          ------------------------------------------
+          const parsed = logParser.parse(cleaned);
 
-          Everything goes to Detailed Logs.
-          Nothing goes to Loki.
-          */
+          if (!parsed) continue;
 
-          if (deploymentId) {
-            logger.detail(
-              deploymentId,
-              "DOCKER",
-              level,
-              value
-            );
+          if (this.lastMessage.get(deploymentId) === parsed) {
+            continue;
           }
 
-          /*
-          ------------------------------------------
-          NORMAL BUILD SUMMARY
-          ------------------------------------------
+          this.lastMessage.set(deploymentId, parsed);
 
-          Parser extracts only useful high-level
-          Docker build milestones.
-          */
-
-          if (value.startsWith("=>")) continue;
-
-          const parsed = logParser.parse(value);
-
-          if (
-            parsed &&
-            this.lastMessage.get(deploymentId) !== parsed
-          ) {
-            this.lastMessage.set(
-              deploymentId,
-              parsed
-            );
-
-            logger.info(
-              deploymentId,
-              "BUILD",
-              parsed
-            );
-          }
+          logger.live(
+            deploymentId,
+            "BUILD",
+            "INFO",
+            parsed
+          );
         }
       };
 
@@ -213,13 +188,19 @@ class DockerService {
       "docker",
       [
         "build",
+
         "--rm",
+
         "--pull=false",
 
+        "--progress=plain",
+
         "--build-arg",
+
         "BUILDKIT_INLINE_CACHE=1",
 
         "--label",
+
         "velocore.build=true",
 
         "-t",

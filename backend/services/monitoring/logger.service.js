@@ -5,15 +5,6 @@ const loki = require("./loki/loki.service");
 
 class LoggerService {
   constructor() {
-    /*
-    --------------------------------------------------
-    INTERNAL / RAW STAGES
-    --------------------------------------------------
-    These are NOT normal dashboard logs.
-    They are intended for Detailed Logs.
-    --------------------------------------------------
-    */
-
     this.rawStages = new Set([
       "DOCKER",
       "HELM_STDOUT",
@@ -86,21 +77,19 @@ class LoggerService {
     );
   }
 
-  /*
-  ==================================================
-  NORMAL LOG
-  ==================================================
-  Used by VeloCore's clean dashboard logs.
+  sanitize(message) {
+    if (!message) return message;
 
-  Goes to:
-    - console
-    - SSE
-    - Socket.IO
-    - Loki
-
-  Does NOT contain noisy raw tool output.
-  ==================================================
-  */
+    return String(message)
+      .replace(
+        /\b(?:10|127|172)\.(?:\d{1,3}\.){2}\d{1,3}:\d+\b/g,
+        "[internal-service]"
+      )
+      .replace(
+        /\b192\.168\.(?:\d{1,3}\.)\d{1,3}:\d+\b/g,
+        "[internal-service]"
+      );
+  }
 
   async live(
     deploymentId,
@@ -110,10 +99,11 @@ class LoggerService {
     details = false,
     project = null
   ) {
+    const safeMessage = this.sanitize(message);
     const log = this.create(
       level,
       stage,
-      message,
+      safeMessage,
       details
     );
 
@@ -148,16 +138,6 @@ class LoggerService {
       } catch (_) { }
     }
 
-    /*
-    ------------------------------------------
-    Loki
-    ------------------------------------------
-
-    Only meaningful VeloCore logs go to Loki.
-    Raw tool output never reaches Loki.
-    ------------------------------------------
-    */
-
     if (!this.rawStages.has(stage)) {
       try {
         await loki.push({
@@ -165,39 +145,12 @@ class LoggerService {
           project: project || deploymentId,
           stage,
           level,
-          message,
+          message: safeMessage,
         });
       } catch (_) {
-        // Loki must never break deployment
       }
     }
   }
-
-  /*
-  ==================================================
-  DETAILED LOG
-  ==================================================
-
-  Used for:
-    Docker
-    npm
-    Git
-    Helm
-    kubectl
-    Trivy
-    Gitleaks
-    SonarQube
-    Runtime output
-    etc.
-
-  Goes ONLY to:
-    - console
-    - Socket.IO detailed_logs
-
-  NEVER goes to Loki.
-  NEVER goes to normal dashboard logs.
-  ==================================================
-  */
 
   async detail(
     deploymentId,
@@ -209,7 +162,7 @@ class LoggerService {
     const log = this.create(
       level,
       stage,
-      message,
+      this.sanitize(message),
       true
     );
 
