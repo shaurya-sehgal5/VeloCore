@@ -183,35 +183,76 @@ class KubernetesDeployer {
                 buildPlan.type === "frontend"
                     ? `${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`
                     : null;
-
             return {
                 deploymentId,
+
                 project: buildPlan.projectName,
+
                 engine: "kubernetes",
-                url: host ? `http://${host}` : null,
+
+                url: host
+                    ? `http://${host}`
+                    : null,
+
                 runtime: {
                     deploymentId,
+
+                    name: buildPlan.projectName,
+
                     project: buildPlan.projectName,
+
                     type: buildPlan.type,
-                    route: host ? `http://${host}` : null,
+
+                    route: host
+                        ? `http://${host}`
+                        : null,
+
+                    host: host || null,
+
                     framework: buildPlan.framework,
+
                     imageName: buildPlan.imageName,
+
                     containerName: pod.metadata.name,
+
                     namespace: buildPlan.namespace,
+
                     deployment: workloadName,
-                    service: service?.metadata?.name || null,
+
+                    service:
+                        service?.metadata?.name || null,
+
                     pod: pod.metadata.name,
+
                     branch: buildPlan.branch,
+
                     containerPort:
                         service?.spec?.ports?.[0]?.port ||
-                        (buildPlan.type === "worker"
-                            ? null
-                            : buildPlan.containerPort) ||
+                        (
+                            buildPlan.type === "worker"
+                                ? null
+                                : buildPlan.containerPort
+                        ) ||
                         null,
+
                     slot: buildPlan.slot,
+
                     engine: "kubernetes",
                 },
             };
+            const frontendRuntime =
+                frontend?.runtime?.runtime ||
+                frontend?.runtime ||
+                null;
+
+            const frontendUrl =
+                frontendRuntime?.route ||
+                frontendRuntime?.url ||
+                (
+                    frontendRuntime?.host
+                        ? `http://${frontendRuntime.host}`
+                        : null
+                );
         } catch (error) {
             const failure = analyzer.analyze(error.message);
 
