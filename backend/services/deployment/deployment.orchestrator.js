@@ -9,7 +9,7 @@ const repositoryGraph = require("../graph/repository-graph.service");
 const stackEngine = require("../engines/stack-engine.service");
 const securityEngine = require("../security/security-engine.service");
 const db = require("../../config/db");
-const config = require("../../config/env")
+const config = require("../../config/env");
 
 class DeploymentOrchestrator {
   async deploy({
@@ -19,16 +19,13 @@ class DeploymentOrchestrator {
     env = {},
   }) {
     let workspace = null;
-    const timer = metrics.deploymentDuration.startTimer();
-    try {
-      await logger.milestone(
-        deploymentId,
-        "DEPLOYMENT_STARTED",
-        "DEPLOYMENT",
-        "Deployment started."
-      );
 
+    const timer =
+      metrics.deploymentDuration.startTimer();
+
+    try {
       const started = Date.now();
+
       const summary = {
         buildTime: 0,
         deployTime: 0,
@@ -36,7 +33,43 @@ class DeploymentOrchestrator {
         status: "RUNNING",
       };
 
+      /*
+      ==========================================
+      DEPLOYMENT START
+      ==========================================
+      */
+
+      await logger.milestone(
+        deploymentId,
+        "DEPLOYMENT_STARTED",
+        "DEPLOYMENT",
+        "Deployment started."
+      );
+
+      metrics.deployments.inc({
+        status: "STARTED",
+        runtime:
+          config.RUNTIME_ENGINE || "docker",
+        framework: "mixed",
+      });
+
+      /*
+      ==========================================
+      STAGE TIMER
+      ==========================================
+      */
+
+      const stageTimers = {};
+
+      const startStage = (name) => {
+        stageTimers[name] = Date.now();
+      };
+
       const endStage = async (name) => {
+        if (!stageTimers[name]) {
+          return 0;
+        }
+
         const duration =
           (Date.now() - stageTimers[name]) / 1000;
 
@@ -49,16 +82,22 @@ class DeploymentOrchestrator {
           name.toUpperCase(),
           `Completed in ${duration.toFixed(2)}s`
         );
+
+        return duration;
       };
-      metrics.deployments.inc({
-        status: "STARTED",
-        runtime: config.RUNTIME_ENGINE || "docker",
-        framework: "mixed",
-      });
 
-      workspace = await workspaceService.create();
+      /*
+      ==========================================
+      1. WORKSPACE
+      ==========================================
+      */
+
+      startStage("Workspace");
+
+      workspace =
+        await workspaceService.create();
+
       await endStage("Workspace");
-
 
       await logger.milestone(
         deploymentId,
@@ -67,28 +106,39 @@ class DeploymentOrchestrator {
         "Workspace created."
       );
 
+      /*
+      ==========================================
+      2. REPOSITORY CLONE
+      ==========================================
+      */
 
-   
-      await statusService.update(deploymentId, "CLONING");
+      startStage("Clone");
 
-      const gitResult = await gitService.clone(
-        repoUrl,
-        githubToken,
-        workspace.path,
-        "main",
+      await statusService.update(
         deploymentId,
+        "CLONING"
       );
+
+      const gitResult =
+        await gitService.clone(
+          repoUrl,
+          githubToken,
+          workspace.path,
+          "main",
+          deploymentId
+        );
+
       await db.query(
         `
-  UPDATE deployments
-  SET
-      branch = $1,
-      commit_sha = $2,
-      commit_message = $3,
-      commit_author = $4,
-      updated_at = NOW()
-  WHERE id = $5
-  `,
+        UPDATE deployments
+        SET
+          branch = $1,
+          commit_sha = $2,
+          commit_message = $3,
+          commit_author = $4,
+          updated_at = NOW()
+        WHERE id = $5
+        `,
         [
           gitResult.branch,
           gitResult.commit,
@@ -97,56 +147,71 @@ class DeploymentOrchestrator {
           deploymentId,
         ]
       );
-      const repositoryPath = gitResult.workspace;
+
+      const repositoryPath =
+        gitResult.workspace;
+
       await endStage("Clone");
-      await logger.success(
+
+      await logger.milestone(
         deploymentId,
+        "REPOSITORY_CLONED",
         "REPOSITORY",
         "Repository cloned."
       );
 
-  
-      await statusService.update(deploymentId, "SCANNING");
+      /*
+      ==========================================
+      3. REPOSITORY ANALYSIS
+      ==========================================
+      */
 
-      const repository = scanRepository(repositoryPath);
-      repository.branch = gitResult.branch;
-      repository.commit = gitResult.commit;
-      repository.commitMessage = gitResult.commitMessage;
-      repository.commitAuthor = gitResult.commitAuthor;
-      repository.commitEmail = gitResult.commitEmail;
-      repository.commitDate = gitResult.commitDate;
-      await endStage("Repository Scan");
-      await logger.success(
-        deploymentId,
-        "ANALYSIS",
-        `${repository.projects.length} project(s) detected.`
-      );
-
-
-      const graph = repositoryGraph.build(repository);
-
-
+      startStage("Repository Scan");
 
       await statusService.update(
         deploymentId,
         "SCANNING"
       );
 
-      const securityReport = await securityEngine.run({
+      const repository =
+        scanRepository(repositoryPath);
+
+      repository.branch =
+        gitResult.branch;
+
+      repository.commit =
+        gitResult.commit;
+
+      repository.commitMessage =
+        gitResult.commitMessage;
+
+      repository.commitAuthor =
+        gitResult.commitAuthor;
+
+      repository.commitEmail =
+        gitResult.commitEmail;
+
+      repository.commitDate =
+        gitResult.commitDate;
+
+      await endStage("Repository Scan");
+
+      await logger.milestone(
         deploymentId,
-        workspace,
-        repository,
-        graph,
-      });
-      metrics.securityScore.labels(repository.name).set(securityReport.score || 100);
+        "REPOSITORY_ANALYZED",
+        "ANALYSIS",
+        `${repository.projects.length} project(s) detected`
+      );
 
-      metrics.securityCritical.labels(repository.name).set(securityReport.critical || 0);
+      /*
+      ==========================================
+      4. DEPLOYMENT GRAPH
+      ==========================================
+      */
 
-      metrics.securityHigh.labels(repository.name).set(securityReport.high || 0);
+      const graph =
+        repositoryGraph.build(repository);
 
-      metrics.securityMedium.labels(repository.name).set(securityReport.medium || 0);
-
-      metrics.securityLow.labels(repository.name).set(securityReport.low || 0);
       await logger.success(
         deploymentId,
         "ANALYSIS",
@@ -174,37 +239,117 @@ class DeploymentOrchestrator {
         "ANALYSIS",
         `Workers: ${graph.workers.length}`
       );
-      const deployments = await stackEngine.deploy({
-        graph,
-        deploymentId,
-        workspace,
-        repository,
-        env,
-        securityReport,
-      });
-      await logger.milestone(
-        deploymentId,
-        "BUILD_COMPLETED",
-        "BUILD",
-        "Application build completed."
-      );
-      summary.deployTime =
-        (Date.now() - stageTimers.Deployment) / 1000;
+
       /*
-            ----------------------------------
-            Cleanup Workspace
-            ----------------------------------
-            */
+      ==========================================
+      5. SECURITY
+      ==========================================
+      */
+
+      startStage("Security");
+
+      await statusService.update(
+        deploymentId,
+        "SCANNING"
+      );
+
+      const securityReport =
+        await securityEngine.run({
+          deploymentId,
+          workspace,
+          repository,
+          graph,
+        });
+
+      metrics.securityScore
+        .labels(repository.name)
+        .set(
+          securityReport.score || 100
+        );
+
+      metrics.securityCritical
+        .labels(repository.name)
+        .set(
+          securityReport.critical || 0
+        );
+
+      metrics.securityHigh
+        .labels(repository.name)
+        .set(
+          securityReport.high || 0
+        );
+
+      metrics.securityMedium
+        .labels(repository.name)
+        .set(
+          securityReport.medium || 0
+        );
+
+      metrics.securityLow
+        .labels(repository.name)
+        .set(
+          securityReport.low || 0
+        );
+
+      await endStage("Security");
+
+      /*
+      ==========================================
+      6. DEPLOYMENT
+      ==========================================
+      */
+
+      startStage("Deployment");
+
+      const deployments =
+        await stackEngine.deploy({
+          graph,
+          deploymentId,
+          workspace,
+          repository,
+          env,
+          securityReport,
+        });
+
+      summary.deployTime =
+        await endStage("Deployment");
+
+      /*
+      ==========================================
+      BUILD TIME
+      ==========================================
+      */
+
+      if (stageTimers.Build) {
+        summary.buildTime =
+          (Date.now() -
+            stageTimers.Build) /
+          1000;
+      }
+
+      /*
+      ==========================================
+      7. CLEANUP
+      ==========================================
+      */
 
       try {
-        await cleanupService.success(workspace);
+        await cleanupService.success(
+          workspace
+        );
       } catch (err) {
         await logger.warning(
           deploymentId,
           "CLEANUP",
-          err.message
+          "Workspace cleanup failed."
         );
       }
+
+      /*
+      ==========================================
+      8. DEPLOYMENT COMPLETED
+      ==========================================
+      */
 
       await logger.milestone(
         deploymentId,
@@ -212,64 +357,95 @@ class DeploymentOrchestrator {
         "SUMMARY",
         "Deployment completed successfully."
       );
+
       await db.query(
         `
-  UPDATE projects
-  SET
-    current_deployment_id = $1
-  WHERE id = (
-    SELECT project_id
-    FROM deployments
-    WHERE id = $1
-  )
-  `,
+        UPDATE projects
+        SET
+          current_deployment_id = $1
+        WHERE id = (
+          SELECT project_id
+          FROM deployments
+          WHERE id = $1
+        )
+        `,
         [deploymentId]
       );
+
       metrics.runningDeployments.inc();
 
-      timer({
-        status: "RUNNING",
-      });
-
-      summary.totalTime = (Date.now() - started) / 1000;
+      summary.totalTime =
+        (Date.now() - started) / 1000;
 
       await logger.summary(
         deploymentId,
         `Build:${summary.buildTime.toFixed(1)}s | Deploy:${summary.deployTime.toFixed(1)}s | Total:${summary.totalTime.toFixed(1)}s | Status:${summary.status}`
       );
 
-      metrics.deploymentStatus.labels(
-        deploymentId,
-        repository.name,
-        `velocore-${deploymentId}`
-      ).set(1);
+      /*
+      ==========================================
+      DEPLOYMENT METRICS
+      ==========================================
+      */
+
+      metrics.deploymentStatus
+        .labels(
+          deploymentId,
+          repository.name,
+          `velocore-${deploymentId}`
+        )
+        .set(1);
 
       metrics.deploymentDurationLatest
         .labels(deploymentId)
         .set(summary.totalTime);
-      const frontend = deployments.find(
-        d => d.runtime.runtime.type === "frontend"
-      );
 
-      const backend = deployments.find(
-        d => d.runtime.runtime.type === "backend"
-      );
-      const frontendUrl = frontend?.runtime?.url || null;
-      const backendUrl = null;
+      timer({
+        status: "RUNNING",
+      });
+
+      /*
+      ==========================================
+      DEPLOYMENT URLS
+      ==========================================
+      */
+
+      const frontend =
+        deployments.find(
+          (d) =>
+            d.runtime.runtime.type ===
+            "frontend"
+        );
+
+      const backend =
+        deployments.find(
+          (d) =>
+            d.runtime.runtime.type ===
+            "backend"
+        );
+
+      const frontendUrl =
+        frontend?.runtime?.url ||
+        null;
+
+      const backendUrl =
+        backend?.runtime?.url ||
+        null;
 
       await db.query(
         `
-    UPDATE deployments
-    SET
-        deploy_url = $1,
-        updated_at = NOW()
-    WHERE id = $2
-    `,
+        UPDATE deployments
+        SET
+          deploy_url = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        `,
         [
           frontendUrl,
           deploymentId,
         ]
       );
+
       return {
         success: true,
         deploymentId,
@@ -278,12 +454,21 @@ class DeploymentOrchestrator {
         backendUrl,
         deployments,
       };
+
     } catch (error) {
+
+      /*
+      ==========================================
+      DEPLOYMENT FAILED
+      ==========================================
+      */
+
       await logger.error(
         deploymentId,
         "SUMMARY",
         error.message
       );
+
       await logger.milestone(
         deploymentId,
         "DEPLOYMENT_FAILED",
@@ -293,32 +478,56 @@ class DeploymentOrchestrator {
 
       await statusService.update(
         deploymentId,
-        error.message.includes("timed out") ? "TIMEOUT" : "FAILED",
+        error.message.includes("timed out")
+          ? "TIMEOUT"
+          : "FAILED"
       );
-      metrics.runningDeployments.dec();
-      if (workspace) {
-        await cleanupService.failed({
-          workspace,
 
-          deploymentId,
-        });
+      /*
+      ==========================================
+      CLEANUP
+      ==========================================
+      */
+
+      if (workspace) {
+        try {
+          await cleanupService.failed({
+            workspace,
+            deploymentId,
+          });
+        } catch (_) { }
       }
+
+      /*
+      ==========================================
+      METRICS
+      ==========================================
+      */
+
       metrics.deployments.inc({
         status: "FAILED",
-        runtime: config.RUNTIME_ENGINE || "docker",
+        runtime:
+          config.RUNTIME_ENGINE ||
+          "docker",
         framework: "mixed",
       });
-      metrics.deploymentStatus.labels(
-        deploymentId,
-        repository.name,
-        `velocore-${repository.name}`
-      ).set(0);
+
+      metrics.deploymentStatus
+        .labels(
+          deploymentId,
+          "unknown",
+          `velocore-${deploymentId}`
+        )
+        .set(0);
+
       timer({
         status: "FAILED",
       });
+
       throw error;
     }
   }
 }
 
-module.exports = new DeploymentOrchestrator();
+module.exports =
+  new DeploymentOrchestrator();
