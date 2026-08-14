@@ -732,7 +732,10 @@ export default function DeploymentDetails({
   const selectedRuntime =
     selectedService === "all"
       ? null
-      : services.find((service) => service.type === selectedService);
+      : services.find(
+          (service) =>
+            String(service.id || service.name) === String(selectedService),
+        ) || null;
   const {
     rows: envRows,
     editing: envEditing,
@@ -882,15 +885,24 @@ export default function DeploymentDetails({
           >
             <option value="all">All Services</option>
 
-            {services.map((service) => (
-              <option key={service.id || service.name} value={service.type}>
-                {service.type === "frontend"
+            {services.map((service, index) => {
+              const serviceId = String(
+                service.id || service.name || `${service.type}-${index}`,
+              );
+
+              const label =
+                service.type === "frontend"
                   ? "Frontend"
                   : service.type === "backend"
                     ? "Backend"
-                    : service.name || service.type}
-              </option>
-            ))}
+                    : service.name || service.type || `Service ${index + 1}`;
+
+              return (
+                <option key={serviceId} value={serviceId}>
+                  {label}
+                </option>
+              );
+            })}
           </select>
         </div>
       )}

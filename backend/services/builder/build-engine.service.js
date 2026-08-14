@@ -129,28 +129,28 @@ class BuildEngine {
 
     await logger.info(
       deploymentId,
-      "SECURITY",
-      `Scanning ${buildPlan.imageName} with Trivy...`,
+      "TRIVY",
+      `Scanning built image ${buildPlan.imageName}...`,
       buildPlan.projectName
     );
 
     await trivyService.scan({
       deploymentId,
-
-      projectName:
-        buildPlan.projectName,
-
-      image:
-        buildPlan.imageName,
-
-      report:
-        securityReport,
+      projectName: buildPlan.projectName,
+      image: buildPlan.imageName,
+      report: securityReport,
     });
+
+    if (securityReport.critical > 0) {
+      throw new Error(
+        `Security gate failed: ${securityReport.critical} critical vulnerabilities found`
+      );
+    }
 
     await logger.success(
       deploymentId,
-      "SECURITY",
-      `Security scan passed — Critical:${securityReport.critical} High:${securityReport.high} Medium:${securityReport.medium} Low:${securityReport.low}`,
+      "TRIVY",
+      `Image security verified | Critical:${securityReport.critical} High:${securityReport.high} Medium:${securityReport.medium} Low:${securityReport.low}`,
       buildPlan.projectName
     );
 

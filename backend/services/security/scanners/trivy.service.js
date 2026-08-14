@@ -19,8 +19,8 @@ class TrivyScanner {
 
     await logger.info(
       deploymentId,
-      "SECURITY",
-      `Running Trivy on ${image}`,
+      "TRIVY",
+      `Scanning image ${image}`,
       projectName
     );
 
@@ -39,8 +39,8 @@ class TrivyScanner {
 
         await logger.error(
           deploymentId,
-          "SECURITY",
-          "Trivy scan failed. Deployment blocked.",
+          "TRIVY",
+          "Image vulnerability scan failed. Deployment blocked.",
           projectName
         );
 
@@ -53,8 +53,8 @@ class TrivyScanner {
 
       await logger.error(
         deploymentId,
-        "SECURITY",
-        `Trivy scan failed: ${err.message}`,
+        "TRIVY",
+        `Scan failed: ${err.message}`,
         projectName
       );
 
@@ -234,21 +234,21 @@ class TrivyScanner {
 
     await logger.success(
       deploymentId,
-      "SECURITY",
+      "TRIVY",
       `Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`,
       projectName
     );
 
     await logger.success(
       deploymentId,
-      "SECURITY",
+      "TRIVY",
       `Packages scanned: ${result.Results.length}`,
       projectName
     );
 
     await logger.success(
       deploymentId,
-      "SECURITY",
+      "TRIVY",
       "Image scan completed",
       projectName
     );

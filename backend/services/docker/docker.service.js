@@ -14,7 +14,7 @@ class DockerService {
   ==================================================
   */
 
-  execute(command, args, deploymentId) {
+  execute(command, args, deploymentId, stage = "BUILD", projectName = null) {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         shell: false,
@@ -55,9 +55,10 @@ class DockerService {
 
           logger.live(
             deploymentId,
-            "BUILD",
+            stage,
             "INFO",
-            parsed
+            parsed,
+            projectName
           );
         }
       };
@@ -188,30 +189,21 @@ class DockerService {
       "docker",
       [
         "build",
-
         "--rm",
-
         "--pull=false",
-
         "--progress=plain",
-
         "--build-arg",
-
         "BUILDKIT_INLINE_CACHE=1",
-
         "--label",
-
         "velocore.build=true",
-
         "-t",
         imageName,
-
         "-f",
         dockerfile,
-
         context,
       ],
-      deploymentId
+      deploymentId,
+      "BUILD"
     );
   }
 

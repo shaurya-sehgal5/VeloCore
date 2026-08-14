@@ -135,7 +135,7 @@ function LevelSelect({ value, onChange }) {
   );
 }
 
-export default function LokiLogsTab({ deploymentId }) {
+export default function LokiLogsTab({ deploymentId, selectedService }) {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState([]);
   const [search, setSearch] = useState("");
@@ -163,6 +163,7 @@ export default function LokiLogsTab({ deploymentId }) {
             message: v[1],
             level: s.stream?.level || "INFO",
             stage: s.stream?.stage || "-",
+            project: s.stream?.project || null,
           }),
         ),
       );
@@ -175,12 +176,21 @@ export default function LokiLogsTab({ deploymentId }) {
 
   const filtered = useMemo(
     () =>
-      logs.filter(
-        (l) =>
-          (level === "ALL" || l.level === level) &&
-          (!search || l.message.toLowerCase().includes(search.toLowerCase())),
-      ),
-    [logs, level, search],
+      logs.filter((l) => {
+        const matchesLevel = level === "ALL" || l.level === level;
+
+        const matchesSearch =
+          !search || l.message.toLowerCase().includes(search.toLowerCase());
+
+        const matchesService =
+          !selectedService ||
+          l.project === selectedService.name ||
+          l.project === selectedService.project ||
+          l.project === selectedService.type;
+
+        return matchesLevel && matchesSearch && matchesService;
+      }),
+    [logs, level, search, selectedService],
   );
 
   if (loading) return <p style={mutedTextStyle}>$ loading loki logs...</p>;

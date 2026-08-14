@@ -8,17 +8,21 @@ class LogParser {
 
     if (!text) return null;
 
-    // Dockerfile loading
-    if (
-      /load build definition from dockerfile/i.test(text)
-    ) {
+    /*
+    ==========================================
+    DOCKER BUILD INITIALIZATION
+    ==========================================
+    */
+
+    if (/load build definition from dockerfile/i.test(text)) {
       return "Loading Dockerfile...";
     }
 
-    // Base image metadata
-    if (
-      /load metadata for/i.test(text)
-    ) {
+    if (/load .dockerignore/i.test(text)) {
+      return "Loading .dockerignore...";
+    }
+
+    if (/load metadata for/i.test(text)) {
       const match = text.match(/load metadata for\s+(.+)/i);
 
       return match
@@ -26,20 +30,31 @@ class LogParser {
         : "Resolving base image...";
     }
 
-    // Dockerignore
-    if (
-      /load .dockerignore/i.test(text)
-    ) {
-      return "Loading .dockerignore...";
-    }
-
-    // Pulling base image
     if (
       /resolve image config/i.test(text) ||
       /pulling from/i.test(text)
     ) {
       return "Preparing base image...";
     }
+
+    /*
+    ==========================================
+    FILE PREPARATION
+    ==========================================
+    */
+
+    if (
+      /\bCOPY\s+/i.test(text) ||
+      /\bADD\s+/i.test(text)
+    ) {
+      return "Preparing application files...";
+    }
+
+    /*
+    ==========================================
+    NODE DEPENDENCIES
+    ==========================================
+    */
 
     if (
       /npm (ci|install)/i.test(text) ||
@@ -52,6 +67,12 @@ class LogParser {
     if (/npm audit/i.test(text)) {
       return "Running dependency audit...";
     }
+
+    /*
+    ==========================================
+    APPLICATION BUILD
+    ==========================================
+    */
 
     if (
       /npm run build/i.test(text) ||
@@ -73,6 +94,12 @@ class LogParser {
       return "Building Next.js application...";
     }
 
+    /*
+    ==========================================
+    PYTHON
+    ==========================================
+    */
+
     if (/pip install/i.test(text)) {
       return "Installing Python dependencies...";
     }
@@ -81,16 +108,18 @@ class LogParser {
       return "Resolving Python dependencies...";
     }
 
-    if (/^\[.*\]\s*(copy|add)\s+/i.test(text)) {
-      return "Preparing application files...";
-    }
+    /*
+    ==========================================
+    DOCKER IMAGE CREATION
+    ==========================================
+    */
 
-    if (/\bCOPY\s+/i.test(text) || /\bADD\s+/i.test(text)) {
-      return "Preparing application files...";
+    if (/exporting to image/i.test(text)) {
+      return "Packaging Docker image...";
     }
 
     if (/exporting layers/i.test(text)) {
-      return "Exporting image layers...";
+      return "Creating image layers...";
     }
 
     if (/exporting manifest/i.test(text)) {
@@ -101,6 +130,10 @@ class LogParser {
       return "Finalizing image configuration...";
     }
 
+    if (/writing image/i.test(text)) {
+      return "Writing Docker image...";
+    }
+
     if (/naming to/i.test(text)) {
       const match = text.match(/naming to\s+(.+)/i);
 
@@ -109,19 +142,29 @@ class LogParser {
         : "Tagging Docker image...";
     }
 
-    if (/writing image/i.test(text)) {
-      return "Writing Docker image...";
+    /*
+    ==========================================
+    BUILD COMPLETION
+    ==========================================
+    */
+
+    if (/exporting attestation/i.test(text)) {
+      return "Finalizing image metadata...";
+    }
+
+    if (/\bDONE\b/i.test(text)) {
+      return null;
     }
 
     if (/cached/i.test(text)) {
       return null;
     }
 
-    if (
-      /exporting to image/i.test(text)
-    ) {
-      return "Packaging Docker image...";
-    }
+    /*
+    ==========================================
+    ERRORS
+    ==========================================
+    */
 
     if (
       /npm err!/i.test(text) ||

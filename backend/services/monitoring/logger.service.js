@@ -5,23 +5,7 @@ const loki = require("./loki/loki.service");
 
 class LoggerService {
   constructor() {
-    this.rawStages = new Set([
-      "DOCKER",
-      "HELM_STDOUT",
-      "KUBECTL_STDOUT",
-      "NPM",
-      "GIT",
-      "TRIVY",
-      "GITLEAKS",
-      "SONARQUBE",
-      "AUDIT",
-    ]);
-
-    /*
-    --------------------------------------------------
-    IMPORTANT DB EVENTS
-    --------------------------------------------------
-    */
+    this.rawStages = new Set();
 
     this.dbEvents = new Set([
       "DEPLOYMENT_STARTED",
@@ -159,17 +143,19 @@ class LoggerService {
     message,
     project = null
   ) {
+    const safeMessage = this.sanitize(message);
+
     const log = this.create(
       level,
       stage,
-      this.sanitize(message),
+      safeMessage,
       true
     );
 
     this.console(log);
 
     const payload = {
-      type: "detailed_log",
+      type: "log",
       detailed: true,
       project,
       ...log,
@@ -184,12 +170,15 @@ class LoggerService {
       );
     } catch (_) { }
 
-    /*
-    ------------------------------------------
-    Detailed logs are intentionally NOT
-    written to Loki.
-    ------------------------------------------
-    */
+    try {
+      await loki.push({
+        deploymentId,
+        project: project || deploymentId,
+        stage,
+        level,
+        message: safeMessage,
+      });
+    } catch (_) { }
   }
 
   /*

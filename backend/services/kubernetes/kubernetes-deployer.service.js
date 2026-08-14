@@ -25,10 +25,11 @@ class KubernetesDeployer {
                     buildPlan.namespace
                 );
 
-            await logger.error(
+            await logger.detail(
                 deploymentId,
-                "RUNTIME",
-                output.slice(-4000),
+                "KUBERNETES",
+                "ERROR",
+                logs.slice(-4000),
                 buildPlan.projectName
             );
         } catch (err) {
@@ -109,9 +110,10 @@ class KubernetesDeployer {
                                 buildPlan.namespace
                             );
 
-                        await logger.error(
+                        await logger.detail(
                             deploymentId,
-                            "RUNTIME",
+                            "KUBERNETES",
+                            "ERROR",
                             logs.slice(-4000),
                             buildPlan.projectName
                         );

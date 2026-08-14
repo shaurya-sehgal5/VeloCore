@@ -19,6 +19,8 @@ class GitleaksService {
 
         "detect",
 
+        "--no-git",
+
         "--source=/repo",
 
         "--report-format=json",
