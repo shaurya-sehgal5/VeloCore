@@ -27,65 +27,100 @@ const STATUS_LABEL = {
   INFO: "Running",
 };
 
-const STAGE_DEFS = {
-  REPOSITORY: {
+const STAGE_DEFS = [
+  {
+    key: "REPOSITORY",
     label: "Repository",
+    match: ["REPOSITORY", "WORKSPACE"],
   },
 
-  ANALYSIS: {
+  {
+    key: "ANALYSIS",
     label: "Analysis",
+    match: ["ANALYSIS", "REPOSITORY_ANALYZED", "GRAPH"],
   },
 
-  GITLEAKS: {
+  {
+    key: "GITLEAKS",
     label: "Gitleaks",
+    match: ["GITLEAKS"],
   },
 
-  SONARQUBE: {
+  {
+    key: "SONARQUBE",
     label: "SonarQube",
+    match: ["SONARQUBE", "SONAR"],
   },
 
-  DEPENDENCIES: {
+  {
+    key: "DEPENDENCIES",
     label: "Dependencies",
+    match: ["DEPENDENCIES", "NPM_AUDIT", "AUDIT"],
   },
 
-  BUILD: {
+  {
+    key: "BUILD",
     label: "Build",
+    match: ["BUILD"],
   },
 
-  DOCKER: {
+  {
+    key: "DOCKER",
     label: "Docker",
+    match: ["DOCKER"],
   },
 
-  TRIVY: {
+  {
+    key: "TRIVY",
     label: "Trivy",
+    match: ["TRIVY"],
   },
 
-  REGISTRY: {
+  {
+    key: "REGISTRY",
     label: "Registry",
+    match: ["REGISTRY"],
   },
 
-  HELM: {
+  {
+    key: "HELM",
     label: "Helm",
+    match: ["HELM"],
   },
 
-  KUBERNETES: {
+  {
+    key: "KUBERNETES",
     label: "Kubernetes",
+    match: ["KUBERNETES", "KUBECTL"],
   },
 
-  HEALTH: {
+  {
+    key: "HEALTH",
     label: "Health",
+    match: ["HEALTH"],
   },
 
-  RUNTIME: {
+  {
+    key: "RUNTIME",
     label: "Runtime",
+    match: ["RUNTIME"],
   },
 
-  ROLLBACK: {
+  {
+    key: "ROLLBACK",
     label: "Rollback",
+    match: ["ROLLBACK"],
   },
-};
+];
 
 const STAGE_LOOKUP = {};
+
+STAGE_DEFS.forEach((def) => {
+  def.match.forEach((raw) => {
+    STAGE_LOOKUP[raw] = def.key;
+  });
+});
+
 STAGE_DEFS.forEach((def) => {
   def.match.forEach((raw) => {
     STAGE_LOOKUP[raw] = def.key;
