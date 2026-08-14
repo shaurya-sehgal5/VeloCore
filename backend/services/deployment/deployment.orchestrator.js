@@ -56,7 +56,6 @@ class DeploymentOrchestrator {
         framework: "mixed",
       });
 
-      startStage("Workspace");
       workspace = await workspaceService.create();
       await endStage("Workspace");
 
@@ -69,7 +68,7 @@ class DeploymentOrchestrator {
       );
 
 
-      startStage("Clone");
+   
       await statusService.update(deploymentId, "CLONING");
 
       const gitResult = await gitService.clone(
@@ -106,7 +105,7 @@ class DeploymentOrchestrator {
         "Repository cloned."
       );
 
-      startStage("Repository Scan");
+  
       await statusService.update(deploymentId, "SCANNING");
 
       const repository = scanRepository(repositoryPath);
@@ -122,11 +121,11 @@ class DeploymentOrchestrator {
         "ANALYSIS",
         `${repository.projects.length} project(s) detected.`
       );
-      startStage("Dependency Graph");
+
 
       const graph = repositoryGraph.build(repository);
 
-      startStage("Security");
+
 
       await statusService.update(
         deploymentId,
