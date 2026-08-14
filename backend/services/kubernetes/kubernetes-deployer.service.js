@@ -179,30 +179,6 @@ class KubernetesDeployer {
                 buildPlan.projectName
             );
 
-            setImmediate(() => {
-                try {
-                    const logStream = kubernetesLogs.stream(
-                        pod.metadata.name,
-                        deploymentId,
-                        buildPlan.namespace,
-                        buildPlan.projectName
-                    );
-
-                    logStream.on("error", (err) => {
-                        logger.error(
-                            deploymentId,
-                            "KUBERNETES",
-                            err.message
-                        );
-                    });
-                } catch (err) {
-                    logger.warning(
-                        deploymentId,
-                        "KUBERNETES",
-                        `Unable to stream logs: ${err.message}`
-                    );
-                }
-            });
             const host =
                 buildPlan.type === "frontend"
                     ? `${buildPlan.projectName}-${deploymentId.substring(0, 8)}.${config.APP_DOMAIN}`

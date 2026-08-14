@@ -9,7 +9,6 @@ class KubectlService {
     stage = "KUBECTL_STDOUT"
   ) {
     return new Promise((resolve, reject) => {
-
       const process = spawn(
         "kubectl",
         args,
@@ -18,82 +17,37 @@ class KubectlService {
         }
       );
 
-      let output = "";
+      let stdout = "";
+      let stderr = "";
 
-      const timeout =
-        setTimeout(() => {
+      const timeout = setTimeout(() => {
+        process.kill("SIGTERM");
 
-          process.kill("SIGTERM");
-
-          reject(
-            new Error(
-              "kubectl command timed out after 120 seconds."
-            )
-          );
-
-        }, 120000);
+        reject(
+          new Error(
+            "kubectl command timed out after 120 seconds."
+          )
+        );
+      }, 120000);
 
       process.stdout.on(
         "data",
         (data) => {
-
-          const text =
-            data.toString();
-
-          output += text;
-
-          if (deploymentId) {
-            const lines =
-              text
-                .split(/\r?\n/)
-                .map((line) => line.trim())
-                .filter(Boolean);
-
-            for (const line of lines) {
-
-              logger.detail(
-                deploymentId,
-                stage,
-                "INFO",
-                line
-              );
-            }
-          }
+          stdout += data.toString();
         }
       );
 
       process.stderr.on(
         "data",
         (data) => {
-
-          const text =
-            data.toString();
-
-          output += text;
-
-          if (deploymentId) {
-            const lines =
-              text
-                .split(/\r?\n/)
-                .map((line) => line.trim())
-                .filter(Boolean);
-
-            for (const line of lines) {
-
-              logger.detail(
-                deploymentId,
-                stage,
-                "ERROR",
-                line
-              );
-            }
-          }
+          stderr += data.toString();
         }
       );
 
       process.on(
         "error",
         (err) => {
+          clearTimeout(timeout);
 
           if (err.code === "ENOENT") {
             return reject(
@@ -110,18 +64,19 @@ class KubectlService {
       process.on(
         "close",
         (code) => {
-
           clearTimeout(timeout);
 
           if (code !== 0) {
             return reject(
               new Error(
-                output
+                stderr.trim() ||
+                stdout.trim() ||
+                `kubectl exited with code ${code}`
               )
             );
           }
 
-          resolve(output);
+          resolve(stdout.trim());
         }
       );
     });

@@ -31,13 +31,13 @@ const STAGE_DEFS = [
   {
     key: "REPOSITORY",
     label: "Repository",
-    match: ["REPOSITORY", "WORKSPACE"],
+    match: ["REPOSITORY", "WORKSPACE", "CLONE", "REPOSITORY_SCAN"],
   },
 
   {
     key: "ANALYSIS",
     label: "Analysis",
-    match: ["ANALYSIS", "REPOSITORY_ANALYZED", "GRAPH"],
+    match: ["ANALYSIS", "REPOSITORY_ANALYZED", "GRAPH", "DEPENDENCY_GRAPH"],
   },
 
   {
@@ -65,12 +65,6 @@ const STAGE_DEFS = [
   },
 
   {
-    key: "DOCKER",
-    label: "Docker",
-    match: ["DOCKER"],
-  },
-
-  {
     key: "TRIVY",
     label: "Trivy",
     match: ["TRIVY"],
@@ -85,13 +79,13 @@ const STAGE_DEFS = [
   {
     key: "HELM",
     label: "Helm",
-    match: ["HELM"],
+    match: ["HELM", "HELM_STDOUT"],
   },
 
   {
     key: "KUBERNETES",
     label: "Kubernetes",
-    match: ["KUBERNETES", "KUBECTL"],
+    match: ["KUBERNETES", "KUBECTL", "KUBECTL_STDOUT", "ROLLOUT"],
   },
 
   {
@@ -107,6 +101,19 @@ const STAGE_DEFS = [
   },
 
   {
+    key: "DEPLOYMENT",
+    label: "Deployment",
+    match: [
+      "DEPLOYMENT",
+      "DEPLOYMENT_STARTED",
+      "DEPLOYMENT_COMPLETED",
+      "DEPLOYMENT_FAILED",
+      "STATUS",
+      "SUMMARY",
+    ],
+  },
+
+  {
     key: "ROLLBACK",
     label: "Rollback",
     match: ["ROLLBACK"],
@@ -114,12 +121,6 @@ const STAGE_DEFS = [
 ];
 
 const STAGE_LOOKUP = {};
-
-STAGE_DEFS.forEach((def) => {
-  def.match.forEach((raw) => {
-    STAGE_LOOKUP[raw] = def.key;
-  });
-});
 
 STAGE_DEFS.forEach((def) => {
   def.match.forEach((raw) => {

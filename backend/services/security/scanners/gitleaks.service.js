@@ -2,15 +2,12 @@ const docker = require("./docker-runner.service");
 const logger = require("../../monitoring/logger.service");
 
 class GitleaksService {
-
   async scan(
     source,
     deploymentId = null,
     projectName = null
   ) {
-
     const result = await docker.run(
-
       [
         "-v",
         `${source}:/repo`,
@@ -29,7 +26,6 @@ class GitleaksService {
 
         "--no-banner",
       ],
-
       {
         deploymentId,
         projectName,
@@ -39,48 +35,50 @@ class GitleaksService {
 
     let findings = [];
 
+    /*
+    ==================================================
+    PARSE GITLEAKS REPORT
+    ==================================================
+    */
+
     try {
-
-      findings =
-        result.stdout
-          ? JSON.parse(result.stdout)
-          : [];
-
-    } catch {
-
+      findings = result.stdout
+        ? JSON.parse(result.stdout)
+        : [];
+    } catch (err) {
       /*
-      Raw output is still useful for debugging,
-      but it belongs only in Detailed Logs.
-      */
+       * Do NOT dump raw Gitleaks output into
+       * deployment logs.
+       *
+       * Invalid JSON means the scanner did not
+       * return the expected report.
+       */
 
-      if (
-        deploymentId &&
-        result.stdout?.trim()
-      ) {
-
-        await logger.detail(
+      if (deploymentId) {
+        await logger.error(
           deploymentId,
           "GITLEAKS",
-          "INFO",
-          result.stdout.trim(),
+          "Gitleaks returned an invalid security report.",
           projectName
         );
       }
+
+      throw new Error(
+        "Gitleaks returned an invalid security report."
+      );
     }
 
     /*
-    ------------------------------------------
-    Detailed findings
-    ------------------------------------------
+    ==================================================
+    FINDINGS
+    ==================================================
     */
 
     if (
       deploymentId &&
       Array.isArray(findings)
     ) {
-
       for (const finding of findings) {
-
         await logger.detail(
           deploymentId,
           "GITLEAKS",
@@ -101,45 +99,25 @@ class GitleaksService {
     }
 
     /*
-    ------------------------------------------
-    STDERR → Detailed only
-    ------------------------------------------
+    ==================================================
+    GITLEAKS FAILURE
+    ==================================================
     */
 
     if (
-      deploymentId &&
-      result.stderr?.trim()
+      result.exitCode !== undefined &&
+      result.exitCode !== 0 &&
+      findings.length === 0
     ) {
-
-      const lines =
-        result.stderr
-          .split(/\r?\n/)
-          .map(line => line.trim())
-          .filter(Boolean);
-
-      for (const line of lines) {
-
-        await logger.detail(
-          deploymentId,
-          "GITLEAKS",
-          "ERROR",
-          line,
-          projectName
-        );
-      }
+      throw new Error(
+        "Gitleaks scan failed."
+      );
     }
 
     return {
-
       skipped: false,
-
       findings,
-
-      total:
-        findings.length,
-
-      stderr:
-        result.stderr,
+      total: findings.length,
     };
   }
 }

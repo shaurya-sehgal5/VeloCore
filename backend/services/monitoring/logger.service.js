@@ -57,7 +57,7 @@ class LoggerService {
       timestamp: this.timestamp(),
       level,
       stage,
-      message,
+      message: this.sanitize(message),
       details,
     };
   }
@@ -82,6 +82,12 @@ class LoggerService {
       );
   }
 
+  /*
+  ==================================================
+  NORMAL PIPELINE LOG
+  ==================================================
+  */
+
   async live(
     deploymentId,
     stage,
@@ -90,11 +96,14 @@ class LoggerService {
     details = false,
     project = null
   ) {
-    const safeMessage = this.sanitize(message);
+    if (this.rawStages.has(stage)) {
+      return;
+    }
+
     const log = this.create(
       level,
       stage,
-      safeMessage,
+      message,
       details
     );
 
@@ -102,46 +111,49 @@ class LoggerService {
 
     const payload = {
       type: "log",
-      project,
       detailed: false,
+      project,
       ...log,
     };
 
-    /*
-    ------------------------------------------
-    Normal dashboard stream
-    ------------------------------------------
-    */
-
-    if (!this.rawStages.has(stage)) {
+    try {
       runtimeStatus.publish(
         deploymentId,
         payload
       );
+    } catch (_) { }
 
-      try {
-        const io = getIO();
+    try {
+      const io = getIO();
 
-        io.to(deploymentId).emit(
-          "live_logs",
-          payload
-        );
-      } catch (_) { }
-    }
+      io.to(deploymentId).emit(
+        "live_logs",
+        payload
+      );
+    } catch (_) { }
 
-    if (!this.rawStages.has(stage)) {
-      try {
-        await loki.push({
-          deploymentId,
-          project: project || deploymentId,
-          stage,
-          level,
-          message: safeMessage,
-        });
-      } catch (_) {
-      }
-    }
+    try {
+      await loki.push({
+        deploymentId,
+        project: project || deploymentId,
+        stage,
+        level,
+        message: log.message,
+      });
+    } catch (_) { }
   }
+
+  /*
+  ==================================================
+  DETAIL LOG
+  ==================================================
+
+  IMPORTANT:
+  - Never goes to normal live_logs
+  - Never goes to Loki
+  - Never appears in pipeline stage counts
+  - Only available through detailed_logs
+  */
 
   async detail(
     deploymentId,
@@ -150,19 +162,15 @@ class LoggerService {
     message,
     project = null
   ) {
-    const safeMessage = this.sanitize(message);
-
     const log = this.create(
       level,
       stage,
-      safeMessage,
+      message,
       true
     );
 
-    this.console(log);
-
     const payload = {
-      type: "log",
+      type: "detailed_log",
       detailed: true,
       project,
       ...log,
@@ -177,20 +185,22 @@ class LoggerService {
       );
     } catch (_) { }
 
-    try {
-      await loki.push({
-        deploymentId,
-        project: project || deploymentId,
-        stage,
-        level,
-        message: safeMessage,
-      });
-    } catch (_) { }
+    /*
+     * Intentionally NOT:
+     *
+     * runtimeStatus.publish()
+     * live_logs
+     * loki.push()
+     * console.log()
+     *
+     * Detailed/raw subprocess output must never
+     * pollute the deployment pipeline.
+     */
   }
 
   /*
   ==================================================
-  RAW ALIAS
+  RAW
   ==================================================
   */
 
@@ -201,7 +211,7 @@ class LoggerService {
     message,
     project = null
   ) {
-    await this.detail(
+    return this.detail(
       deploymentId,
       stage,
       level,
@@ -212,7 +222,7 @@ class LoggerService {
 
   /*
   ==================================================
-  DATABASE DEPLOYMENT EVENT
+  DATABASE EVENT
   ==================================================
   */
 
@@ -336,10 +346,9 @@ class LoggerService {
     deploymentId,
     title
   ) {
-    await this.live(
+    await this.info(
       deploymentId,
       "SECTION",
-      "INFO",
       title
     );
   }
@@ -356,10 +365,9 @@ class LoggerService {
     branch,
     commit
   ) {
-    await this.live(
+    await this.info(
       deploymentId,
       "REPOSITORY",
-      "INFO",
       `${repo} | ${branch} | ${commit}`
     );
   }
@@ -374,10 +382,9 @@ class LoggerService {
     deploymentId,
     summary
   ) {
-    await this.live(
+    await this.success(
       deploymentId,
       "SUMMARY",
-      "SUCCESS",
       summary
     );
   }

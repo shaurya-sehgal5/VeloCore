@@ -285,15 +285,6 @@ resources: {}
                                     )
                                     .filter(Boolean);
 
-                            for (const line of lines) {
-
-                                logger.detail(
-                                    deploymentId,
-                                    "HELM_STDOUT",
-                                    "INFO",
-                                    line
-                                );
-                            }
                         }
                     }
                 );
@@ -322,16 +313,6 @@ resources: {}
                                         line.trim()
                                     )
                                     .filter(Boolean);
-
-                            for (const line of lines) {
-
-                                logger.detail(
-                                    deploymentId,
-                                    "HELM_STDOUT",
-                                    "ERROR",
-                                    line
-                                );
-                            }
                         }
                     }
                 );
