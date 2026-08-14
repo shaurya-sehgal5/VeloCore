@@ -31,92 +31,54 @@ const STAGE_DEFS = [
   {
     key: "REPOSITORY",
     label: "Repository",
-    match: ["REPOSITORY", "WORKSPACE", "CLONE", "REPOSITORY_SCAN"],
   },
-
   {
     key: "ANALYSIS",
     label: "Analysis",
-    match: ["ANALYSIS", "REPOSITORY_ANALYZED", "GRAPH", "DEPENDENCY_GRAPH"],
   },
-
   {
     key: "GITLEAKS",
     label: "Gitleaks",
-    match: ["GITLEAKS"],
   },
-
   {
     key: "SONARQUBE",
     label: "SonarQube",
-    match: ["SONARQUBE", "SONAR"],
   },
-
   {
     key: "DEPENDENCIES",
     label: "Dependencies",
-    match: ["DEPENDENCIES", "NPM_AUDIT", "AUDIT"],
   },
-
   {
     key: "BUILD",
     label: "Build",
-    match: ["BUILD"],
   },
-
   {
     key: "TRIVY",
     label: "Trivy",
-    match: ["TRIVY"],
   },
-
   {
     key: "REGISTRY",
     label: "Registry",
-    match: ["REGISTRY"],
   },
-
   {
     key: "HELM",
     label: "Helm",
-    match: ["HELM", "HELM_STDOUT"],
   },
-
   {
     key: "KUBERNETES",
     label: "Kubernetes",
-    match: ["KUBERNETES", "KUBECTL", "KUBECTL_STDOUT", "ROLLOUT"],
   },
-
   {
     key: "HEALTH",
     label: "Health",
-    match: ["HEALTH"],
   },
-
   {
     key: "RUNTIME",
     label: "Runtime",
-    match: ["RUNTIME"],
   },
-
   {
-    key: "DEPLOYMENT",
-    label: "Deployment",
-    match: [
-      "DEPLOYMENT",
-      "DEPLOYMENT_STARTED",
-      "DEPLOYMENT_COMPLETED",
-      "DEPLOYMENT_FAILED",
-      "STATUS",
-      "SUMMARY",
-    ],
-  },
-
-  {
-    key: "ROLLBACK",
-    label: "Rollback",
-    match: ["ROLLBACK"],
+    key: "SUMMARY",
+    label: "Summary",
   },
 ];
 

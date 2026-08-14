@@ -10,14 +10,13 @@ class SecurityEngine {
     workspace,
     graph,
   }) {
-    await logger.milestone(
-      deploymentId,
-      "SECURITY_STARTED",
-      "SECURITY",
-      "Security pipeline started."
-    );
-
     const securityStart = Date.now();
+
+    /*
+    ==================================================
+    SECURITY REPORT
+    ==================================================
+    */
 
     const report = {
       score: 100,
@@ -32,9 +31,9 @@ class SecurityEngine {
     };
 
     /*
-    ==========================================
+    ==================================================
     GITLEAKS
-    ==========================================
+    ==================================================
     */
 
     let gitleaksStatus = "SUCCESS";
@@ -51,38 +50,75 @@ class SecurityEngine {
         deploymentId
       );
 
-      report.secrets = secretResult.findings || [];
+      report.secrets =
+        Array.isArray(secretResult?.findings)
+          ? secretResult.findings
+          : [];
 
       report.scanners.push({
         scanner: "Gitleaks",
         findings: report.secrets.length,
       });
 
-      if (secretResult.skipped) {
-        gitleaksStatus = "SKIPPED";
+      /*
+      ------------------------------------------
+      Gitleaks findings
+      ------------------------------------------
+      */
 
-        await logger.warning(
-          deploymentId,
-          "GITLEAKS",
-          "Secret scan skipped."
+      if (report.secrets.length > 0) {
+        gitleaksStatus = "FAILED";
+
+        report.critical +=
+          report.secrets.length;
+
+        report.findings.push(
+          ...report.secrets.map((finding) => ({
+            scanner: "Gitleaks",
+            severity: "CRITICAL",
+            title:
+              finding.RuleID ||
+              "Secret detected",
+            file:
+              finding.File ||
+              "unknown",
+            line:
+              finding.StartLine ||
+              null,
+          }))
         );
-      } else if (report.secrets.length > 0) {
+
         await logger.error(
           deploymentId,
           "GITLEAKS",
           `${report.secrets.length} secret(s) detected`
         );
+      }
 
-        report.findings.push(
-          ...report.secrets.map((f) => ({
-            scanner: "Gitleaks",
-            severity: "CRITICAL",
-            title: f.RuleID,
-            file: f.File,
-            line: f.StartLine,
-          }))
+      /*
+      ------------------------------------------
+      Scanner execution failure
+      ------------------------------------------
+      */
+
+      else if (secretResult?.failed) {
+        gitleaksStatus = "FAILED";
+
+        await logger.error(
+          deploymentId,
+          "GITLEAKS",
+          `Secret scan failed with exit code ${secretResult.exitCode ?? "unknown"
+          }`
         );
-      } else {
+      }
+
+      /*
+      ------------------------------------------
+      Passed
+      ------------------------------------------
+      */
+
+      else {
         await logger.success(
           deploymentId,
           "GITLEAKS",
@@ -98,6 +134,11 @@ class SecurityEngine {
         `Gitleaks failed: ${err.message}`
       );
 
+      /*
+      Detailed technical information stays
+      outside the normal deployment log.
+      */
+
       await logger.detail(
         deploymentId,
         "GITLEAKS",
@@ -107,9 +148,9 @@ class SecurityEngine {
     }
 
     /*
-    ==========================================
+    ==================================================
     SONARQUBE
-    ==========================================
+    ==================================================
     */
 
     let sonarStatus = "SUCCESS";
@@ -137,21 +178,30 @@ class SecurityEngine {
 
       report.scanners.push(sonar);
 
-      report.findings.push({
-        scanner: "SonarQube",
-        severity: sonar.passed ? "INFO" : "HIGH",
-        title: "Quality Gate",
-      });
+      /*
+      ------------------------------------------
+      Record quality gate result
+      ------------------------------------------
+      */
 
       if (!sonar.passed) {
         report.high++;
+
+        report.findings.push({
+          scanner: "SonarQube",
+          severity: "HIGH",
+          title: "Quality Gate",
+        });
       }
 
       await logger.success(
         deploymentId,
         "SONARQUBE",
-        `Quality Gate: ${sonar.passed ? "PASSED" : "FAILED"
-        } | Bugs:${sonar.bugs} Vulnerabilities:${sonar.vulnerabilities} Coverage:${sonar.coverage}%`
+        `Quality Gate: ${sonar.passed
+          ? "PASSED"
+          : "FAILED"
+        } | Bugs:${sonar.bugs || 0} Vulnerabilities:${sonar.vulnerabilities || 0
+        } Coverage:${sonar.coverage || 0}%`
       );
     } catch (err) {
       sonarStatus = "FAILED";
@@ -171,9 +221,9 @@ class SecurityEngine {
     }
 
     /*
-    ==========================================
-    NPM AUDIT
-    ==========================================
+    ==================================================
+    DEPENDENCY AUDIT
+    ==================================================
     */
 
     let npmStatus = "SUCCESS";
@@ -184,26 +234,67 @@ class SecurityEngine {
       "Scanning project dependencies..."
     );
 
-    for (const node of graph.nodes) {
+    for (const node of graph.nodes || []) {
       try {
-        const audit = await npmAudit.scan(
-          node,
-          deploymentId
-        );
+        const audit =
+          await npmAudit.scan(
+            node,
+            deploymentId
+          );
 
-        if (!audit) continue;
+        if (!audit) {
+          continue;
+        }
 
-        report.critical += audit.critical || 0;
-        report.high += audit.high || 0;
-        report.medium += audit.medium || 0;
-        report.low += audit.low || 0;
+        const critical =
+          audit.critical || 0;
+
+        const high =
+          audit.high || 0;
+
+        const medium =
+          audit.medium || 0;
+
+        const low =
+          audit.low || 0;
+
+        report.critical += critical;
+        report.high += high;
+        report.medium += medium;
+        report.low += low;
 
         report.scanners.push(audit);
+
+        /*
+        ------------------------------------------
+        Dependency findings
+        ------------------------------------------
+        */
+
+        if (critical > 0) {
+          report.findings.push({
+            scanner: "npm-audit",
+            severity: "CRITICAL",
+            title:
+              `${critical} critical dependency vulnerability(ies)`,
+            project: node.name,
+          });
+        }
+
+        if (high > 0) {
+          report.findings.push({
+            scanner: "npm-audit",
+            severity: "HIGH",
+            title:
+              `${high} high dependency vulnerability(ies)`,
+            project: node.name,
+          });
+        }
 
         await logger.success(
           deploymentId,
           "DEPENDENCIES",
-          `Dependency scan completed | Critical:${audit.critical} High:${audit.high} Medium:${audit.medium} Low:${audit.low}`,
+          `Dependency scan completed | Critical:${critical} High:${high} Medium:${medium} Low:${low}`,
           node.name
         );
       } catch (err) {
@@ -211,13 +302,13 @@ class SecurityEngine {
 
         await logger.error(
           deploymentId,
-          "NPM_AUDIT",
-          `${node.name}: npm audit failed`
+          "DEPENDENCIES",
+          `${node.name}: dependency scan failed`
         );
 
         await logger.detail(
           deploymentId,
-          "NPM_AUDIT",
+          "DEPENDENCIES",
           "ERROR",
           err.stack || err.message,
           node.name
@@ -226,42 +317,68 @@ class SecurityEngine {
     }
 
     /*
-    ==========================================
-    SCORE
-    ==========================================
+    ==================================================
+    SONAR REPORT
+    ==================================================
     */
 
-    report.score -= report.secrets.length * 20;
-    report.score -= report.critical * 20;
-    report.score -= report.high * 10;
-    report.score -= report.medium * 5;
-    report.score -= report.low;
+    const sonarReport =
+      report.scanners.find(
+        (scanner) =>
+          scanner.scanner === "SonarQube"
+      );
 
-    const sonarReport = report.scanners.find(
-      (s) => s.scanner === "SonarQube"
-    );
+    /*
+    ==================================================
+    SCORE
+    ==================================================
+    */
+
+    report.score -=
+      report.secrets.length * 20;
+
+    /*
+    Critical vulnerabilities already include
+    Gitleaks findings.
+    */
+
+    report.score -=
+      report.critical * 20;
+
+    report.score -=
+      report.high * 10;
+
+    report.score -=
+      report.medium * 5;
+
+    report.score -=
+      report.low;
 
     if (sonarReport) {
       if (!sonarReport.passed) {
         report.score -= 15;
       }
 
-      if (sonarReport.coverage < 80) {
+      if (
+        typeof sonarReport.coverage ===
+        "number" &&
+        sonarReport.coverage < 80
+      ) {
         report.score -= 5;
       }
     }
 
     /*
-    ==========================================
+    ==================================================
     FAILED SCANNERS
-    ==========================================
+    ==================================================
     */
 
-    if (sonarStatus === "FAILED") {
+    if (gitleaksStatus === "FAILED") {
       report.passed = false;
     }
 
-    if (gitleaksStatus === "FAILED") {
+    if (sonarStatus === "FAILED") {
       report.passed = false;
     }
 
@@ -270,32 +387,42 @@ class SecurityEngine {
     }
 
     /*
-    ==========================================
+    ==================================================
     SECURITY GATE
-    ==========================================
+    ==================================================
     */
 
     if (
       report.secrets.length > 0 ||
       report.critical > 0 ||
-      (sonarReport && !sonarReport.passed)
+      (
+        sonarReport &&
+        !sonarReport.passed
+      )
     ) {
       report.passed = false;
     }
 
-    report.score = Math.max(report.score, 0);
+    report.score =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          report.score
+        )
+      );
 
     /*
-    ==========================================
-    SUMMARY
-    ==========================================
+    ==================================================
+    SECURITY SUMMARY
+    ==================================================
     */
 
-  await logger.success(
-  deploymentId,
-  "SECURITY",
-  `Security checks completed — score ${report.score}/100.`
-);
+    await logger.success(
+      deploymentId,
+      "SECURITY",
+      `Security checks completed — score ${report.score}/100.`
+    );
 
     await logger.success(
       deploymentId,
@@ -303,24 +430,35 @@ class SecurityEngine {
       `Secrets:${report.secrets.length} Critical:${report.critical} High:${report.high}`
     );
 
+    /*
+    ==================================================
+    METRICS
+    ==================================================
+    */
+
+    const metricProject =
+      graph.frontend?.name ||
+      graph.backend?.name ||
+      "project";
+
     metrics.securityScore
       .labels(deploymentId)
       .set(report.score);
 
     metrics.securityCritical
-      .labels(graph.frontend?.name || "project")
+      .labels(metricProject)
       .set(report.critical);
 
     metrics.securityHigh
-      .labels(graph.frontend?.name || "project")
+      .labels(metricProject)
       .set(report.high);
 
     metrics.securityMedium
-      .labels(graph.frontend?.name || "project")
+      .labels(metricProject)
       .set(report.medium);
 
     metrics.securityLow
-      .labels(graph.frontend?.name || "project")
+      .labels(metricProject)
       .set(report.low);
 
     metrics.securityScans.inc({
@@ -341,11 +479,13 @@ class SecurityEngine {
     metrics.securityDuration
       .labels("pipeline")
       .observe(
-        (Date.now() - securityStart) / 1000
+        (Date.now() - securityStart) /
+        1000
       );
 
     return report;
   }
 }
 
-module.exports = new SecurityEngine();
+module.exports =
+  new SecurityEngine();

@@ -267,8 +267,9 @@ class KubernetesDeployer {
             } else {
                 await logger.error(
                     deploymentId,
-                    "FAILURE",
-                    error.message
+                    "KUBERNETES",
+                    error.message,
+                    buildPlan.projectName
                 );
             }
             throw error;

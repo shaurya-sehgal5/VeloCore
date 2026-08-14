@@ -259,8 +259,9 @@ class StackEngine {
     for (const job of jobs) {
       await logger.info(
         deploymentId,
-        "DEPLOYMENT",
-        `Deploying ${job.buildPlan.projectName}`
+        "HELM",
+        `Deploying ${job.buildPlan.projectName}`,
+        job.buildPlan.projectName
       );
 
       const runtime = await deploymentEngine.deploy({
@@ -324,11 +325,6 @@ Register All Runtimes
           deployment.runtime.runtime
         );
 
-        await logger.success(
-          deploymentId,
-          "RUNTIME",
-          `Registered ${deployment.runtime.runtime.project}`
-        );
       } catch (err) {
         await logger.warning(
           deploymentId,

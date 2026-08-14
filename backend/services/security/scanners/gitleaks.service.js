@@ -114,10 +114,15 @@ class GitleaksService {
       );
     }
 
+    const exitCode = result.code ?? 0;
+
     return {
       skipped: false,
       findings,
       total: findings.length,
+      stderr: result.stderr,
+      exitCode,
+      failed: exitCode !== 0,
     };
   }
 }
