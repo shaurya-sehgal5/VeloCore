@@ -29,7 +29,7 @@ class KubernetesDeployer {
                 deploymentId,
                 "KUBERNETES",
                 "ERROR",
-                logs.slice(-4000),
+                output.slice(-4000),
                 buildPlan.projectName
             );
         } catch (err) {
@@ -67,8 +67,8 @@ class KubernetesDeployer {
             } catch (error) {
                 await logger.error(
                     deploymentId,
-                    "ROLLBACK",
-                    "Deployment failed. Rolling back..."
+                    "HELM",
+                    "Helm deployment failed."
                 );
                 throw error;
             }
@@ -210,85 +210,52 @@ class KubernetesDeployer {
 
             return {
                 deploymentId,
-
                 project: buildPlan.projectName,
-
                 engine: "kubernetes",
-
                 url: host ? `http://${host}` : null,
-
                 runtime: {
                     deploymentId,
-
-                    name: buildPlan.projectName,
-
                     project: buildPlan.projectName,
-
                     type: buildPlan.type,
-
                     route: host ? `http://${host}` : null,
-
                     framework: buildPlan.framework,
-
                     imageName: buildPlan.imageName,
-
                     containerName: pod.metadata.name,
-
                     namespace: buildPlan.namespace,
-
                     deployment: workloadName,
-
                     service: service?.metadata?.name || null,
-
                     pod: pod.metadata.name,
-
                     branch: buildPlan.branch,
-
                     containerPort:
                         service?.spec?.ports?.[0]?.port ||
                         (buildPlan.type === "worker"
                             ? null
                             : buildPlan.containerPort) ||
                         null,
-
                     slot: buildPlan.slot,
-
                     engine: "kubernetes",
                 },
             };
-
         } catch (error) {
-
             const failure = analyzer.analyze(error.message);
 
             if (failure) {
 
                 await logger.error(
                     deploymentId,
-                    "FAILURE",
-                    `${failure.code}: ${failure.reason}`
+                    "KUBERNETES",
+                    `${failure.code}: ${failure.reason}`,
+                    buildPlan.projectName
                 );
-
-                await logger.warning(
-                    deploymentId,
-                    "SUGGESTION",
-                    failure.suggestion
-                );
-
             } else {
-
                 await logger.error(
                     deploymentId,
                     "FAILURE",
                     error.message
                 );
-
             }
-
             throw error;
-
         }
-
     }
 }
 

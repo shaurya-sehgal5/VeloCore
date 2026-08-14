@@ -1,9 +1,8 @@
 const dockerService = require("../docker/docker.service");
-const trivyService = require("../security/scanners/trivy.service");
 const logger = require("../monitoring/logger.service");
 const statusService = require("../monitoring/status.service");
 const metrics = require("../monitoring/metrics.service");
-const { ensureDockerignore, } = require("../../utils/dockerignore.util");
+const { ensureDockerignore } = require("../../utils/dockerignore.util");
 const buildMetadata = require("../monitoring/build-metadata.service");
 const { exec } = require("child_process");
 const util = require("util");
@@ -30,6 +29,7 @@ class BuildEngine {
       "BUILD_STARTED",
       "BUILD",
       `Building ${buildPlan.projectName}`,
+      buildPlan.projectName
     );
 
     await deploymentEvents.emit({
@@ -52,7 +52,7 @@ class BuildEngine {
       await logger.info(
         deploymentId,
         "BUILD",
-        "Generated default .dockerignore",
+        "Generated default .dockerignore.",
         buildPlan.projectName
       );
     }
@@ -60,13 +60,13 @@ class BuildEngine {
     await logger.info(
       deploymentId,
       "BUILD",
-      `Building ${buildPlan.projectName} (${buildPlan.framework})`,
+      `Building ${buildPlan.projectName} (${buildPlan.framework}).`,
       buildPlan.projectName
     );
 
     /*
     ==========================================
-    1. BUILD IMAGE
+    BUILD IMAGE
     ==========================================
     */
 
@@ -85,103 +85,38 @@ class BuildEngine {
         buildPlan.buildContext,
 
       deploymentId,
+
+      projectName:
+        buildPlan.projectName,
     });
+
+    /*
+    ==========================================
+    VERIFY IMAGE
+    ==========================================
+    */
+
+    await execAsync(
+      `docker image inspect ${buildPlan.imageName} --format '{{json .Config.Cmd}} {{json .Config.Entrypoint}} {{json .Config.ExposedPorts}}'`
+    );
 
     await logger.success(
       deploymentId,
       "BUILD",
-      `Docker image built: ${buildPlan.imageName}`,
+      `${buildPlan.projectName} — Docker image built successfully.`,
       buildPlan.projectName
     );
-
-    /*
-    ==========================================
-    2. INSPECT IMAGE
-    ==========================================
-    */
-
-    const inspectAfterBuild =
-      await execAsync(
-        `docker image inspect ${buildPlan.imageName} --format '{{json .Config.Cmd}} {{json .Config.Entrypoint}} {{json .Config.ExposedPorts}}'`
-      );
 
     await logger.info(
       deploymentId,
       "BUILD",
-      `Image configuration verified.`,
+      `${buildPlan.projectName} — image configuration verified.`,
       buildPlan.projectName
     );
 
     /*
     ==========================================
-    3. TRIVY SECURITY SCAN
-    ==========================================
-    */
-
-    const securityReport = {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-      findings: [],
-      scanners: [],
-    };
-
-    await logger.info(
-      deploymentId,
-      "TRIVY",
-      `Scanning built image ${buildPlan.imageName}...`,
-      buildPlan.projectName
-    );
-
-    await trivyService.scan({
-      deploymentId,
-      projectName: buildPlan.projectName,
-      image: buildPlan.imageName,
-      report: securityReport,
-    });
-
-    if (securityReport.critical > 0) {
-      throw new Error(
-        `Security gate failed: ${securityReport.critical} critical vulnerabilities found`
-      );
-    }
-
-    await logger.success(
-      deploymentId,
-      "TRIVY",
-      `Image security verified | Critical:${securityReport.critical} High:${securityReport.high} Medium:${securityReport.medium} Low:${securityReport.low}`,
-      buildPlan.projectName
-    );
-
-    /*
-    ==========================================
-    5. PUSH ONLY AFTER SECURITY PASSES
-    ==========================================
-    */
-
-    await logger.info(
-      deploymentId,
-      "REGISTRY",
-      `Pushing ${buildPlan.imageName}...`,
-      buildPlan.projectName
-    );
-
-    await dockerService.pushImage(
-      buildPlan.imageName,
-      deploymentId
-    );
-
-    await logger.success(
-      deploymentId,
-      "REGISTRY",
-      `Image pushed successfully.`,
-      buildPlan.projectName
-    );
-
-    /*
-    ==========================================
-    6. IMAGE METADATA
+    IMAGE METADATA
     ==========================================
     */
 
@@ -222,10 +157,10 @@ class BuildEngine {
       .labels(buildPlan.projectName)
       .observe(duration);
 
-    await logger.success(
+    await logger.info(
       deploymentId,
       "BUILD",
-      `Build pipeline completed in ${duration.toFixed(2)}s`,
+      `${buildPlan.projectName} — completed in ${duration.toFixed(1)}s.`,
       buildPlan.projectName
     );
 
@@ -233,9 +168,16 @@ class BuildEngine {
       deploymentId,
       event: "BUILD_COMPLETED",
       message:
-        `${buildPlan.projectName} image built, scanned and pushed`
+        `${buildPlan.projectName} image built`
     });
+
+    return {
+      imageName: buildPlan.imageName,
+      imageSize,
+      duration,
+    };
   }
 }
 
-module.exports = new BuildEngine();
+module.exports =
+  new BuildEngine();

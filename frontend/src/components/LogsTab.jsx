@@ -27,67 +27,63 @@ const STATUS_LABEL = {
   INFO: "Running",
 };
 
-const STAGE_DEFS = [
-  {
-    key: "WORKSPACE",
-    label: "Workspace",
-    match: ["WORKSPACE"],
-  },
-
-  {
-    key: "REPOSITORY",
+const STAGE_DEFS = {
+  REPOSITORY: {
     label: "Repository",
-    match: ["REPOSITORY", "CLONE", "GIT"],
   },
 
-  {
-    key: "ANALYSIS",
+  ANALYSIS: {
     label: "Analysis",
-    match: ["ANALYSIS"],
   },
 
-  {
-    key: "SECURITY",
-    label: "Security",
-    match: ["SECURITY"],
+  GITLEAKS: {
+    label: "Gitleaks",
   },
 
-  {
-    key: "BUILD",
+  SONARQUBE: {
+    label: "SonarQube",
+  },
+
+  DEPENDENCIES: {
+    label: "Dependencies",
+  },
+
+  BUILD: {
     label: "Build",
-    match: ["BUILD", "DOCKER", "NPM"],
   },
 
-  {
-    key: "REGISTRY",
+  DOCKER: {
+    label: "Docker",
+  },
+
+  TRIVY: {
+    label: "Trivy",
+  },
+
+  REGISTRY: {
     label: "Registry",
-    match: ["REGISTRY"],
   },
 
-  {
-    key: "KUBERNETES",
+  HELM: {
+    label: "Helm",
+  },
+
+  KUBERNETES: {
     label: "Kubernetes",
-    match: ["KUBERNETES", "HELM", "HELM_STDOUT", "KUBECTL_STDOUT"],
   },
 
-  {
-    key: "ROLLOUT",
-    label: "Rollout",
-    match: ["ROLLOUT"],
+  HEALTH: {
+    label: "Health",
   },
 
-  {
-    key: "RUNTIME",
+  RUNTIME: {
     label: "Runtime",
-    match: ["RUNTIME"],
   },
 
-  {
-    key: "DEPLOYMENT",
-    label: "Deployment",
-    match: ["DEPLOYMENT"],
+  ROLLBACK: {
+    label: "Rollback",
   },
-];
+};
 
 const STAGE_LOOKUP = {};
 STAGE_DEFS.forEach((def) => {

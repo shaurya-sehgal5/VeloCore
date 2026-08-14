@@ -139,6 +139,7 @@ class DockerService {
     context,
     buildContext,
     deploymentId,
+    projectName,
   }) {
     const fs = require("fs");
 
@@ -203,7 +204,8 @@ class DockerService {
         context,
       ],
       deploymentId,
-      "BUILD"
+      "BUILD",
+      projectName
     );
   }
 

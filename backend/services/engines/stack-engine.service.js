@@ -14,6 +14,7 @@ const runtimeRegistry = require("../runtime/runtime-registry.service");
 const runtimeManager = require("../runtime/runtime-manager.service");
 const config = require("../../config/env");
 const metrics = require("../monitoring/metrics.service")
+const dockerService = require("../docker/docker.service");
 
 class StackEngine {
   async deploy({
@@ -129,35 +130,70 @@ class StackEngine {
     ------------------------------------
     */
 
-    await Promise.all(
-      jobs.map(async (job) => {
-        try {
-          await logger.info(
-            deploymentId,
-            "SECURITY",
-            `Scanning ${job.buildPlan.projectName}`
-          );
+    /*
+   ------------------------------------
+   Phase 2 - Trivy Image Security
+   ------------------------------------
+   */
 
-          await deploymentEvents.emit({
-            deploymentId,
-            event: "SECURITY_SCAN_STARTED",
-            message: "Image security scan started",
-          });
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "SECURITY_SCAN_STARTED",
+      message: "Container image security scan started",
+    });
 
-          await trivyService.scan({
-            deploymentId,
-            image: job.buildPlan.imageName,
-            report: securityReport,
-          });
-        } catch (err) {
-          await logger.warning(
-            deploymentId,
-            "SECURITY",
-            `Trivy skipped for ${job.buildPlan.projectName}: ${err.message}`
-          );
-        }
-      })
+    await logger.info(
+      deploymentId,
+      "TRIVY",
+      "Starting container image security scan."
     );
+
+    if (securityReport.critical > 0) {
+
+      await logger.error(
+        deploymentId,
+        "TRIVY",
+        `Security gate failed — ${securityReport.critical} critical vulnerabilities found.`
+      );
+
+      throw new Error(
+        `Security gate failed: ${securityReport.critical} critical vulnerabilities found`
+      );
+    }
+
+    await logger.success(
+      deploymentId,
+      "TRIVY",
+      `Security scan passed — Critical:${securityReport.critical} High:${securityReport.high} Medium:${securityReport.medium} Low:${securityReport.low}`
+    );
+
+    await deploymentEvents.emit({
+      deploymentId,
+      event: "SECURITY_SCAN_COMPLETED",
+      message: "Container image security scan completed"
+    });
+
+    for (const job of jobs) {
+
+      await logger.info(
+        deploymentId,
+        "REGISTRY",
+        `Pushing ${job.buildPlan.projectName} image.`,
+        job.buildPlan.projectName
+      );
+
+      await dockerService.pushImage(
+        job.buildPlan.imageName,
+        deploymentId
+      );
+
+      await logger.success(
+        deploymentId,
+        "REGISTRY",
+        `${job.buildPlan.projectName} — image pushed successfully.`,
+        job.buildPlan.projectName
+      );
+    }
 
     /*
     ------------------------------------
@@ -182,21 +218,11 @@ class StackEngine {
       securityReport.secrets.length === 0 &&
       securityReport.critical === 0;
 
-    /*
-    ------------------------------------
-    Save Security Report
-    ------------------------------------
-    */
     await securityReportService.save(
       deploymentId,
       securityReport
     );
 
-    await logger.success(
-      deploymentId,
-      "SECURITY",
-      "Security report saved."
-    );
     await deploymentEvents.emit({
       deploymentId,
       event: "SECURITY_SCAN_COMPLETED",
@@ -207,7 +233,7 @@ class StackEngine {
 
     /*
     ------------------------------------
-    Phase 3 - Deploy
+    Phase 4 - Deploy
     ------------------------------------
     */
     await deploymentEvents.emit({

@@ -235,21 +235,21 @@ class TrivyScanner {
     await logger.success(
       deploymentId,
       "TRIVY",
-      `Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`,
+      `${image} — Critical:${report.critical} High:${report.high} Medium:${report.medium} Low:${report.low}`,
+      projectName
+    );
+
+    await logger.info(
+      deploymentId,
+      "TRIVY",
+      `Scanned ${result.Results.length} target(s).`,
       projectName
     );
 
     await logger.success(
       deploymentId,
       "TRIVY",
-      `Packages scanned: ${result.Results.length}`,
-      projectName
-    );
-
-    await logger.success(
-      deploymentId,
-      "TRIVY",
-      "Image scan completed",
+      "Image security scan completed.",
       projectName
     );
   }

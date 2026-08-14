@@ -5,7 +5,14 @@ const loki = require("./loki/loki.service");
 
 class LoggerService {
   constructor() {
-    this.rawStages = new Set();
+    this.rawStages = new Set([
+      "DOCKER",
+      "HELM_STDOUT",
+      "KUBECTL_STDOUT",
+      "NPM",
+      "GIT",
+      "AUDIT",
+    ]);
 
     this.dbEvents = new Set([
       "DEPLOYMENT_STARTED",

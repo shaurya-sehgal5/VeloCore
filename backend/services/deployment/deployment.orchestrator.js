@@ -35,11 +35,6 @@ class DeploymentOrchestrator {
         totalTime: 0,
         status: "RUNNING",
       };
-      const stageTimers = {};
-
-      const startStage = (name) => {
-        stageTimers[name] = Date.now();
-      };
 
       const endStage = async (name) => {
         const duration =
@@ -105,10 +100,9 @@ class DeploymentOrchestrator {
       );
       const repositoryPath = gitResult.workspace;
       await endStage("Clone");
-      await logger.milestone(
+      await logger.success(
         deploymentId,
-        "REPOSITORY_CLONED",
-        "WORKSPACE",
+        "REPOSITORY",
         "Repository cloned."
       );
 
@@ -123,17 +117,14 @@ class DeploymentOrchestrator {
       repository.commitEmail = gitResult.commitEmail;
       repository.commitDate = gitResult.commitDate;
       await endStage("Repository Scan");
-      await logger.milestone(
+      await logger.success(
         deploymentId,
-        "REPOSITORY_ANALYZED",
         "ANALYSIS",
-        `${repository.projects.length} project(s) detected`
+        `${repository.projects.length} project(s) detected.`
       );
       startStage("Dependency Graph");
 
       const graph = repositoryGraph.build(repository);
-
-      await endStage("Dependency Graph");
 
       startStage("Security");
 
@@ -157,24 +148,17 @@ class DeploymentOrchestrator {
       metrics.securityMedium.labels(repository.name).set(securityReport.medium || 0);
 
       metrics.securityLow.labels(repository.name).set(securityReport.low || 0);
-      await endStage("Security");
-      await logger.milestone(
-        deploymentId,
-        "SECURITY_COMPLETED",
-        "SECURITY",
-        "Security scan completed."
-      );
-      await endStage("Dependency Graph");
       await logger.success(
         deploymentId,
         "ANALYSIS",
         "Deployment graph created."
       );
+
       if (graph.frontend) {
         await logger.success(
           deploymentId,
           "ANALYSIS",
-          `Frontend : ${graph.frontend.name}`
+          `Frontend: ${graph.frontend.name}`
         );
       }
 
@@ -182,16 +166,15 @@ class DeploymentOrchestrator {
         await logger.success(
           deploymentId,
           "ANALYSIS",
-          `Backend : ${graph.backend.name}`
+          `Backend: ${graph.backend.name}`
         );
       }
 
       await logger.success(
         deploymentId,
         "ANALYSIS",
-        `Workers : ${graph.workers.length}`
+        `Workers: ${graph.workers.length}`
       );
-      startStage("Deployment");
       const deployments = await stackEngine.deploy({
         graph,
         deploymentId,
@@ -200,9 +183,6 @@ class DeploymentOrchestrator {
         env,
         securityReport,
       });
-      summary.buildTime = (Date.now() - stageTimers.Deployment) / 1000;
-
-      await endStage("Deployment");
       await logger.milestone(
         deploymentId,
         "BUILD_COMPLETED",

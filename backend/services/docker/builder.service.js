@@ -78,11 +78,6 @@ class BuilderService {
       };
     }
 
-    /*
-    ------------------------------------
-    Framework Templates
-    ------------------------------------
-    */
     switch (project.framework) {
       // -----------------------------
       // Frontend

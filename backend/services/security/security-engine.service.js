@@ -159,7 +159,7 @@ class SecurityEngine {
       await logger.error(
         deploymentId,
         "SONARQUBE",
-        `SonarQube failed: ${err.message}`
+        "SonarQube analysis failed."
       );
 
       await logger.detail(
@@ -180,7 +180,7 @@ class SecurityEngine {
 
     await logger.info(
       deploymentId,
-      "NPM_AUDIT",
+      "DEPENDENCIES",
       "Scanning project dependencies..."
     );
 
@@ -202,7 +202,7 @@ class SecurityEngine {
 
         await logger.success(
           deploymentId,
-          "NPM_AUDIT",
+          "DEPENDENCIES",
           `Dependency scan completed | Critical:${audit.critical} High:${audit.high} Medium:${audit.medium} Low:${audit.low}`,
           node.name
         );
@@ -291,12 +291,11 @@ class SecurityEngine {
     ==========================================
     */
 
-    await logger.milestone(
-      deploymentId,
-      "SECURITY_COMPLETED",
-      "SECURITY",
-      `Security Score: ${report.score}/100`
-    );
+  await logger.success(
+  deploymentId,
+  "SECURITY",
+  `Security checks completed — score ${report.score}/100.`
+);
 
     await logger.success(
       deploymentId,
