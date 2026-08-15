@@ -257,13 +257,6 @@ class StackEngine {
     });
 
     for (const job of jobs) {
-      await logger.info(
-        deploymentId,
-        "HELM",
-        `Deploying ${job.buildPlan.projectName}`,
-        job.buildPlan.projectName
-      );
-
       const runtime = await deploymentEngine.deploy({
         engine:
           config.RUNTIME_ENGINE || "docker",

@@ -43,7 +43,7 @@ class KubernetesDeployer {
     }
 
     async deploy({
-
+        env = {},
         deploymentId,
         buildPlan,
         rollback = false,
@@ -62,7 +62,8 @@ class KubernetesDeployer {
             try {
                 await helm.install({
                     deploymentId,
-                    buildPlan
+                    buildPlan,
+                    env
                 });
             } catch (error) {
                 await logger.error(

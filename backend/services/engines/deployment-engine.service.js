@@ -9,23 +9,28 @@ class DeploymentEngine {
       return kubernetesEngine.deploy(
         options.buildPlan,
         options.deploymentId,
+        options.env || {}
       );
     }
+
     const runtime = await runtimeProvider.create(options);
 
     await deploymentEvents.emit({
       deploymentId: options.deploymentId,
       event: "RUNTIME_CREATED",
-      message: `${options.engine} runtime created`
+      message: `${options.engine} runtime created`,
     });
+
     runtimePipeline.start(runtime).catch((err) => {
       console.error("Runtime pipeline failed:", err);
     });
+
     await deploymentEvents.emit({
       deploymentId: options.deploymentId,
       event: "RUNTIME_PIPELINE_STARTED",
-      message: "Runtime monitoring pipeline started"
+      message: "Runtime monitoring pipeline started",
     });
+
     return runtime;
   }
 }

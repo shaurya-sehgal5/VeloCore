@@ -8,7 +8,8 @@ class HelmService {
 
     async install({
         deploymentId,
-        buildPlan
+        buildPlan,
+        env: userEnv = {},
     }) {
 
         const shortId =
@@ -32,6 +33,7 @@ class HelmService {
 
         const env = {
             NODE_ENV: "production",
+            ...userEnv,
         };
 
         /*
