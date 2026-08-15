@@ -15,9 +15,21 @@ spec:
       http:
         paths:
 
-          {{- if .Values.backend.enabled }}
+          {{- if and .Values.backend .Values.backend.serviceName }}
 
           - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.backend.serviceName }}
+                port:
+                  number: {{ .Values.backend.servicePort }}
+
+          {{- end }}
+
+          {{- if and .Values.backend .Values.backend.serviceName }}
+
+          - path: /socket.io
             pathType: Prefix
             backend:
               service:

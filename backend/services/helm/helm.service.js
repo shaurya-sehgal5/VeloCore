@@ -86,15 +86,15 @@ class HelmService {
                 "production";
 
             if (
-                buildPlan.backendServiceName
+                buildPlan.backend?.enabled &&
+                buildPlan.backend?.serviceName
             ) {
-
                 env.BACKEND_HOST =
-                    buildPlan.backendServiceName;
+                    buildPlan.backend.serviceName;
 
                 env.BACKEND_PORT =
                     String(
-                        buildPlan.backendPort ||
+                        buildPlan.backend.servicePort ||
                         8080
                     );
             }
@@ -172,9 +172,12 @@ service:
   port: ${buildPlan.containerPort || 0}
 
 backend:
-  enabled: ${Boolean(buildPlan.backendServiceName)}
-  serviceName: ${buildPlan.backendServiceName || ""}
-  servicePort: ${buildPlan.backendPort || 0}
+  enabled: ${Boolean(
+            buildPlan.backend?.enabled &&
+            buildPlan.backend?.serviceName
+        )}
+  serviceName: ${buildPlan.backend?.serviceName || ""}
+  servicePort: ${buildPlan.backend?.servicePort || 0}
 
 ingress:
   enabled: ${isFrontend}
