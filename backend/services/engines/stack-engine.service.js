@@ -262,6 +262,13 @@ class StackEngine {
     });
 
     for (const job of jobs) {
+      const runtimeEnv =
+        job.buildPlan.type === "frontend"
+          ? (env?.frontend || {})
+          : job.buildPlan.type === "backend"
+            ? (env?.backend || {})
+            : {};
+
       const runtime = await deploymentEngine.deploy({
         engine:
           config.RUNTIME_ENGINE || "docker",
@@ -276,7 +283,7 @@ class StackEngine {
 
         buildPlan: job.buildPlan,
 
-        env,
+        env: runtimeEnv,
       });
 
       deployments.push({
