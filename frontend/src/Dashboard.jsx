@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { DASH_BASE, ENV_BASE, MONO, FREE_TIER_LIMIT } from "./config";
-import { genId, rowsToObject } from "./utils";
 import { isBusyStatus } from "./statusMeta";
 import useDeployments from "./hooks/useDeployments";
 import useLiveLogs from "./hooks/useLiveLogs";
@@ -12,6 +11,7 @@ import SettingsTab from "./components/SettingsTab";
 import DeployModal from "./components/DeployModal";
 import Modal from "./components/Modal";
 import PlatformMonitoringTab from "./components/PlatformMonitoringTab";
+import { genId, rowsToObject, parseEnvFile } from "./utils";
 
 const DEFAULT_ENV_ROWS = () => [
   { id: genId(), key: "VITE_API_URL", value: "" },
@@ -63,32 +63,45 @@ export default function Dashboard({
   const [showLimitPopup, setShowLimitPopup] = useState(false);
   const [deployModalRepo, setDeployModalRepo] = useState(null);
   const [projectName, setProjectName] = useState("");
-  const [modalEnvRows, setModalEnvRows] = useState([]);
+  const [frontendEnvRows, setFrontendEnvRows] = useState([]);
+  const [backendEnvRows, setBackendEnvRows] = useState([]);
+  const [frontendEnvText, setFrontendEnvText] = useState("");
+  const [backendEnvText, setBackendEnvText] = useState("");
   const [deployingModal, setDeployingModal] = useState(false);
 
   const handleDeployClick = (repo) => {
     if (activeCount >= FREE_TIER_LIMIT) return setShowLimitPopup(true);
     setDeployModalRepo(repo);
     setProjectName(repo.name);
-    setModalEnvRows(DEFAULT_ENV_ROWS());
+    setFrontendEnvRows([]);
+    setBackendEnvRows([]);
+    setFrontendEnvText("");
+    setBackendEnvText("");
     setShowDeployModal(true);
   };
-
   const handleConfirmDeploy = async () => {
     if (!deployModalRepo) return;
+
     setDeployingModal(true);
+
     try {
-      const envVars = rowsToObject(modalEnvRows);
+      const frontendEnv = parseEnvFile(frontendEnvText);
+      const backendEnv = parseEnvFile(backendEnvText);
 
       const buildData = await onDeploy(
         deployModalRepo.name,
         deployModalRepo.clone_url,
         projectName,
-        envVars,
+        {
+          frontend: frontendEnv,
+          backend: backendEnv,
+        },
       );
+
       if (!buildData?.deploymentId) {
         throw new Error("Backend did not return a valid deploymentId.");
       }
+
       setShowDeployModal(false);
       handleGoToLogs(buildData.deploymentId);
     } catch (err) {
@@ -98,7 +111,33 @@ export default function Dashboard({
       setDeployingModal(false);
     }
   };
+  const handleFrontendEnvChange = (text) => {
+    setFrontendEnvText(text);
 
+    const parsed = parseEnvFile(text);
+
+    setFrontendEnvRows(
+      Object.entries(parsed).map(([key, value]) => ({
+        id: genId(),
+        key,
+        value,
+      })),
+    );
+  };
+
+  const handleBackendEnvChange = (text) => {
+    setBackendEnvText(text);
+
+    const parsed = parseEnvFile(text);
+
+    setBackendEnvRows(
+      Object.entries(parsed).map(([key, value]) => ({
+        id: genId(),
+        key,
+        value,
+      })),
+    );
+  };
   // ---------- delete account ----------
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] =
     useState(false);
@@ -343,21 +382,10 @@ export default function Dashboard({
           repo={deployModalRepo}
           projectName={projectName}
           onProjectNameChange={setProjectName}
-          envRows={modalEnvRows}
-          onChangeRow={(id, field, val) =>
-            setModalEnvRows((prev) =>
-              prev.map((r) => (r.id === id ? { ...r, [field]: val } : r)),
-            )
-          }
-          onAddRow={() =>
-            setModalEnvRows((prev) => [
-              ...prev,
-              { id: genId(), key: "", value: "" },
-            ])
-          }
-          onRemoveRow={(id) =>
-            setModalEnvRows((prev) => prev.filter((r) => r.id !== id))
-          }
+          frontendEnvText={frontendEnvText}
+          backendEnvText={backendEnvText}
+          onFrontendEnvChange={handleFrontendEnvChange}
+          onBackendEnvChange={handleBackendEnvChange}
           deploying={deployingModal}
           onCancel={() => setShowDeployModal(false)}
           onConfirm={handleConfirmDeploy}
