@@ -82,12 +82,42 @@ const STAGE_DEFS = [
   },
 ];
 
-const STAGE_LOOKUP = {};
+const STAGE_LOOKUP = {
+  REPOSITORY: "REPOSITORY",
+  WORKSPACE: "REPOSITORY",
+
+  ANALYSIS: "ANALYSIS",
+  "REPOSITORY SCAN": "ANALYSIS",
+  "DEPENDENCY GRAPH": "ANALYSIS",
+
+  GITLEAKS: "GITLEAKS",
+
+  SONARQUBE: "SONARQUBE",
+
+  DEPENDENCIES: "DEPENDENCIES",
+  NPM_AUDIT: "DEPENDENCIES",
+
+  BUILD: "BUILD",
+
+  TRIVY: "TRIVY",
+
+  REGISTRY: "REGISTRY",
+
+  HELM: "HELM",
+
+  KUBERNETES: "KUBERNETES",
+
+  HEALTH: "HEALTH",
+
+  RUNTIME: "RUNTIME",
+
+  SUMMARY: "SUMMARY",
+
+  DEPLOYMENT: "HELM",
+};
 
 STAGE_DEFS.forEach((def) => {
-  def.match.forEach((raw) => {
-    STAGE_LOOKUP[raw] = def.key;
-  });
+  STAGE_LOOKUP[def.key] = def.key;
 });
 
 function canonicalStageKey(rawStage) {
