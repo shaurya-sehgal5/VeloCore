@@ -16,7 +16,7 @@ import PlatformMonitoringTab from "./components/PlatformMonitoringTab";
 const DEFAULT_ENV_ROWS = () => [
   { id: genId(), key: "VITE_API_URL", value: "" },
   { id: genId(), key: "PORT", value: "8080" },
-  { id: genId(), key: "DATABASE_URL", value: "" },
+  { id: genId(), key: "MONGODB_URI", value: "" },
   { id: genId(), key: "JWT_SECRET", value: "" },
 ];
 
@@ -78,19 +78,17 @@ export default function Dashboard({
     if (!deployModalRepo) return;
     setDeployingModal(true);
     try {
+      const envVars = rowsToObject(modalEnvRows);
+
       const buildData = await onDeploy(
         deployModalRepo.name,
         deployModalRepo.clone_url,
         projectName,
+        envVars,
       );
-      if (!buildData?.deploymentId)
+      if (!buildData?.deploymentId) {
         throw new Error("Backend did not return a valid deploymentId.");
-      await fetch(`${ENV_BASE}/${buildData.deploymentId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(rowsToObject(modalEnvRows)),
-      });
+      }
       setShowDeployModal(false);
       handleGoToLogs(buildData.deploymentId);
     } catch (err) {

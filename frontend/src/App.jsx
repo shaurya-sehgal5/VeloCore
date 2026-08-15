@@ -84,7 +84,12 @@ function App() {
       `&scope=repo`;
   };
 
-  const handleDeployRepository = async (repoName, cloneUrl, projectName) => {
+  const handleDeployRepository = async (
+    repoName,
+    cloneUrl,
+    projectName,
+    envVars = {},
+  ) => {
     setError(null);
 
     try {
@@ -98,6 +103,7 @@ function App() {
           repoName,
           cloneUrl,
           projectName,
+          envVars,
         }),
       });
 
@@ -108,6 +114,7 @@ function App() {
       }
 
       console.log("Deployment response:", data);
+
       return data;
     } catch (err) {
       setError(`Deployment failed: ${err.message}`);
