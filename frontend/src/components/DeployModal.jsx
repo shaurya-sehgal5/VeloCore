@@ -51,7 +51,8 @@ const primaryBtnStyle = {
   borderRadius: "7px",
   cursor: "pointer",
 };
-function EnvPasteBox({ title, value, onChange }) {
+
+function EnvPasteBox({ title, value, onChange, placeholder }) {
   const variableCount = value
     ? value.split(/\r?\n/).filter((line) => {
         const trimmed = line.trim();
@@ -65,8 +66,11 @@ function EnvPasteBox({ title, value, onChange }) {
         border: "1px solid rgba(255,255,255,0.08)",
         borderRadius: "10px",
         padding: "14px",
-        marginBottom: "14px",
         background: "rgba(255,255,255,0.015)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -83,6 +87,7 @@ function EnvPasteBox({ title, value, onChange }) {
             fontFamily: MONO,
             color: "#3ecf8e",
             textTransform: "uppercase",
+            letterSpacing: "0.03em",
           }}
         >
           {title}
@@ -94,9 +99,14 @@ function EnvPasteBox({ title, value, onChange }) {
               fontSize: "10px",
               fontFamily: MONO,
               color: "#71717a",
+              backgroundColor: "rgba(62,207,142,0.08)",
+              border: "1px solid rgba(62,207,142,0.2)",
+              borderRadius: "5px",
+              padding: "2px 7px",
+              whiteSpace: "nowrap",
             }}
           >
-            {variableCount} variables detected
+            {variableCount} {variableCount === 1 ? "variable" : "variables"}
           </span>
         )}
       </div>
@@ -104,16 +114,12 @@ function EnvPasteBox({ title, value, onChange }) {
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={`Paste ${title.toLowerCase()} here...
-
-MONGODB_URI=mongodb+srv://...
-PORT=8080
-JWT_SECRET=...
-`}
+        placeholder={placeholder}
         spellCheck={false}
         style={{
           width: "100%",
-          minHeight: "160px",
+          flex: 1,
+          minHeight: "220px",
           resize: "vertical",
           boxSizing: "border-box",
           background: "#050505",
@@ -131,9 +137,10 @@ JWT_SECRET=...
       <div
         style={{
           marginTop: "8px",
-          fontSize: "11px",
+          fontSize: "10.5px",
           color: "#52525b",
           fontFamily: MONO,
+          lineHeight: 1.5,
         }}
       >
         Paste your complete .env file. VeloCore automatically extracts each
@@ -142,6 +149,18 @@ JWT_SECRET=...
     </div>
   );
 }
+
+const FRONTEND_PLACEHOLDER = `VITE_API_URL=https://api.yourapp.com
+VITE_STRIPE_PUBLIC_KEY=pk_live_...
+VITE_GA_MEASUREMENT_ID=G-XXXXXXX
+NODE_ENV=production`;
+
+const BACKEND_PLACEHOLDER = `MONGODB_URI=mongodb+srv://...
+PORT=8080
+JWT_SECRET=...
+STRIPE_SECRET_KEY=sk_live_...
+CORS_ORIGIN=https://yourapp.com`;
+
 export default function DeployModal({
   repo,
   projectName,
@@ -159,7 +178,7 @@ export default function DeployModal({
 }) {
   if (!repo) return null;
   return (
-    <Modal maxWidth="560px">
+    <Modal maxWidth="820px">
       <h3 style={titleStyle}>Deployment Configuration</h3>
 
       <label style={labelStyle}>Project Name</label>
@@ -175,21 +194,24 @@ export default function DeployModal({
 
       <div
         style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "14px",
           maxHeight: "430px",
-          overflowY: "auto",
-          paddingRight: "4px",
         }}
       >
         <EnvPasteBox
           title="Frontend .env"
           value={frontendEnvText}
           onChange={onFrontendEnvChange}
+          placeholder={FRONTEND_PLACEHOLDER}
         />
 
         <EnvPasteBox
           title="Backend .env"
           value={backendEnvText}
           onChange={onBackendEnvChange}
+          placeholder={BACKEND_PLACEHOLDER}
         />
       </div>
 
