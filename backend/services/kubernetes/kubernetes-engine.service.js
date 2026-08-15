@@ -1,7 +1,7 @@
-
 const platformRollback = require("../deployment/platform-rollback.service");
 const kubernetesDeployer = require("./kubernetes-deployer.service");
-const logger = require("../monitoring/logger.service")
+const logger = require("../monitoring/logger.service");
+
 class KubernetesEngine {
   async deploy(buildPlan, deploymentId, env = {}) {
     await logger.info(

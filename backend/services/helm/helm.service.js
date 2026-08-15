@@ -33,7 +33,8 @@ class HelmService {
 
         const env = {
             NODE_ENV: "production",
-            ...userEnv,
+            ...(buildPlan.env || {}),
+            ...(userEnv || {}),
         };
 
         /*

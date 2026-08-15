@@ -61,6 +61,11 @@ class StackEngine {
             slot
           );
 
+        buildPlan.env = {
+          ...(buildPlan.env || {}),
+          ...(env || {}),
+        };
+
         /*
         ------------------------------------
         Frontend → Backend service discovery
