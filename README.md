@@ -504,11 +504,10 @@ Health checks run against new pods
 **🚧 In Progress**
 
 - Blue-green deployments
-- Custom domains
+- Canary deployments
 
 **📌 Planned**
 
-- Canary deployments
 - Horizontal Pod Autoscaler integration
 - Service mesh (Istio/Linkerd)
 - Multi-cluster support
