@@ -26,7 +26,7 @@ _Push code. VeloCore handles the Dockerfile, the Helm chart, the rollout, the mo
 ---
 
 ## Highlights
-
+ 
 <div align="center">
 
 |      170+       |         35+         |        17        |          4           |          3          |    100%     |
