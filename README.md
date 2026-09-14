@@ -37,7 +37,7 @@ _Push code. VeloCore handles the Dockerfile, the Helm chart, the rollout, the mo
 
 ---
 
-## About VeloCore
+## About VeloCore 
 
 Deploying a full-stack application on Kubernetes today means writing a Dockerfile, hand-rolling Kubernetes manifests or Helm charts, wiring up Ingress and networking, standing up a monitoring stack, and gluing it all together with CI/CD — before a single line of application code goes live. That setup cost is the reason most side projects and small teams never touch Kubernetes directly, even when it's the right tool.
 
