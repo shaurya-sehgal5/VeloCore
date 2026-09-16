@@ -20,7 +20,7 @@ _Push code. VeloCore handles the Dockerfile, the Helm chart, the rollout, the mo
 [![Loki](https://img.shields.io/badge/Loki-F5A800?style=flat-square&logo=grafana&logoColor=white)](#)
 [![Trivy](https://img.shields.io/badge/Trivy-1904DA?style=flat-square)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3ecf8e?style=flat-square)](#license)
-
+ 
 </div>
 
 ---
