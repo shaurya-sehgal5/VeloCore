@@ -1,5 +1,5 @@
 ﻿﻿﻿﻿<div align="center">
-
+ 
 <img src="./Screenshots/banner.png" alt="VeloCore Banner" width="100%" />
 
 **Self-hosted Platform-as-a-Service built on Kubernetes that automatically builds, secures, deploys, and monitors full-stack applications.**
